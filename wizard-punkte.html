@@ -129,6 +129,14 @@
   .rules{margin-top:22px; padding-top:14px; border-top:1px solid var(--line); color:var(--dim); font-size:13.5px}
   .rules b{color:var(--text); font-weight:600}
 
+  .modes{display:flex; gap:8px; margin:2px 0 14px}
+  .modes button{flex:1; text-align:left; padding:11px 12px; border-radius:12px;
+    background:var(--surface); border:1px solid transparent}
+  .modes button[aria-current="true"]{border-color:var(--gold); background:var(--surface-2)}
+  .modes button b{display:block; font-size:15px}
+  .modes button span{display:block; margin-top:2px; font-size:12px; color:var(--dim); line-height:1.3}
+  td.rnd .cards{display:block; font-size:11px; color:#7A6EA0; font-variant-numeric:tabular-nums}
+
   /* ---- Umschalter unten ---- */
   .tabs{
     position:fixed; left:0; right:0; bottom:0; display:flex; gap:6px;
@@ -170,8 +178,21 @@ var store = (function(){
 
 /* ---------- Zustand ---------- */
 var S = null;
-function fresh(){ return { names:[], rounds:[], draft:null, view:"round" }; }
-function totalRounds(){ return Math.floor(60 / S.names.length); }
+function fresh(){ return { names:[], mode:"up", rounds:[], draft:null, view:"round" }; }
+function baseRounds(){ return Math.floor(60 / S.names.length); }
+function schedule(){
+  var T = baseRounds(), a = [], i;
+  if (S.mode === "updown") {
+    var peak = Math.ceil(T / 2);
+    for (i = 1; i <= peak; i++) a.push(i);
+    for (i = peak - 1; i >= 1; i--) a.push(i);
+  } else {
+    for (i = 1; i <= T; i++) a.push(i);
+  }
+  return a;
+}
+function totalRounds(){ return schedule().length; }
+function cardsFor(r){ return schedule()[r-1]; }
 function roundNo(){ return S.rounds.length + 1; }
 function points(bid, tricks){ return bid === tricks ? 20 + 10*tricks : -10*Math.abs(bid-tricks); }
 function totals(){
@@ -218,6 +239,22 @@ function viewSetup(){
   var hint = el('<p class="note"></p>');
   var addBtn = el('<button class="cta ghost" type="button">Spieler hinzuf\u00fcgen</button>');
 
+  var mode = S.mode || "up";
+  var modeBox = el(
+    '<div class="modes">' +
+      '<button type="button" data-m="up"><b>Normal</b><span>1 Karte bis zum vollen Blatt</span></button>' +
+      '<button type="button" data-m="updown"><b>Auf und ab</b><span>hoch bis zur H\u00e4lfte, dann zur\u00fcck auf 1</span></button>' +
+    '</div>');
+
+  function paintMode(){
+    Array.prototype.forEach.call(modeBox.children, function(b){
+      b.setAttribute("aria-current", b.dataset.m === mode ? "true" : "false");
+    });
+  }
+  Array.prototype.forEach.call(modeBox.children, function(b){
+    b.onclick = function(){ mode = b.dataset.m; paintMode(); paint(); };
+  });
+
   function paint(){
     list.innerHTML = "";
     names.forEach(function(n, i){
@@ -233,18 +270,23 @@ function viewSetup(){
       list.appendChild(row);
     });
     addBtn.disabled = names.length >= 6;
-    hint.textContent = names.length + " Spieler \u00b7 " + Math.floor(60/names.length) + " Runden";
+    var T = Math.floor(60 / names.length);
+    var rounds = mode === "updown" ? 2 * Math.ceil(T/2) - 1 : T;
+    var peak = mode === "updown" ? Math.ceil(T/2) : T;
+    hint.textContent = names.length + " Spieler \u00b7 " + rounds + " Runden \u00b7 h\u00f6chstens " + peak + " Karten";
   }
   addBtn.onclick = function(){ if (names.length < 6) { names.push(""); paint(); } };
 
   startBtn.onclick = function(){
     S.names = names.map(function(n, i){ return n.trim() || ("Spieler " + (i+1)); });
+    S.mode = mode;
     S.rounds = [];
     S.draft = null;
     save();
     render();
   };
 
+  app.appendChild(modeBox);
   app.appendChild(addBtn);
   app.appendChild(startBtn);
   app.appendChild(hint);
@@ -252,11 +294,12 @@ function viewSetup(){
     '<div class="rules"><b>Punkte</b> \u00b7 Ansage getroffen: 20 Punkte plus 10 je Stich. ' +
     'Daneben: 10 Punkte Abzug je Stich Differenz.</div>'));
   paint();
+  paintMode();
 }
 
 /* ---------- Bildschirm: Runde ---------- */
 function viewRound(){
-  var n = roundNo(), max = n, tot = totals();
+  var n = roundNo(), max = cardsFor(n), tot = totals();
   if (!S.draft) S.draft = { phase:"bid", bids:S.names.map(function(){ return 0; }), tricks:S.names.map(function(){ return 0; }) };
   var d = S.draft;
   var bidding = d.phase === "bid";
@@ -277,9 +320,10 @@ function viewRound(){
 
   var count = S.names.length;
   var dealer = (n - 1) % count;
+  var left = 60 - max*count;
   app.appendChild(el('<p class="dealline">' + esc(S.names[dealer]) + ' gibt \u00b7 ' +
-    n + (n === 1 ? ' Karte' : ' Karten') + ' je Spieler \u00b7 ' +
-    (60 - n*count) + ' bleiben liegen</p>'));
+    max + (max === 1 ? ' Karte' : ' Karten') + ' je Spieler \u00b7 ' +
+    (left === 0 ? 'kein Trumpf' : left + ' bleiben liegen') + '</p>'));
 
   var order = [];
   for (var k = 0; k < count; k++) order.push((dealer + 1 + k) % count);
@@ -357,7 +401,7 @@ function viewTable(){
       return '<td><span class="bid ' + (p > 0 ? "hit" : "miss") + '">' + r.bids[i] + "/" + r.tricks[i] +
              '</span>' + run[i] + '</td>';
     }).join("");
-    return '<tr><td class="rnd">' + (ri+1) + '</td>' + cells + '</tr>';
+    return '<tr><td class="rnd">' + (ri+1) + '<span class="cards">' + cardsFor(ri+1) + ' K</span></td>' + cells + '</tr>';
   }).join("");
 
   var foot = '<tr><th class="rnd">Stand</th>' + tot.map(function(t){
@@ -419,6 +463,7 @@ function render(){
 Promise.resolve(store.get()).then(function(raw){
   try { S = raw ? JSON.parse(raw) : fresh(); } catch(e){ S = fresh(); }
   if (!S || !Array.isArray(S.names)) S = fresh();
+  if (S.mode !== "updown") S.mode = "up";
   render();
 });
 })();
