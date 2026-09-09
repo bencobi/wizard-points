@@ -439,7 +439,7 @@ function viewRound(){
 
   app.innerHTML = "";
   app.appendChild(el('<div class="top"><div class="brand"><span class="hat">\u25B2</span> Wizard</div></div>'));
-  app.querySelector(".top").appendChild(menuButton());
+  topBtns();
   app.appendChild(strip(n));
 
   var count = S.names.length;
@@ -479,9 +479,21 @@ function viewRound(){
       who.appendChild(el('<div class="sub">sagt <span class="said num">' + d.bids[i] + '</span>' +
         '<span class="chip' + (p > 0 ? '' : ' down') + '">' + signed(p) + '</span></div>'));
     }
-    row.appendChild(stepper(vals[i], max, vals[i] > 0, function(v){
-      vals[i] = v; save(); render();
-    }));
+    if (max >= 7) {
+      var pill = el('<button class="pill num' + (vals[i] > 0 ? ' set' : '') + '" type="button">' + vals[i] + '</button>');
+      (function(i){
+        bindTap(pill, function(){
+          pickerSheet((bidding ? "Ansage von " : "Stiche von ") + S.names[i], vals[i], max, function(v){
+            vals[i] = v; save(); render();
+          });
+        });
+      })(i);
+      row.appendChild(pill);
+    } else {
+      row.appendChild(stepper(vals[i], max, vals[i] > 0, function(v){
+        vals[i] = v; save(); render();
+      }));
+    }
     app.appendChild(row);
   });
 
@@ -529,7 +541,7 @@ function viewTable(){
   var tot = totals(), best = Math.max.apply(null, tot);
   app.innerHTML = "";
   app.appendChild(el('<div class="top"><div class="brand"><span class="hat">\u25B2</span> Wizard</div></div>'));
-  app.querySelector(".top").appendChild(menuButton());
+  topBtns();
   app.appendChild(el('<h1 class="headline num">' + S.rounds.length + ' <em>von ' + totalRounds() + ' Runden gespielt</em></h1>'));
   app.appendChild(el('<p class="meta">Je Runde die Ansage, die Stiche und der Stand danach.</p>'));
 
@@ -573,7 +585,7 @@ function viewFinal(){
                      .sort(function(a,b){ return b.pt - a.pt; });
   app.innerHTML = "";
   app.appendChild(el('<div class="top"><div class="brand"><span class="hat">\u25B2</span> Wizard</div></div>'));
-  app.querySelector(".top").appendChild(menuButton());
+  topBtns();
   app.appendChild(el('<div class="final"><h2>' + esc(order[0].nm) + ' gewinnt</h2>' +
                      '<p>Nach ' + totalRounds() + ' Runden mit ' + order[0].pt + ' Punkten.</p></div>'));
   order.forEach(function(p, i){
@@ -582,6 +594,32 @@ function viewFinal(){
                        '<span class="nm">' + esc(p.nm) + '</span>' +
                        '<span class="pt num">' + p.pt + '</span></div>'));
   });
+  var stats = el('<div class="stats"></div>');
+  function line(label, value){ stats.appendChild(el('<div><span>' + label + '</span><b>' + value + '</b></div>')); }
+
+  var hits = S.names.map(function(_, i){
+    return S.rounds.filter(function(r){ return r.bids[i] === r.tricks[i]; }).length;
+  });
+  var over = S.names.map(function(_, i){
+    return S.rounds.filter(function(r){ return r.bids[i] > r.tricks[i]; }).length;
+  });
+  var bestRound = { pt:-999, who:"", nr:0 };
+  S.rounds.forEach(function(r, ri){
+    S.names.forEach(function(nm, i){
+      var pt = points(r.bids[i], r.tricks[i]);
+      if (pt > bestRound.pt) bestRound = { pt:pt, who:nm, nr:ri+1 };
+    });
+  });
+  var topHit = 0; hits.forEach(function(h, i){ if (h > hits[topHit]) topHit = i; });
+  var topOver = 0; over.forEach(function(o, i){ if (o > over[topOver]) topOver = i; });
+  var rounds = S.rounds.length;
+
+  line("Beste Einzelrunde", bestRound.who + ", " + signed(bestRound.pt) + " in Runde " + bestRound.nr);
+  line("Sicherste Ansagen", S.names[topHit] + ", " + hits[topHit] + " von " + rounds + " getroffen");
+  if (over[topOver] > 0) line("Am h\u00e4ufigsten \u00fcbersch\u00e4tzt", S.names[topOver] + ", " + over[topOver] + " mal zu hoch");
+  line("Trefferquote der Runde", Math.round(100 * sum(hits) / (rounds * S.names.length)) + " Prozent");
+  app.appendChild(stats);
+
   var again = el('<button class="cta" type="button">Neues Spiel, gleiche Runde</button>');
   again.onclick = function(){ S.rounds = []; S.draft = null; save(); render(); };
   app.appendChild(again);
@@ -589,6 +627,72 @@ function viewFinal(){
   reset.onclick = function(){ S = fresh(); save(); render(); };
   app.appendChild(reset);
   app.appendChild(tabs());
+}
+
+/* ---------- Bildschirm wachhalten ---------- */
+var lock = null;
+function keepAwake(on){
+  try {
+    if (!navigator.wakeLock) return;
+    if (on && !lock) {
+      navigator.wakeLock.request("screen").then(function(l){
+        lock = l;
+        l.addEventListener("release", function(){ lock = null; });
+      }).catch(function(){});
+    } else if (!on && lock) { lock.release(); lock = null; }
+  } catch(e){}
+}
+document.addEventListener("visibilitychange", function(){
+  if (document.visibilityState === "visible" && S && S.names.length && !S.setup) keepAwake(true);
+});
+
+/* ---------- Zahlenblock ---------- */
+function pickerSheet(title, cur, max, onPick){
+  var sheet = el('<div class="sheet"><div class="panel"><div class="head">' + title +
+    '</div><div class="numgrid"></div></div></div>');
+  var grid = sheet.querySelector(".numgrid");
+  for (var v = 0; v <= max; v++) {
+    (function(v){
+      var b = el('<button type="button" aria-current="' + (v === cur) + '">' + v + '</button>');
+      b.onclick = function(){ sheet.remove(); onPick(v); };
+      grid.appendChild(b);
+    })(v);
+  }
+  var cancel = el('<button type="button">Abbrechen</button>');
+  cancel.onclick = function(){ sheet.remove(); };
+  sheet.querySelector(".panel").appendChild(cancel);
+  sheet.onclick = function(e){ if (e.target === sheet) sheet.remove(); };
+  document.body.appendChild(sheet);
+}
+
+/* ---------- Spielanleitung ---------- */
+var RULES = [
+  ["Ziel", "Sage vor jeder Runde an, wie viele Stiche du machst. Nur die genaue Zahl bringt Punkte."],
+  ["Punkte", "Ansage getroffen: 20 Punkte plus 10 je Stich. Daneben: 10 Punkte Abzug je Stich Differenz, egal ob zu viel oder zu wenig."],
+  ["Geben", "Die Rundennummer ist die Kartenzahl. Der Geber wechselt jede Runde, angesagt wird ab dem Spieler links von ihm, der Geber zuletzt."],
+  ["Trumpf", "Nach dem Geben wird die oberste Karte des Reststapels aufgedeckt, ihre Farbe ist Trumpf. Zauberer: der Geber w\u00e4hlt die Farbe. Narr oder kein Rest: ohne Trumpf."],
+  ["Bedienen", "Die erste Farbkarte im Stich gibt die Farbe vor, die musst du bedienen, wenn du sie hast \u2013 auch wenn du Trumpf h\u00e4ttest. Zauberer und Narr darfst du immer legen."],
+  ["Stich", "Der erste gespielte Zauberer gewinnt, sonst der h\u00f6chste Trumpf, sonst die h\u00f6chste Karte der angespielten Farbe. Nur Narren: der erste gewinnt."],
+  ["Vorhand-Regel", "Optional: Der Geber darf die Summe der Ansagen nicht genau auf die Stichzahl bringen. Dann liegt immer mindestens einer daneben."]
+];
+function helpButton(){
+  var b = el('<button class="menubtn" type="button" aria-label="Spielanleitung">?</button>');
+  b.onclick = function(){
+    var sheet = el('<div class="sheet"><div class="panel"><div class="head">Wizard in Kurzform</div>' +
+      '<div class="rules-body">' + RULES.map(function(r){
+        return '<h3>' + r[0] + '</h3><p>' + r[1] + '</p>'; }).join("") + '</div></div></div>');
+    var close = el('<button type="button">Schlie\u00dfen</button>');
+    close.onclick = function(){ sheet.remove(); };
+    sheet.querySelector(".panel").appendChild(close);
+    sheet.onclick = function(e){ if (e.target === sheet) sheet.remove(); };
+    document.body.appendChild(sheet);
+  };
+  return b;
+}
+function topBtns(){
+  var t = app.querySelector(".top");
+  t.appendChild(helpButton());
+  t.appendChild(menuButton());
 }
 
 /* ---------- Men\u00fc ---------- */
@@ -665,6 +769,7 @@ function applyTheme(){
 
 function render(){
   applyTheme();
+  keepAwake(!!S.names.length && !S.setup);
   if (S.setup || !S.names.length) return viewSetup();
   if (S.view === "table") return viewTable();
   if (S.rounds.length >= totalRounds()) return viewFinal();
