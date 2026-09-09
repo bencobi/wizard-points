@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#16102B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -25,6 +25,7 @@
     --serif: ui-serif, Georgia, "Noto Serif", "Times New Roman", serif;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html{touch-action:manipulation}
   html,body{margin:0; height:100%}
   body{
     background:var(--bg); color:var(--text); font-family:var(--sans);
@@ -33,7 +34,8 @@
     overscroll-behavior:none;
   }
   #app{max-width:560px; margin:0 auto; padding:14px 14px 96px}
-  button{font:inherit; color:inherit; background:none; border:none; cursor:pointer}
+  button{font:inherit; color:inherit; background:none; border:none; cursor:pointer;
+    touch-action:manipulation; user-select:none; -webkit-user-select:none}
   input{font:inherit}
   :focus-visible{outline:2px solid var(--gold); outline-offset:2px}
 
@@ -91,7 +93,7 @@
     font-size:22px; font-family:var(--serif); line-height:1; color:var(--text);
   }
   .stepper button:disabled{opacity:.3}
-  .stepper button:active{background:var(--gold); color:var(--bg)}
+  .stepper button:active, .stepper button.tap{background:var(--gold); color:var(--bg)}
   .stepper .val{
     min-width:46px; text-align:center; font-family:var(--serif); font-size:27px;
     font-variant-numeric:tabular-nums;
@@ -221,6 +223,18 @@ function el(html){ var t = document.createElement("template"); t.innerHTML = htm
 function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c]; }); }
 function signed(n){ return (n > 0 ? "+" : "") + n; }
 
+function bindTap(btn, fn){
+  var handled = false;
+  btn.addEventListener("touchstart", function(e){
+    handled = true;
+    if (btn.disabled) return;
+    e.preventDefault();
+    btn.classList.add("tap");
+    fn();
+  }, { passive:false });
+  btn.addEventListener("click", function(){ if (!handled && !btn.disabled) fn(); });
+}
+
 function stepper(value, max, isSet, onChange){
   var node = el(
     '<div class="stepper">' +
@@ -231,8 +245,8 @@ function stepper(value, max, isSet, onChange){
   var minus = node.children[0], out = node.children[1], plus = node.children[2];
   minus.disabled = value <= 0;
   plus.disabled = value >= max;
-  minus.onclick = function(){ onChange(value - 1); };
-  plus.onclick = function(){ onChange(value + 1); };
+  bindTap(minus, function(){ onChange(value - 1); });
+  bindTap(plus, function(){ onChange(value + 1); });
   return node;
 }
 
