@@ -213,6 +213,25 @@
   }
   @keyframes rise{from{transform:translateY(14px); opacity:0} to{transform:none; opacity:1}}
 
+  /* Anleitung */
+  .sheet .panel.scrollable{display:flex; flex-direction:column; max-height:84vh}
+  .sheet .head{padding:15px 16px 8px; font-size:16px; font-weight:800; letter-spacing:-.02em}
+  .sheet .rules-body{flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain;
+    touch-action:pan-y; -webkit-overflow-scrolling:touch; padding:0 16px 6px}
+  .sheet .rules-body section{padding:11px 0; border-top:1px solid var(--hair)}
+  .sheet .rules-body section:first-child{border-top:none; padding-top:2px}
+  .sheet .rules-body h3{margin:0 0 3px; font-size:14.5px; font-weight:700}
+  .sheet .rules-body p{margin:0; font-size:14px; color:var(--dim); line-height:1.5}
+
+  /* Auswertung */
+  .stats{margin-top:18px; background:var(--glass); border:1px solid var(--hair); border-radius:var(--r); overflow:hidden}
+  .stats h3{margin:0; padding:12px 15px 0; font-size:13px; font-weight:700; color:var(--dim)}
+  .stats div{padding:11px 15px; border-top:1px solid var(--hair)}
+  .stats div:first-of-type{border-top:none}
+  .stats span{display:block; font-size:12.5px; color:var(--dim); margin-bottom:1px}
+  .stats b{display:block; font-size:15.5px; font-weight:700; line-height:1.35}
+  .stats b em{font-style:normal; color:var(--dim); font-weight:600}
+
   /* Umschalter */
   .tabs{position:fixed; left:0; right:0; bottom:0; display:flex;
     padding:8px 14px calc(8px + env(safe-area-inset-bottom));
@@ -479,21 +498,9 @@ function viewRound(){
       who.appendChild(el('<div class="sub">sagt <span class="said num">' + d.bids[i] + '</span>' +
         '<span class="chip' + (p > 0 ? '' : ' down') + '">' + signed(p) + '</span></div>'));
     }
-    if (max >= 7) {
-      var pill = el('<button class="pill num' + (vals[i] > 0 ? ' set' : '') + '" type="button">' + vals[i] + '</button>');
-      (function(i){
-        bindTap(pill, function(){
-          pickerSheet((bidding ? "Ansage von " : "Stiche von ") + S.names[i], vals[i], max, function(v){
-            vals[i] = v; save(); render();
-          });
-        });
-      })(i);
-      row.appendChild(pill);
-    } else {
-      row.appendChild(stepper(vals[i], max, vals[i] > 0, function(v){
-        vals[i] = v; save(); render();
-      }));
-    }
+    row.appendChild(stepper(vals[i], max, vals[i] > 0, function(v){
+      vals[i] = v; save(); render();
+    }));
     app.appendChild(row);
   });
 
@@ -594,8 +601,10 @@ function viewFinal(){
                        '<span class="nm">' + esc(p.nm) + '</span>' +
                        '<span class="pt num">' + p.pt + '</span></div>'));
   });
-  var stats = el('<div class="stats"></div>');
-  function line(label, value){ stats.appendChild(el('<div><span>' + label + '</span><b>' + value + '</b></div>')); }
+  var stats = el('<div class="stats"><h3>Auswertung</h3></div>');
+  function line(label, value){
+    stats.appendChild(el('<div><span>' + label + '</span><b>' + value + '</b></div>'));
+  }
 
   var hits = S.names.map(function(_, i){
     return S.rounds.filter(function(r){ return r.bids[i] === r.tricks[i]; }).length;
@@ -614,10 +623,12 @@ function viewFinal(){
   var topOver = 0; over.forEach(function(o, i){ if (o > over[topOver]) topOver = i; });
   var rounds = S.rounds.length;
 
-  line("Beste Einzelrunde", bestRound.who + ", " + signed(bestRound.pt) + " in Runde " + bestRound.nr);
-  line("Sicherste Ansagen", S.names[topHit] + ", " + hits[topHit] + " von " + rounds + " getroffen");
-  if (over[topOver] > 0) line("Am h\u00e4ufigsten \u00fcbersch\u00e4tzt", S.names[topOver] + ", " + over[topOver] + " mal zu hoch");
-  line("Trefferquote der Runde", Math.round(100 * sum(hits) / (rounds * S.names.length)) + " Prozent");
+  line("Beste Einzelrunde", esc(bestRound.who) + ' <em>' + signed(bestRound.pt) + ' in Runde ' + bestRound.nr + '</em>');
+  line("Sicherste Ansagen", esc(S.names[topHit]) + ' <em>' + hits[topHit] + ' von ' + rounds + ' getroffen</em>');
+  if (over[topOver] > 0) {
+    line("Am h\u00e4ufigsten \u00fcbersch\u00e4tzt", esc(S.names[topOver]) + ' <em>' + over[topOver] + ' mal zu hoch</em>');
+  }
+  line("Trefferquote der Runde", Math.round(100 * sum(hits) / (rounds * S.names.length)) + ' <em>Prozent aller Ansagen</em>');
   app.appendChild(stats);
 
   var again = el('<button class="cta" type="button">Neues Spiel, gleiche Runde</button>');
@@ -646,25 +657,6 @@ document.addEventListener("visibilitychange", function(){
   if (document.visibilityState === "visible" && S && S.names.length && !S.setup) keepAwake(true);
 });
 
-/* ---------- Zahlenblock ---------- */
-function pickerSheet(title, cur, max, onPick){
-  var sheet = el('<div class="sheet"><div class="panel"><div class="head">' + title +
-    '</div><div class="numgrid"></div></div></div>');
-  var grid = sheet.querySelector(".numgrid");
-  for (var v = 0; v <= max; v++) {
-    (function(v){
-      var b = el('<button type="button" aria-current="' + (v === cur) + '">' + v + '</button>');
-      b.onclick = function(){ sheet.remove(); onPick(v); };
-      grid.appendChild(b);
-    })(v);
-  }
-  var cancel = el('<button type="button">Abbrechen</button>');
-  cancel.onclick = function(){ sheet.remove(); };
-  sheet.querySelector(".panel").appendChild(cancel);
-  sheet.onclick = function(e){ if (e.target === sheet) sheet.remove(); };
-  document.body.appendChild(sheet);
-}
-
 /* ---------- Spielanleitung ---------- */
 var RULES = [
   ["Ziel", "Sage vor jeder Runde an, wie viele Stiche du machst. Nur die genaue Zahl bringt Punkte."],
@@ -678,9 +670,9 @@ var RULES = [
 function helpButton(){
   var b = el('<button class="menubtn" type="button" aria-label="Spielanleitung">?</button>');
   b.onclick = function(){
-    var sheet = el('<div class="sheet"><div class="panel"><div class="head">Wizard in Kurzform</div>' +
+    var sheet = el('<div class="sheet"><div class="panel scrollable"><div class="head">Wizard in Kurzform</div>' +
       '<div class="rules-body">' + RULES.map(function(r){
-        return '<h3>' + r[0] + '</h3><p>' + r[1] + '</p>'; }).join("") + '</div></div></div>');
+        return '<section><h3>' + r[0] + '</h3><p>' + r[1] + '</p></section>'; }).join("") + '</div></div></div>');
     var close = el('<button type="button">Schlie\u00dfen</button>');
     close.onclick = function(){ sheet.remove(); };
     sheet.querySelector(".panel").appendChild(close);
@@ -758,8 +750,8 @@ function tabs(){
 
 /* ---------- Start ---------- */
 var THEMES = [
-  { id:"blossom", name:"Kirschbl\u00fcte", bg:"linear-gradient(150deg,#FFD9DE,#D5F3D8)", fg:"#8A4055" },
-  { id:"edge",    name:"Kante",           bg:"linear-gradient(150deg,#2E2E2E,#121212)", fg:"#4DFFBC" }
+  { id:"blossom", name:"Hell"     , bg:"linear-gradient(150deg,#FFD9DE,#D5F3D8)", fg:"#8A4055" },
+  { id:"edge",    name:"Dunkel",           bg:"linear-gradient(150deg,#2E2E2E,#121212)", fg:"#4DFFBC" }
 ];
 function applyTheme(){
   var ok = THEMES.some(function(t){ return t.id === S.theme; });
