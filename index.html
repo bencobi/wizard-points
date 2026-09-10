@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#16102B">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Wizard">
+<title>Wizard Punkte</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2316102B'/%3E%3Cpath d='M32 12 L46 44 H18 Z' fill='%23F2C14E'/%3E%3Ccircle cx='32' cy='26' r='3' fill='%2316102B'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg-0:#FFF7F7;
+    --bg-1:#FBE3E5;
+    --glow:rgba(213,243,216,.9);
+    --panel:#FFFFFF;
+    --head:#FFF1F3;
+    --foot:#FBDFE4;
+    --gold:#FF8DA6;
+    --gold-2:#E8637F;
+    --tint:rgba(255,141,166,.18);
+    --text:#2B1F23;
+    --dim:#8B7076;
+    --glass:rgba(43,31,35,.035);
+    --glass-2:rgba(43,31,35,.075);
+    --hair:rgba(43,31,35,.14);
+    --hit:#1F9A63;
+    --miss:#D6414F;
+    --well:rgba(43,31,35,.055);
+    --on-gold:#FFFFFF;
+    --ui: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --r:14px;
+  }
+  [data-theme="dark"]{
+    --bg-0:#121212; --bg-1:#262626; --glow:rgba(77,255,188,.18);
+    --panel:#242424; --head:#1C1C1C; --foot:#2B2B2B;
+    --gold:#4DFFBC; --gold-2:#25C98E; --tint:rgba(77,255,188,.14);
+    --text:#F2F2F2; --dim:#9A9A9A;
+    --glass:rgba(255,255,255,.06); --glass-2:rgba(255,255,255,.12); --hair:rgba(255,255,255,.11);
+    --well:rgba(0,0,0,.3); --on-gold:#0B2019;
+    --hit:#4DFFBC; --miss:#FF4D4D;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html{touch-action:manipulation}
+  html,body{margin:0; min-height:100%}
+  body{
+    background:
+      radial-gradient(125% 58% at 50% -10%, var(--glow) 0%, transparent 64%),
+      linear-gradient(180deg, var(--bg-1) 0%, var(--bg-0) 52%);
+    background-color:var(--bg-0);
+    background-attachment:fixed;
+    color:var(--text); font-family:var(--ui); font-size:16px; line-height:1.45;
+    letter-spacing:-.01em;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    overscroll-behavior:none;
+  }
+  #app{max-width:560px; margin:0 auto; padding:12px 14px 104px}
+  button{font:inherit; color:inherit; background:none; border:none; cursor:pointer;
+    touch-action:manipulation; user-select:none; -webkit-user-select:none}
+  input{font:inherit}
+  :focus-visible{outline:2px solid var(--gold); outline-offset:2px}
+  .num{font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1}
+
+  /* Kopf */
+  .top{display:flex; align-items:center; gap:12px; padding:4px 2px 14px}
+  .brand{font-size:19px; font-weight:700; letter-spacing:-.02em; margin-right:auto; display:flex; align-items:center; gap:8px}
+  .brand .hat{
+    width:22px; height:22px; border-radius:7px; display:grid; place-items:center; font-size:11px;
+    color:var(--on-gold); background:linear-gradient(160deg, var(--gold), var(--gold-2));
+    box-shadow:0 3px 12px rgba(0,0,0,.35);
+  }
+  .menubtn{width:36px; height:36px; border-radius:12px; background:var(--glass);
+    border:1px solid var(--hair); color:var(--dim); font-size:17px; line-height:1; flex:none}
+
+  /* Rundenband */
+  .strip{display:flex; align-items:flex-end; gap:3px; height:46px; margin:0 2px 14px}
+  .strip i{flex:1; border-radius:3px 3px 2px 2px; background:var(--glass-2)}
+  .strip i.done{background:var(--dim); opacity:.55}
+  .strip i.now{background:linear-gradient(180deg, var(--gold), var(--gold-2));
+    box-shadow:0 0 16px var(--tint)}
+  .headline{margin:0 2px 3px; font-size:27px; font-weight:800; letter-spacing:-.03em}
+  .headline em{font-style:normal; color:var(--dim); font-weight:600; font-size:16px; letter-spacing:-.01em}
+  .meta{margin:0 2px 18px; color:var(--dim); font-size:14px}
+
+  /* Abschnittszeile */
+  .phase{display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin:0 2px 10px}
+  .phase h2{margin:0; font-size:16px; font-weight:700; letter-spacing:-.01em}
+  .phase .tally{font-size:14px; color:var(--dim)}
+  .phase .tally b{color:var(--text); font-weight:700}
+  .phase .tally.bad b{color:var(--miss)}
+
+  /* Spielerzeilen */
+  .row{position:relative; display:grid; grid-template-columns:1fr auto; align-items:center; gap:10px;
+    background:var(--glass); border:1px solid var(--hair); border-radius:var(--r);
+    padding:11px 12px 11px 15px; margin-bottom:8px; overflow:hidden}
+  .row::before{content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--acc, var(--dim))}
+  .row.leader{background:linear-gradient(90deg, var(--tint), var(--glass) 62%)}
+  .who{min-width:0}
+  .who .name{display:flex; align-items:baseline; min-width:0; font-size:16.5px; font-weight:650}
+  .who .name .nm{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .who .sub{font-size:13px; color:var(--dim); display:flex; align-items:center; gap:6px}
+  .who .sub .said{color:var(--gold); font-weight:700}
+  .badge{flex:none; margin-left:8px; padding:2px 7px; border-radius:7px; font-size:11px; font-weight:700;
+    background:var(--glass-2); color:var(--gold)}
+  .chip{flex:none; padding:1px 6px; border-radius:6px; font-size:11.5px; font-weight:700;
+    background:var(--glass-2); color:var(--hit)}
+  .chip.down{color:var(--miss)}
+  @supports (background:color-mix(in srgb, red 10%, transparent)){
+    .chip{background:color-mix(in srgb, var(--hit) 17%, transparent)}
+    .chip.down{background:color-mix(in srgb, var(--miss) 17%, transparent)}
+  }
+
+  /* Zähler */
+  .stepper{display:flex; align-items:center; gap:2px; background:var(--well);
+    border:1px solid var(--hair); border-radius:13px; padding:3px}
+  .stepper button{width:42px; height:40px; border-radius:10px; font-size:20px; font-weight:600; color:var(--dim)}
+  .stepper button:disabled{opacity:.28}
+  .stepper button:active:not(:disabled), .stepper button.tap:not(:disabled){background:var(--glass-2); color:var(--text)}
+  .stepper .val{min-width:34px; text-align:center; font-size:22px; font-weight:800}
+  .stepper .val.set{color:var(--gold)}
+
+  /* Knöpfe */
+  .cta{display:block; width:100%; margin-top:14px; padding:16px; border-radius:15px;
+    background:linear-gradient(165deg, var(--gold), var(--gold-2)); color:var(--on-gold);
+    font-weight:800; font-size:17px; letter-spacing:-.01em;
+    box-shadow:0 8px 24px rgba(0,0,0,.35)}
+  .cta:active{transform:translateY(1px)}
+  .cta.ghost{background:none; box-shadow:none; color:var(--dim); border:1px solid var(--hair);
+    font-weight:600; font-size:15px; padding:13px}
+  .cta:disabled{opacity:.4; box-shadow:none}
+  .note{text-align:center; color:var(--dim); font-size:13.5px; margin-top:11px; min-height:19px}
+  .note.warn{color:var(--miss)}
+
+  /* Tabelle */
+  .scroller{overflow-x:auto; -webkit-overflow-scrolling:touch; border-radius:var(--r);
+    background:var(--glass); border:1px solid var(--hair)}
+  table{border-collapse:collapse; width:100%}
+  th,td{padding:8px 10px; text-align:right; white-space:nowrap; border-bottom:1px solid var(--hair)}
+  thead th{font-size:13px; font-weight:700; color:var(--text); position:sticky; top:0;
+    background:var(--head); border-bottom:1px solid var(--hair)}
+  thead th i{display:inline-block; width:7px; height:7px; border-radius:9px; margin-right:5px; background:var(--acc)}
+  th.rnd,td.rnd{text-align:left; position:sticky; left:0; background:var(--head); color:var(--dim); font-size:13px; width:1px}
+  tbody td{font-size:17px; font-weight:650; font-variant-numeric:tabular-nums}
+  tbody td .bid{display:block; font-size:11.5px; font-weight:600; line-height:1.35}
+  td.rnd .cards{display:block; font-size:11px; color:#6F639A}
+  .bid.hit{color:var(--hit)} .bid.miss{color:var(--miss)}
+  tfoot td, tfoot th{border-bottom:none; background:var(--foot); font-size:19px; font-weight:800}
+  tfoot th.rnd{background:var(--foot); color:var(--dim); font-size:13px}
+  .lead{color:var(--gold)}
+
+  /* Ergebnis */
+  .final{padding:6px 2px 16px}
+  .final h2{font-size:30px; font-weight:800; letter-spacing:-.03em; margin:0 0 2px}
+  .final p{color:var(--dim); margin:0; font-size:14px}
+  .rank{display:flex; align-items:center; gap:12px; padding:14px 15px; background:var(--glass);
+    border:1px solid var(--hair); border-radius:var(--r); margin-bottom:8px; position:relative; overflow:hidden}
+  .rank::before{content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--acc)}
+  .rank.first{background:linear-gradient(90deg, var(--tint), var(--glass) 65%)}
+  .rank .pos{font-size:15px; font-weight:800; color:var(--dim); width:18px}
+  .rank .nm{flex:1; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .rank .pt{font-size:23px; font-weight:800; font-variant-numeric:tabular-nums}
+
+  /* Start */
+  .lead-in{color:var(--dim); font-size:14.5px; margin:0 2px 16px}
+  .pinput{display:flex; align-items:center; gap:10px; margin-bottom:8px; background:var(--glass);
+    border:1px solid var(--hair); border-radius:var(--r); padding:3px 6px 3px 14px}
+  .pinput i{width:9px; height:9px; border-radius:9px; background:var(--acc); flex:none}
+  .pinput input{flex:1; background:none; border:none; color:var(--text); padding:13px 0; min-width:0; font-weight:600}
+  .pinput input::placeholder{color:#6C6096; font-weight:500}
+  .pinput .rm{width:38px; height:38px; border-radius:11px; color:var(--dim); font-size:19px}
+  .modes{display:flex; gap:8px; margin:2px 0 16px}
+  .modes button{flex:1; text-align:left; padding:12px 13px; border-radius:var(--r);
+    background:var(--glass); border:1px solid var(--hair)}
+  .modes button[aria-current="true"]{border-color:var(--gold); background:var(--tint)}
+  .modes button b{display:block; font-size:15px; font-weight:700}
+  .modes button span{display:block; margin-top:2px; font-size:12px; color:var(--dim); line-height:1.35}
+  .toggle{display:flex; align-items:center; gap:12px; margin-bottom:8px; padding:12px 14px;
+    background:var(--glass); border:1px solid var(--hair); border-radius:var(--r); width:100%; text-align:left}
+  .toggle .box{width:24px; height:24px; border-radius:8px; border:1.5px solid var(--hair); flex:none;
+    display:grid; place-items:center; font-size:14px; color:var(--on-gold)}
+  .toggle[aria-pressed="true"] .box{background:linear-gradient(160deg, var(--gold), var(--gold-2)); border-color:transparent}
+  .toggle b{display:block; font-size:15px; font-weight:700}
+  .toggle span{display:block; font-size:12.5px; color:var(--dim); line-height:1.35; margin-top:1px}
+  .swatches{display:flex; flex-wrap:wrap; gap:8px; margin:2px 0 16px}
+  .swatches button{flex:1 1 calc(50% - 4px); height:56px; border-radius:12px;
+    border:1px solid var(--hair); display:grid; place-items:end center; padding-bottom:6px;
+    font-size:11.5px; font-weight:700; text-shadow:0 1px 2px rgba(0,0,0,.25)}
+  .swatches button[data-t="light"]{text-shadow:none}
+  .swatches button[aria-current="true"]{border-color:var(--gold); box-shadow:0 0 0 2px var(--gold) inset}
+  .rules{margin-top:20px; padding-top:14px; border-top:1px solid var(--hair); color:var(--dim); font-size:13.5px}
+  .rules b{color:var(--text); font-weight:700}
+
+  /* Menü */
+  .sheet{position:fixed; inset:0; z-index:20; background:rgba(8,5,18,.6);
+    -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+    display:flex; align-items:flex-end; justify-content:center}
+  .sheet .panel{width:100%; max-width:560px; margin:12px; padding:6px;
+    background:var(--panel); -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px);
+    border:1px solid var(--hair); border-radius:20px;
+    margin-bottom:calc(12px + env(safe-area-inset-bottom));
+    box-shadow:0 20px 50px rgba(0,0,0,.5)}
+  .sheet .panel button{display:block; width:100%; text-align:left; padding:15px; border-radius:14px;
+    font-size:16px; font-weight:600}
+  .sheet .panel button:active{background:var(--glass)}
+  .sheet .panel > button + button{border-top:1px solid var(--hair)}
+  .sheet .panel > button:last-child{border-top:1px solid var(--hair); color:var(--dim); text-align:center}
+  .sheet .panel button.danger{color:var(--miss)}
+  @media (prefers-reduced-motion:no-preference){
+    .sheet .panel{animation:rise .22s cubic-bezier(.2,.8,.3,1)}
+    .strip i{transition:background .25s ease}
+  }
+  @keyframes rise{from{transform:translateY(14px); opacity:0} to{transform:none; opacity:1}}
+
+  /* Anleitung */
+  .sheet .panel.scrollable{display:flex; flex-direction:column; max-height:84vh}
+  .sheet .head{padding:15px 16px 8px; font-size:16px; font-weight:800; letter-spacing:-.02em}
+  .sheet .rules-body{flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain;
+    touch-action:pan-y; -webkit-overflow-scrolling:touch; padding:0 16px 6px}
+  .sheet .rules-body section{padding:11px 0; border-top:1px solid var(--hair)}
+  .sheet .rules-body section:first-child{border-top:none; padding-top:2px}
+  .sheet .rules-body h3{margin:0 0 3px; font-size:14.5px; font-weight:700}
+  .sheet .rules-body p{margin:0; font-size:14px; color:var(--dim); line-height:1.5}
+
+  /* Auswertung */
+  .stats{margin-top:18px; background:var(--glass); border:1px solid var(--hair); border-radius:var(--r); overflow:hidden}
+  .stats h3{margin:0; padding:12px 15px 0; font-size:13px; font-weight:700; color:var(--dim)}
+  .stats div{padding:11px 15px; border-top:1px solid var(--hair)}
+  .stats div:first-of-type{border-top:none}
+  .stats span{display:block; font-size:12.5px; color:var(--dim); margin-bottom:1px}
+  .stats b{display:block; font-size:15.5px; font-weight:700; line-height:1.35}
+  .stats b em{font-style:normal; color:var(--dim); font-weight:600}
+
+  /* Spielauswahl */
+  .games{display:flex; gap:8px; margin:2px 0 18px}
+  .games button{flex:1; padding:14px 13px; border-radius:var(--r); background:var(--glass);
+    border:1px solid var(--hair); text-align:left}
+  .games button[aria-current="true"]{border-color:var(--gold); background:var(--tint)}
+  .games button b{display:block; font-size:16px; font-weight:800}
+  .games button span{display:block; margin-top:2px; font-size:12px; color:var(--dim); line-height:1.35}
+
+  /* Spielerwechsel im Block */
+  .players{display:flex; gap:6px; overflow-x:auto; -webkit-overflow-scrolling:touch; margin:0 0 14px; padding-bottom:2px}
+  .players button{flex:none; display:flex; align-items:center; gap:7px; padding:9px 13px; border-radius:12px;
+    background:var(--glass); border:1px solid var(--hair); font-size:14px; font-weight:600; color:var(--dim)}
+  .players button i{width:8px; height:8px; border-radius:9px; background:var(--acc)}
+  .players button[aria-current="true"]{color:var(--text); border-color:var(--gold); background:var(--tint)}
+
+  /* Kniffel-Block */
+  .group{margin:18px 2px 7px; font-size:13px; font-weight:700; color:var(--dim)}
+  .line{display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%;
+    padding:12px 14px; margin-bottom:6px; text-align:left; border-radius:12px;
+    background:var(--glass); border:1px solid var(--hair); font-size:15.5px; font-weight:600}
+  .line .v{font-size:18px; font-weight:800; font-variant-numeric:tabular-nums}
+  .line .v.empty{color:var(--dim); font-weight:600}
+  .line:active{background:var(--glass-2)}
+  .line.calc{background:none; border-color:transparent; padding:7px 14px; margin-bottom:2px;
+    font-weight:600; color:var(--dim)}
+  .line.calc .v{font-size:16px; color:var(--text)}
+  .line.sum{background:var(--tint); border-color:transparent; font-weight:800}
+  .line.sum .v{font-size:21px}
+  .hintline{margin:2px 2px 10px; font-size:13px; color:var(--dim)}
+
+  /* Werteliste */
+  .sheet .panel .numgrid{display:grid; grid-template-columns:repeat(5,1fr); gap:7px; padding:8px}
+  .sheet .panel .numgrid button{padding:0; height:50px; border-radius:12px; text-align:center;
+    font-size:18px; font-weight:800; background:var(--glass); border:1px solid var(--hair)}
+  .sheet .panel .numgrid button[aria-current="true"]{background:linear-gradient(160deg, var(--gold), var(--gold-2));
+    color:var(--on-gold); border-color:transparent}
+  .sheet .panel .numgrid button.wide{grid-column:span 5; height:46px; font-size:15px; font-weight:700}
+
+  /* Umschalter */
+  .tabs{position:fixed; left:0; right:0; bottom:0; display:flex;
+    padding:8px 14px calc(8px + env(safe-area-inset-bottom));
+    background:linear-gradient(to top, var(--bg-0) 70%, transparent)}
+  .tabs .inner{display:flex; gap:4px; width:100%; max-width:560px; margin:0 auto;
+    background:var(--well); border:1px solid var(--hair); border-radius:15px; padding:4px;
+    -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px)}
+  .tabs button{flex:1; padding:11px; border-radius:11px; font-size:15px; font-weight:600; color:var(--dim)}
+  .tabs button[aria-current="true"]{background:var(--glass-2); color:var(--text)}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
+var KEY = "wizard:state";
+var store = (function(){
+  if (window.storage && typeof window.storage.get === "function") {
+    return {
+      get: function(){ return window.storage.get(KEY).then(function(r){ return r ? r.value : null; }).catch(function(){ return null; }); },
+      set: function(v){ try { window.storage.set(KEY, v); } catch(e){} }
+    };
+  }
+  var ls = null;
+  try { localStorage.setItem("__t","1"); localStorage.removeItem("__t"); ls = localStorage; } catch(e){}
+  var mem = null;
+  return {
+    get: function(){ return Promise.resolve(ls ? ls.getItem(KEY) : mem); },
+    set: function(v){ if (ls) { try { ls.setItem(KEY, v); } catch(e){} } else { mem = v; } }
+  };
+})();
+
+/* ---------- Zustand ---------- */
+var S = null;
+function fresh(){ return { game:"wizard", names:[], mode:"up", strict:false, theme:"light",
+    rounds:[], draft:null, sheet:[], at:0, view:"round" }; }
+function baseRounds(){ return Math.floor(60 / S.names.length); }
+function schedule(){
+  var T = baseRounds(), a = [], i;
+  if (S.mode === "updown") {
+    var peak = Math.ceil(T / 2);
+    for (i = 1; i <= peak; i++) a.push(i);
+    for (i = peak - 1; i >= 1; i--) a.push(i);
+  } else {
+    for (i = 1; i <= T; i++) a.push(i);
+  }
+  return a;
+}
+function totalRounds(){ return schedule().length; }
+function cardsFor(r){ return schedule()[r-1]; }
+function roundNo(){ return S.rounds.length + 1; }
+function points(bid, tricks){ return bid === tricks ? 20 + 10*tricks : -10*Math.abs(bid-tricks); }
+function totals(){
+  return S.names.map(function(_, i){
+    return S.rounds.reduce(function(sum, r){ return sum + points(r.bids[i], r.tricks[i]); }, 0);
+  });
+}
+function sum(a){ return a.reduce(function(x,y){ return x+y; }, 0); }
+function save(){ store.set(JSON.stringify(S)); }
+
+/* ---------- Hilfen ---------- */
+var app = document.getElementById("app");
+function el(html){ var t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstElementChild; }
+function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c]; }); }
+function signed(n){ return (n > 0 ? "+" : "") + n; }
+
+function bindTap(btn, fn){
+  var sx = 0, sy = 0, moved = false, touched = false;
+  btn.addEventListener("touchstart", function(e){
+    touched = true; moved = false;
+    sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+  }, { passive:true });
+  btn.addEventListener("touchmove", function(e){
+    if (Math.abs(e.touches[0].clientX - sx) > 8 || Math.abs(e.touches[0].clientY - sy) > 8) moved = true;
+  }, { passive:true });
+  btn.addEventListener("touchend", function(e){
+    if (moved || btn.disabled) return;
+    e.preventDefault();
+    btn.classList.add("tap");
+    fn();
+  }, { passive:false });
+  btn.addEventListener("click", function(){ if (!touched && !btn.disabled) fn(); });
+}
+
+var HUES = ["#E0982A", "#12A79B", "#E05A63", "#7B5BD6", "#6E9E22", "#2D82C7"];
+function hue(i){ return HUES[i % HUES.length]; }
+
+function strip(cur){
+  var pl = schedule(), top = Math.max.apply(null, pl);
+  var bars = pl.map(function(c, i){
+    var cls = i < cur - 1 ? "done" : (i === cur - 1 ? "now" : "");
+    return '<i class="' + cls + '" style="height:' + Math.round(14 + 30 * (c / top)) + 'px"></i>';
+  }).join("");
+  return el('<div class="strip">' + bars + '</div>');
+}
+
+function stepper(value, max, isSet, onChange){
+  var node = el(
+    '<div class="stepper">' +
+      '<button type="button" aria-label="weniger">\u2212</button>' +
+      '<span class="val' + (isSet ? " set" : "") + '">' + value + '</span>' +
+      '<button type="button" aria-label="mehr">+</button>' +
+    '</div>');
+  var minus = node.children[0], out = node.children[1], plus = node.children[2];
+  minus.disabled = value <= 0;
+  plus.disabled = value >= max;
+  bindTap(minus, function(){ onChange(value - 1); });
+  bindTap(plus, function(){ onChange(value + 1); });
+  return node;
+}
+
+/* ---------- Bildschirm: Einrichtung ---------- */
+function viewSetup(){
+  app.innerHTML = "";
+  app.appendChild(el(
+    '<div class="top"><div class="brand"><span class="hat">\u25B2</span> Wizard</div></div>'));
+  var game = S.game || "wizard";
+  var games = el('<div class="games">' +
+    '<button type="button" data-g="wizard"><b>Wizard</b><span>Stiche ansagen, Runde f\u00fcr Runde</span></button>' +
+    '<button type="button" data-g="kniffel"><b>Kniffel</b><span>Dreizehn Felder, ein Block je Spieler</span></button>' +
+    '</div>');
+  function paintGames(){
+    Array.prototype.forEach.call(games.children, function(b){
+      b.setAttribute("aria-current", b.dataset.g === game ? "true" : "false");
+    });
+    modeBox.style.display = game === "wizard" ? "" : "none";
+    ruleBtn.style.display = game === "wizard" ? "" : "none";
+    hint.textContent = game === "wizard"
+      ? names.length + " Spieler, " + schedule(names.length, mode).length + " Runden, h\u00f6chstens " +
+        Math.max.apply(null, schedule(names.length, mode)) + " Karten"
+      : names.length + " Spieler, je 13 Felder";
+  }
+  Array.prototype.forEach.call(games.children, function(b){
+    b.onclick = function(){ game = b.dataset.g; paintGames(); };
+  });
+
+  app.appendChild(el('<h1 class="headline">Was spielt ihr?</h1>'));
+  app.appendChild(games);
+  app.appendChild(el('<h1 class="headline">Wer spielt mit?</h1>'));
+  app.appendChild(el('<p class="lead-in">Drei bis sechs Spieler, in der Reihenfolge wie ihr am Tisch sitzt.</p>'));
+
+  var names = S.names.length ? S.names.slice() : ["", "", ""];
+  var list = el('<div></div>');
+  app.appendChild(list);
+
+  var startBtn = el('<button class="cta" type="button">' +
+    (S.setup && S.names.length ? "Neues Spiel starten" : "Spiel starten") + '</button>');
+  var hint = el('<p class="note"></p>');
+  var addBtn = el('<button class="cta ghost" type="button">Spieler hinzuf\u00fcgen</button>');
+
+  var mode = S.mode || "up";
+  var modeBox = el(
+    '<div class="modes">' +
+      '<button type="button" data-m="up"><b>Normal</b><span>1 Karte bis zum vollen Blatt</span></button>' +
+      '<button type="button" data-m="updown"><b>Auf und ab</b><span>hoch bis zur H\u00e4lfte, dann zur\u00fcck auf 1</span></button>' +
+    '</div>');
+
+  function paintMode(){
+    Array.prototype.forEach.call(modeBox.children, function(b){
+      b.setAttribute("aria-current", b.dataset.m === mode ? "true" : "false");
+    });
+  }
+  Array.prototype.forEach.call(modeBox.children, function(b){
+    b.onclick = function(){ mode = b.dataset.m; paintMode(); paint(); };
+  });
+
+  function paint(){
+    list.innerHTML = "";
+    names.forEach(function(n, i){
+      var row = el(
+        '<div class="pinput"><i style="--acc:' + hue(i) + '"></i>' +
+        '<input type="text" inputmode="text" autocomplete="off" placeholder="Spieler ' + (i+1) + '" value="' + esc(n) + '">' +
+        (names.length > 3 ? '<button class="rm" type="button" aria-label="entfernen">\u00d7</button>' : '') +
+        '</div>');
+      var input = row.querySelector("input");
+      input.oninput = function(){ names[i] = input.value; };
+      var rm = row.querySelector(".rm");
+      if (rm) rm.onclick = function(){ names.splice(i,1); paint(); };
+      list.appendChild(row);
+    });
+    addBtn.disabled = names.length >= 6;
+    var T = Math.floor(60 / names.length);
+    var rounds = mode === "updown" ? 2 * Math.ceil(T/2) - 1 : T;
+    var peak = mode === "updown" ? Math.ceil(T/2) : T;
+    hint.textContent = names.length + " Spieler \u00b7 " + rounds + " Runden \u00b7 h\u00f6chstens " + peak + " Karten";
+  }
+  addBtn.onclick = function(){ if (names.length < 6) { names.push(""); paint(); } };
+
+  startBtn.onclick = function(){
+    S.names = names.map(function(n, i){ return n.trim() || ("Spieler " + (i+1)); });
+    S.game = game;
+    S.sheet = S.names.map(function(){ return {}; });
+    S.at = 0;
+    S.mode = mode;
+    S.strict = strict;
+    S.theme = theme;
+    S.rounds = [];
+    S.draft = null;
+    S.view = "round";
+    S.setup = false;
+    save();
+    render();
+  };
+
+  var strict = !!S.strict;
+  var ruleBtn = el('<button class="toggle" type="button" aria-pressed="' + strict + '">' +
+    '<span class="box">\u2713</span><span><b>Vorhand-Regel</b>' +
+    '<span>Der Geber darf die Summe der Ansagen nicht genau aufgehen lassen.</span></span></button>');
+  ruleBtn.onclick = function(){ strict = !strict; ruleBtn.setAttribute("aria-pressed", strict); };
+
+  var theme = S.theme || "light";
+  var swatches = el('<div class="swatches">' + THEMES.map(function(t){
+    return '<button type="button" data-t="' + t.id + '" style="background:' + t.bg + ';color:' + t.fg + '">' +
+           t.name + '</button>';
+  }).join("") + '</div>');
+  function paintTheme(){
+    Array.prototype.forEach.call(swatches.children, function(b){
+      b.setAttribute("aria-current", b.dataset.t === theme ? "true" : "false");
+    });
+  }
+  Array.prototype.forEach.call(swatches.children, function(b){
+    b.onclick = function(){ theme = b.dataset.t; S.theme = theme; applyTheme(); paintTheme(); };
+  });
+  paintTheme();
+
+  app.appendChild(modeBox);
+  app.appendChild(ruleBtn);
+  app.appendChild(swatches);
+  app.appendChild(addBtn);
+  app.appendChild(startBtn);
+  if (S.setup && S.names.length) {
+    var back = el('<button class="cta ghost" type="button">Abbrechen, laufendes Spiel weiterspielen</button>');
+    back.onclick = function(){ S.setup = false; save(); render(); };
+    app.appendChild(back);
+  }
+  app.appendChild(hint);
+  app.appendChild(el(
+    '<div class="rules"><b>Punkte</b> \u00b7 Ansage getroffen: 20 Punkte plus 10 je Stich. ' +
+    'Daneben: 10 Punkte Abzug je Stich Differenz.</div>'));
+  paint();
+  paintMode();
+}
+
+/* ---------- Bildschirm: Runde ---------- */
+function viewRound(){
+  var n = roundNo(), max = cardsFor(n), tot = totals();
+  if (!S.draft) S.draft = { phase:"bid", bids:S.names.map(function(){ return 0; }), tricks:S.names.map(function(){ return 0; }) };
+  var d = S.draft;
+  var bidding = d.phase === "bid";
+  var vals = bidding ? d.bids : d.tricks;
+  var have = sum(vals);
+
+  app.innerHTML = "";
+  app.appendChild(el('<div class="top"><div class="brand"><span class="hat">\u25B2</span> Wizard</div></div>'));
+  topBtns();
+  app.appendChild(strip(n));
+
+  var count = S.names.length;
+  var dealer = (n - 1) % count;
+  var left = 60 - max*count;
+  var offBy = have !== max;
+
+  app.appendChild(el('<h1 class="headline num">' + max + (max === 1 ? ' Karte ' : ' Karten ') +
+    '<em>Runde ' + n + ' von ' + totalRounds() + '</em></h1>'));
+  app.appendChild(el('<p class="meta">' + esc(S.names[dealer]) + ' gibt, ' +
+    (left === 0 ? 'nichts bleibt liegen, also kein Trumpf' : left + ' Karten bleiben liegen') + '.</p>'));
+
+  app.appendChild(el(
+    '<div class="phase"><h2>' + (bidding ? "Ansagen" : "Stiche eintragen") + '</h2>' +
+    '<div class="tally' + (!bidding && offBy ? " bad" : "") + '">' +
+    '<b class="num">' + have + '</b> von ' + max + (bidding ? ' angesagt' : ' verteilt') + '</div></div>'));
+
+  var order = [];
+  for (var k = 0; k < count; k++) order.push((dealer + 1 + k) % count);
+
+  order.forEach(function(i, seat){
+    var badge = i === dealer ? '<span class="badge">gibt</span>'
+              : (seat === 0 ? '<span class="badge">beginnt</span>' : '');
+    var best = Math.max.apply(null, tot);
+    var row = el('<div class="row' + (S.rounds.length && tot[i] === best ? ' leader' : '') +
+      '" style="--acc:' + hue(i) + '"><div class="who"><div class="name"><span class="nm">' +
+      esc(S.names[i]) + '</span>' + badge + '</div></div></div>');
+    var who = row.querySelector(".who");
+    if (bidding) {
+      var last = S.rounds.length ? S.rounds[S.rounds.length-1] : null;
+      var delta = last ? points(last.bids[i], last.tricks[i]) : null;
+      who.appendChild(el('<div class="sub"><span class="num">' + tot[i] + '</span> Punkte' +
+        (delta === null ? '' : '<span class="chip' + (delta > 0 ? '' : ' down') + '">' + signed(delta) + '</span>') +
+        '</div>'));
+    } else {
+      var p = points(d.bids[i], d.tricks[i]);
+      who.appendChild(el('<div class="sub">sagt <span class="said num">' + d.bids[i] + '</span>' +
+        '<span class="chip' + (p > 0 ? '' : ' down') + '">' + signed(p) + '</span></div>'));
+    }
+    row.appendChild(stepper(vals[i], max, vals[i] > 0, function(v){
+      vals[i] = v; save(); render();
+    }));
+    app.appendChild(row);
+  });
+
+  var note = el('<p class="note"></p>');
+  if (bidding) {
+    var blocked = S.strict && have === max;
+    var cta = el('<button class="cta" type="button">Weiter zu den Stichen</button>');
+    cta.disabled = blocked;
+    cta.onclick = function(){ d.phase = "tricks"; d.tricks = S.names.map(function(){ return 0; }); save(); render(); };
+    app.appendChild(cta);
+    if (blocked) {
+      note.className = "note warn";
+      note.textContent = "Die Summe geht genau auf. " + S.names[dealer] + " muss eine andere Zahl ansagen.";
+    } else if (S.strict) {
+      note.textContent = "Vorhand-Regel: " + S.names[dealer] + " sagt zuletzt an und darf nicht auf " + max + " auff\u00fcllen.";
+    } else {
+      note.textContent = have === max
+        ? "Summe passt genau, hier darf das jeder ansagen."
+        : "Reihenfolge von oben nach unten, " + S.names[dealer] + " sagt zuletzt an.";
+    }
+  } else {
+    var done = el('<button class="cta" type="button">Runde eintragen</button>');
+    done.disabled = offBy;
+    done.onclick = function(){
+      S.rounds.push({ bids:d.bids.slice(), tricks:d.tricks.slice() });
+      S.draft = null; save(); render();
+    };
+    app.appendChild(done);
+    var back = el('<button class="cta ghost" type="button">Zur\u00fcck zu den Ansagen</button>');
+    back.onclick = function(){ d.phase = "bid"; save(); render(); };
+    app.appendChild(back);
+    if (offBy) {
+      note.className = "note warn";
+      note.textContent = have < max
+        ? "Es fehlen noch " + (max - have) + " Stiche."
+        : (have - max) + " Stiche zu viel.";
+    }
+  }
+  app.appendChild(note);
+  app.appendChild(tabs());
+}
+
+/* ---------- Bildschirm: Tabelle ---------- */
+function viewTable(){
+  var tot = totals(), best = Math.max.apply(null, tot);
+  app.innerHTML = "";
+  app.appendChild(el('<div class="top"><div class="brand"><span class="hat">\u25B2</span> Wizard</div></div>'));
+  topBtns();
+  app.appendChild(el('<h1 class="headline num">' + S.rounds.length + ' <em>von ' + totalRounds() + ' Runden gespielt</em></h1>'));
+  app.appendChild(el('<p class="meta">Je Runde die Ansage, die Stiche und der Stand danach.</p>'));
+
+  if (!S.rounds.length) {
+    app.appendChild(el('<p class="lead-in">Noch keine Runde eingetragen. Die Tabelle f\u00fcllt sich, sobald die erste Runde steht.</p>'));
+    app.appendChild(tabs());
+    return;
+  }
+
+  var head = '<tr><th class="rnd">Rd</th>' + S.names.map(function(nm, i){
+    return '<th><i style="--acc:' + hue(i) + '"></i>' +
+      esc(nm.length > 8 ? nm.slice(0,8) + "\u2026" : nm) + '</th>'; }).join("") + '</tr>';
+
+  var run = S.names.map(function(){ return 0; });
+  var body = S.rounds.map(function(r, ri){
+    var cells = S.names.map(function(_, i){
+      var p = points(r.bids[i], r.tricks[i]);
+      run[i] += p;
+      return '<td><span class="bid ' + (p > 0 ? "hit" : "miss") + '">' + r.bids[i] + "/" + r.tricks[i] +
+             '</span>' + run[i] + '</td>';
+    }).join("");
+    return '<tr><td class="rnd">' + (ri+1) + '<span class="cards">' + cardsFor(ri+1) + ' K</span></td>' + cells + '</tr>';
+  }).join("");
+
+  var foot = '<tr><th class="rnd">Stand</th>' + tot.map(function(t){
+    return '<td' + (t === best ? ' class="lead"' : '') + '>' + t + '</td>'; }).join("") + '</tr>';
+
+  app.appendChild(el('<div class="scroller"><table><thead>' + head + '</thead><tbody>' + body +
+                     '</tbody><tfoot>' + foot + '</tfoot></table></div>'));
+
+  var undo = el('<button class="cta ghost" type="button">Letzte Runde l\u00f6schen</button>');
+  undo.onclick = function(){ if (confirm("Runde " + S.rounds.length + " l\u00f6schen?")) { S.rounds.pop(); S.draft = null; save(); render(); } };
+  app.appendChild(undo);
+  app.appendChild(tabs());
+}
+
+/* ---------- Bildschirm: Schluss ---------- */
+function viewFinal(){
+  var tot = totals();
+  var order = S.names.map(function(nm, i){ return { nm:nm, pt:tot[i], idx:i }; })
+                     .sort(function(a,b){ return b.pt - a.pt; });
+  app.innerHTML = "";
+  app.appendChild(el('<div class="top"><div class="brand"><span class="hat">\u25B2</span> Wizard</div></div>'));
+  topBtns();
+  app.appendChild(el('<div class="final"><h2>' + esc(order[0].nm) + ' gewinnt</h2>' +
+                     '<p>Nach ' + totalRounds() + ' Runden mit ' + order[0].pt + ' Punkten.</p></div>'));
+  order.forEach(function(p, i){
+    app.appendChild(el('<div class="rank' + (i === 0 ? ' first' : '') + '" style="--acc:' + hue(p.idx) + '">' +
+                       '<span class="pos num">' + (i+1) + '</span>' +
+                       '<span class="nm">' + esc(p.nm) + '</span>' +
+                       '<span class="pt num">' + p.pt + '</span></div>'));
+  });
+  var stats = el('<div class="stats"><h3>Auswertung</h3></div>');
+  function line(label, value){
+    stats.appendChild(el('<div><span>' + label + '</span><b>' + value + '</b></div>'));
+  }
+
+  var hits = S.names.map(function(_, i){
+    return S.rounds.filter(function(r){ return r.bids[i] === r.tricks[i]; }).length;
+  });
+  var over = S.names.map(function(_, i){
+    return S.rounds.filter(function(r){ return r.bids[i] > r.tricks[i]; }).length;
+  });
+  var bestRound = { pt:-999, who:"", nr:0 };
+  S.rounds.forEach(function(r, ri){
+    S.names.forEach(function(nm, i){
+      var pt = points(r.bids[i], r.tricks[i]);
+      if (pt > bestRound.pt) bestRound = { pt:pt, who:nm, nr:ri+1 };
+    });
+  });
+  var topHit = 0; hits.forEach(function(h, i){ if (h > hits[topHit]) topHit = i; });
+  var topOver = 0; over.forEach(function(o, i){ if (o > over[topOver]) topOver = i; });
+  var rounds = S.rounds.length;
+
+  line("Beste Einzelrunde", esc(bestRound.who) + ' <em>' + signed(bestRound.pt) + ' in Runde ' + bestRound.nr + '</em>');
+  line("Sicherste Ansagen", esc(S.names[topHit]) + ' <em>' + hits[topHit] + ' von ' + rounds + ' getroffen</em>');
+  if (over[topOver] > 0) {
+    line("Am h\u00e4ufigsten \u00fcbersch\u00e4tzt", esc(S.names[topOver]) + ' <em>' + over[topOver] + ' mal zu hoch</em>');
+  }
+  line("Trefferquote der Runde", Math.round(100 * sum(hits) / (rounds * S.names.length)) + ' <em>Prozent aller Ansagen</em>');
+  app.appendChild(stats);
+
+  var again = el('<button class="cta" type="button">Neues Spiel, gleiche Runde</button>');
+  again.onclick = function(){ S.rounds = []; S.draft = null; save(); render(); };
+  app.appendChild(again);
+  var reset = el('<button class="cta ghost" type="button">Spieler \u00e4ndern</button>');
+  reset.onclick = function(){ S = fresh(); save(); render(); };
+  app.appendChild(reset);
+  app.appendChild(tabs());
+}
+
+
+/* ---------- Kniffel ---------- */
+function span(from, to){ var a = []; for (var i = from; i <= to; i++) a.push(i); return a; }
+var CATS = [
+  { id:"e1", name:"Einer",         part:"top",    vals:span(0,5),  hint:"Nur die Einsen z\u00e4hlen" },
+  { id:"e2", name:"Zweier",        part:"top",    vals:[0,2,4,6,8,10] },
+  { id:"e3", name:"Dreier",        part:"top",    vals:[0,3,6,9,12,15] },
+  { id:"e4", name:"Vierer",        part:"top",    vals:[0,4,8,12,16,20] },
+  { id:"e5", name:"F\u00fcnfer",  part:"top",    vals:[0,5,10,15,20,25] },
+  { id:"e6", name:"Sechser",       part:"top",    vals:[0,6,12,18,24,30] },
+  { id:"d3", name:"Dreierpasch",   part:"bottom", vals:[0].concat(span(5,30)), hint:"Summe aller f\u00fcnf W\u00fcrfel" },
+  { id:"d4", name:"Viererpasch",   part:"bottom", vals:[0].concat(span(5,30)), hint:"Summe aller f\u00fcnf W\u00fcrfel" },
+  { id:"fh", name:"Full House",    part:"bottom", vals:[0,25] },
+  { id:"ks", name:"Kleine Stra\u00dfe", part:"bottom", vals:[0,30] },
+  { id:"gs", name:"Gro\u00dfe Stra\u00dfe",  part:"bottom", vals:[0,40] },
+  { id:"kn", name:"Kniffel",       part:"bottom", vals:[0,50] },
+  { id:"ch", name:"Chance",        part:"bottom", vals:[0].concat(span(5,30)), hint:"Summe aller f\u00fcnf W\u00fcrfel" }
+];
+function cell(pi, id){
+  var v = S.sheet && S.sheet[pi] ? S.sheet[pi][id] : null;
+  return (v === undefined) ? null : v;
+}
+function partSum(pi, part){
+  return CATS.reduce(function(a, c){
+    return a + (c.part === part && typeof cell(pi, c.id) === "number" ? cell(pi, c.id) : 0);
+  }, 0);
+}
+function bonusOf(pi){ return partSum(pi, "top") >= 63 ? 35 : 0; }
+function totalOf(pi){ return partSum(pi, "top") + bonusOf(pi) + partSum(pi, "bottom"); }
+function filledOf(pi){
+  return CATS.filter(function(c){ return typeof cell(pi, c.id) === "number"; }).length;
+}
+function kniffelDone(){
+  return S.names.every(function(_, i){ return filledOf(i) === CATS.length; });
+}
+
+function valueSheet(title, cat, cur, onPick){
+  var note = (cat.hint ? cat.hint + ". " : "") + "Null bedeutet streichen.";
+  var sheet = el('<div class="sheet"><div class="panel scrollable"><div class="head">' + title + '</div>' +
+    '<p class="hintline" style="padding:0 16px">' + note + '</p><div class="numgrid"></div></div></div>');
+  var grid = sheet.querySelector(".numgrid");
+  grid.style.overflowY = "auto";
+  grid.style.maxHeight = "58vh";
+  grid.style.touchAction = "pan-y";
+  cat.vals.forEach(function(v){
+    var b = el('<button type="button" aria-current="' + (v === cur) + '">' + v + '</button>');
+    b.onclick = function(){ sheet.remove(); onPick(v); };
+    grid.appendChild(b);
+  });
+  if (typeof cur === "number") {
+    var clr = el('<button class="wide" type="button">Eintrag l\u00f6schen</button>');
+    clr.onclick = function(){ sheet.remove(); onPick(null); };
+    grid.appendChild(clr);
+  }
+  var cancel = el('<button type="button">Abbrechen</button>');
+  cancel.onclick = function(){ sheet.remove(); };
+  sheet.querySelector(".panel").appendChild(cancel);
+  sheet.onclick = function(e){ if (e.target === sheet) sheet.remove(); };
+  document.body.appendChild(sheet);
+}
+
+function viewKniffel(){
+  var pi = Math.min(S.at || 0, S.names.length - 1);
+  S.at = pi;
+  app.innerHTML = "";
+  app.appendChild(el('<div class="top"><div class="brand"><span class="hat">\u25B2</span> Kniffel</div></div>'));
+  topBtns();
+
+  var switcher = el('<div class="players"></div>');
+  S.names.forEach(function(nm, i){
+    var b = el('<button type="button" aria-current="' + (i === pi) + '" style="--acc:' + hue(i) + '">' +
+      '<i></i>' + esc(nm) + ' ' + totalOf(i) + '</button>');
+    b.onclick = function(){ S.at = i; save(); render(); };
+    switcher.appendChild(b);
+  });
+  app.appendChild(switcher);
+
+  var top = partSum(pi, "top");
+  app.appendChild(el('<h1 class="headline num">' + totalOf(pi) + ' <em>Punkte, ' + esc(S.names[pi]) + '</em></h1>'));
+  app.appendChild(el('<p class="meta">' + filledOf(pi) + ' von ' + CATS.length + ' Feldern vergeben' +
+    (top >= 63 ? ', Bonus sicher' : ', noch ' + (63 - top) + ' bis zum Bonus') + '.</p>'));
+
+  function addRows(part){
+    CATS.filter(function(c){ return c.part === part; }).forEach(function(c){
+      var v = cell(pi, c.id);
+      var row = el('<button class="line" type="button"><span>' + c.name + '</span>' +
+        '<span class="v' + (v === null ? ' empty' : '') + '">' + (v === null ? "\u2013" : v) + '</span></button>');
+      bindTap(row, function(){
+        valueSheet(c.name + ", " + S.names[pi], c, v, function(nv){
+          if (nv === null) delete S.sheet[pi][c.id]; else S.sheet[pi][c.id] = nv;
+          save(); render();
+        });
+      });
+      app.appendChild(row);
+    });
+  }
+
+  app.appendChild(el('<p class="group">Oberer Teil</p>'));
+  addRows("top");
+  app.appendChild(el('<div class="line calc"><span>Zwischensumme</span><span class="v num">' + top + '</span></div>'));
+  app.appendChild(el('<div class="line calc"><span>Bonus ab 63</span><span class="v num">' +
+    (bonusOf(pi) ? "+35" : "\u2013") + '</span></div>'));
+
+  app.appendChild(el('<p class="group">Unterer Teil</p>'));
+  addRows("bottom");
+  app.appendChild(el('<div class="line sum"><span>Gesamt</span><span class="v num">' + totalOf(pi) + '</span></div>'));
+
+  app.appendChild(tabs());
+}
+
+function viewKniffelTable(){
+  app.innerHTML = "";
+  app.appendChild(el('<div class="top"><div class="brand"><span class="hat">\u25B2</span> Kniffel</div></div>'));
+  topBtns();
+  var tot = S.names.map(function(_, i){ return totalOf(i); });
+  var best = Math.max.apply(null, tot);
+  app.appendChild(el('<h1 class="headline num">' + best + ' <em>H\u00f6chststand</em></h1>'));
+  app.appendChild(el('<p class="meta">Der ganze Block, alle Spieler nebeneinander.</p>'));
+
+  var head = '<tr><th class="rnd">Feld</th>' + S.names.map(function(nm, i){
+    return '<th><i style="--acc:' + hue(i) + '"></i>' + esc(nm.length > 8 ? nm.slice(0,8) + "\u2026" : nm) + '</th>';
+  }).join("") + '</tr>';
+
+  function block(part){
+    return CATS.filter(function(c){ return c.part === part; }).map(function(c){
+      return '<tr><td class="rnd">' + c.name + '</td>' + S.names.map(function(_, i){
+        var v = cell(i, c.id);
+        return '<td>' + (v === null ? '<span class="bid">\u2013</span>' : v) + '</td>';
+      }).join("") + '</tr>';
+    }).join("");
+  }
+  var mid = '<tr><td class="rnd">Bonus</td>' + S.names.map(function(_, i){
+    return '<td>' + (bonusOf(i) ? "+35" : '<span class="bid">\u2013</span>') + '</td>'; }).join("") + '</tr>';
+  var foot = '<tr><th class="rnd">Gesamt</th>' + tot.map(function(t){
+    return '<td' + (t === best ? ' class="lead"' : '') + '>' + t + '</td>'; }).join("") + '</tr>';
+
+  app.appendChild(el('<div class="scroller"><table><thead>' + head + '</thead><tbody>' +
+    block("top") + mid + block("bottom") + '</tbody><tfoot>' + foot + '</tfoot></table></div>'));
+  app.appendChild(tabs());
+}
+
+function viewKniffelFinal(){
+  var tot = S.names.map(function(_, i){ return totalOf(i); });
+  var order = S.names.map(function(nm, i){ return { nm:nm, pt:tot[i], idx:i }; })
+                     .sort(function(a, b){ return b.pt - a.pt; });
+  app.innerHTML = "";
+  app.appendChild(el('<div class="top"><div class="brand"><span class="hat">\u25B2</span> Kniffel</div></div>'));
+  topBtns();
+  app.appendChild(el('<div class="final"><h2>' + esc(order[0].nm) + ' gewinnt</h2>' +
+    '<p>Block voll, ' + order[0].pt + ' Punkte.</p></div>'));
+  order.forEach(function(p, i){
+    app.appendChild(el('<div class="rank' + (i === 0 ? ' first' : '') + '" style="--acc:' + hue(p.idx) + '">' +
+      '<span class="pos num">' + (i+1) + '</span><span class="nm">' + esc(p.nm) + '</span>' +
+      '<span class="pt num">' + p.pt + '</span></div>'));
+  });
+
+  var stats = el('<div class="stats"><h3>Auswertung</h3></div>');
+  function line(label, value){ stats.appendChild(el('<div><span>' + label + '</span><b>' + value + '</b></div>')); }
+  var withBonus = S.names.filter(function(_, i){ return bonusOf(i) > 0; });
+  var withKniffel = S.names.filter(function(_, i){ return cell(i, "kn") === 50; });
+  var bestTop = 0; S.names.forEach(function(_, i){ if (partSum(i, "top") > partSum(bestTop, "top")) bestTop = i; });
+  line("Bester oberer Teil", esc(S.names[bestTop]) + ' <em>' + partSum(bestTop, "top") + ' Punkte</em>');
+  line("Bonus geschafft", withBonus.length ? esc(withBonus.join(", ")) : "niemand");
+  line("Kniffel geworfen", withKniffel.length ? esc(withKniffel.join(", ")) : "niemand");
+  app.appendChild(stats);
+
+  var again = el('<button class="cta" type="button">Neues Spiel, gleiche Runde</button>');
+  again.onclick = function(){ S.sheet = S.names.map(function(){ return {}; }); S.at = 0; S.view = "round"; save(); render(); };
+  app.appendChild(again);
+  var reset = el('<button class="cta ghost" type="button">Spieler \u00e4ndern</button>');
+  reset.onclick = function(){ S.setup = true; save(); render(); };
+  app.appendChild(reset);
+  app.appendChild(tabs());
+}
+
+/* ---------- Bildschirm wachhalten ---------- */
+var lock = null;
+function keepAwake(on){
+  try {
+    if (!navigator.wakeLock) return;
+    if (on && !lock) {
+      navigator.wakeLock.request("screen").then(function(l){
+        lock = l;
+        l.addEventListener("release", function(){ lock = null; });
+      }).catch(function(){});
+    } else if (!on && lock) { lock.release(); lock = null; }
+  } catch(e){}
+}
+document.addEventListener("visibilitychange", function(){
+  if (document.visibilityState === "visible" && S && S.names.length && !S.setup) keepAwake(true);
+});
+
+/* ---------- Spielanleitung ---------- */
+var RULES_WIZARD = [
+  ["Ziel", "Sage vor jeder Runde an, wie viele Stiche du machst. Nur die genaue Zahl bringt Punkte."],
+  ["Punkte", "Ansage getroffen: 20 Punkte plus 10 je Stich. Daneben: 10 Punkte Abzug je Stich Differenz, egal ob zu viel oder zu wenig."],
+  ["Geben", "Die Rundennummer ist die Kartenzahl. Der Geber wechselt jede Runde, angesagt wird ab dem Spieler links von ihm, der Geber zuletzt."],
+  ["Trumpf", "Nach dem Geben wird die oberste Karte des Reststapels aufgedeckt, ihre Farbe ist Trumpf. Zauberer: der Geber w\u00e4hlt die Farbe. Narr oder kein Rest: ohne Trumpf."],
+  ["Bedienen", "Die erste Farbkarte im Stich gibt die Farbe vor, die musst du bedienen, wenn du sie hast \u2013 auch wenn du Trumpf h\u00e4ttest. Zauberer und Narr darfst du immer legen."],
+  ["Stich", "Der erste gespielte Zauberer gewinnt, sonst der h\u00f6chste Trumpf, sonst die h\u00f6chste Karte der angespielten Farbe. Nur Narren: der erste gewinnt."],
+  ["Vorhand-Regel", "Optional: Der Geber darf die Summe der Ansagen nicht genau auf die Stichzahl bringen. Dann liegt immer mindestens einer daneben."]
+];
+var RULES_KNIFFEL = [
+  ["Ziel", "Dreizehn Felder, jedes wird genau einmal gef\u00fcllt. Wer am Ende die meisten Punkte hat, gewinnt."],
+  ["Zug", "Bis zu drei W\u00fcrfe pro Zug. Nach dem ersten und zweiten Wurf darfst du beliebige W\u00fcrfel liegen lassen und den Rest neu werfen."],
+  ["Oberer Teil", "Einer bis Sechser: Es z\u00e4hlt nur die Summe der gleichen Augenzahl. Wer oben mindestens 63 Punkte sammelt, bekommt 35 Punkte Bonus."],
+  ["Dreier- und Viererpasch", "Drei beziehungsweise vier gleiche W\u00fcrfel. Es z\u00e4hlt die Summe aller f\u00fcnf W\u00fcrfel."],
+  ["Feste Werte", "Full House aus Drilling und Paar gibt 25, kleine Stra\u00dfe aus vier Folgekarten 30, gro\u00dfe Stra\u00dfe aus f\u00fcnf 40, Kniffel aus f\u00fcnf gleichen 50."],
+  ["Chance", "Beliebige Kombination, es z\u00e4hlt die Summe aller f\u00fcnf W\u00fcrfel. Der \u00fcbliche Notausgang."],
+  ["Streichen", "Passt nichts, muss ein freies Feld mit null gef\u00fcllt werden. In der App w\u00e4hlst du daf\u00fcr einfach die Null."]
+];
+function helpButton(){
+  var b = el('<button class="menubtn" type="button" aria-label="Spielanleitung">?</button>');
+  b.onclick = function(){
+    var sheet = el('<div class="sheet"><div class="panel scrollable"><div class="head">' + (S.game === "kniffel" ? "Kniffel" : "Wizard") + ' in Kurzform</div>' +
+      '<div class="rules-body">' + (S.game === "kniffel" ? RULES_KNIFFEL : RULES_WIZARD).map(function(r){
+        return '<section><h3>' + r[0] + '</h3><p>' + r[1] + '</p></section>'; }).join("") + '</div></div></div>');
+    var close = el('<button type="button">Schlie\u00dfen</button>');
+    close.onclick = function(){ sheet.remove(); };
+    sheet.querySelector(".panel").appendChild(close);
+    sheet.onclick = function(e){ if (e.target === sheet) sheet.remove(); };
+    document.body.appendChild(sheet);
+  };
+  return b;
+}
+function topBtns(){
+  var t = app.querySelector(".top");
+  t.appendChild(helpButton());
+  t.appendChild(menuButton());
+}
+
+/* ---------- Men\u00fc ---------- */
+function menuButton(){
+  var b = el('<button class="menubtn" type="button" aria-label="Men\u00fc">\u22ef</button>');
+  b.onclick = openMenu;
+  return b;
+}
+function openMenu(){
+  var sheet = el('<div class="sheet"><div class="panel"></div></div>');
+  var panel = sheet.querySelector(".panel");
+  function close(){ sheet.remove(); }
+  function item(label, cls, fn){
+    var b = el('<button type="button"' + (cls ? ' class="' + cls + '"' : '') + '>' + label + '</button>');
+    b.onclick = function(){ close(); fn(); };
+    panel.appendChild(b);
+  }
+  if (S.game === "kniffel") {
+    item("Farbe wechseln", "", function(){
+      var i = 0;
+      THEMES.forEach(function(t, k){ if (t.id === S.theme) i = k; });
+      S.theme = THEMES[(i + 1) % THEMES.length].id; save(); render();
+    });
+    item("Neues Spiel, gleiche Spieler", "danger", function(){
+      if (confirm("Alle Eintr\u00e4ge im Block l\u00f6schen und neu anfangen?")) {
+        S.sheet = S.names.map(function(){ return {}; }); S.at = 0; S.view = "round"; save(); render();
+      }
+    });
+    item("Zur\u00fcck zum Startmen\u00fc", "danger", function(){ S.setup = true; save(); render(); });
+    item("Abbrechen", "", function(){});
+    sheet.onclick = function(e){ if (e.target === sheet) sheet.remove(); };
+    document.body.appendChild(sheet);
+    return;
+  }
+  var n = roundNo();
+  if (S.draft && S.rounds.length < totalRounds()) {
+    item("Eingaben in Runde " + n + " zur\u00fccksetzen", "", function(){
+      S.draft = null; S.view = "round"; save(); render();
+    });
+  }
+  if (S.rounds.length) {
+    item("Runde " + S.rounds.length + " l\u00f6schen und neu eintragen", "", function(){
+      S.rounds.pop(); S.draft = null; S.view = "round"; save(); render();
+    });
+  }
+  item("Vorhand-Regel " + (S.strict ? "ausschalten" : "einschalten"), "", function(){
+    S.strict = !S.strict; save(); render();
+  });
+  item("Farbe wechseln", "", function(){
+    var i = 0;
+    THEMES.forEach(function(t, k){ if (t.id === S.theme) i = k; });
+    S.theme = THEMES[(i + 1) % THEMES.length].id; save(); render();
+  });
+  item("Neues Spiel, gleiche Spieler", "danger", function(){
+    if (confirm("Alle Punkte verwerfen und neu anfangen?")) {
+      S.rounds = []; S.draft = null; S.view = "round"; save(); render();
+    }
+  });
+  item("Zur\u00fcck zum Startmen\u00fc", "danger", function(){
+    S.setup = true; save(); render();
+  });
+  item("Abbrechen", "", function(){});
+  sheet.onclick = function(e){ if (e.target === sheet) close(); };
+  document.body.appendChild(sheet);
+}
+
+/* ---------- Umschalter ---------- */
+function tabs(){
+  var first;
+  if (S.game === "kniffel") first = kniffelDone() ? "Ergebnis" : "Block";
+  else first = S.rounds.length >= totalRounds() ? "Ergebnis" : "Runde";
+  var node = el('<nav class="tabs"><div class="inner">' +
+    '<button type="button">' + first + '</button>' +
+    '<button type="button">Tabelle</button></div></nav>');
+  var a = node.querySelectorAll("button")[0], b = node.querySelectorAll("button")[1];
+  a.setAttribute("aria-current", S.view === "round" ? "true" : "false");
+  b.setAttribute("aria-current", S.view === "table" ? "true" : "false");
+  a.onclick = function(){ S.view = "round"; save(); render(); };
+  b.onclick = function(){ S.view = "table"; save(); render(); };
+  return node;
+}
+
+/* ---------- Start ---------- */
+var THEMES = [
+  { id:"light", name:"Hell",   bg:"linear-gradient(150deg,#FFD9DE,#D5F3D8)", fg:"#8A4055" },
+  { id:"dark",  name:"Dunkel", bg:"linear-gradient(150deg,#2E2E2E,#121212)", fg:"#4DFFBC" }
+];
+function applyTheme(){
+  var ok = THEMES.some(function(t){ return t.id === S.theme; });
+  if (!ok) S.theme = "light";
+  document.documentElement.setAttribute("data-theme", S.theme);
+}
+
+function render(){
+  applyTheme();
+  keepAwake(!!S.names.length && !S.setup);
+  if (S.setup || !S.names.length) return viewSetup();
+  if (S.game === "kniffel") {
+    if (S.view === "table") return viewKniffelTable();
+    if (kniffelDone()) return viewKniffelFinal();
+    return viewKniffel();
+  }
+  if (S.view === "table") return viewTable();
+  if (S.rounds.length >= totalRounds()) return viewFinal();
+  viewRound();
+}
+
+Promise.resolve(store.get()).then(function(raw){
+  try { S = raw ? JSON.parse(raw) : fresh(); } catch(e){ S = fresh(); }
+  if (!S || !Array.isArray(S.names)) S = fresh();
+  if (S.mode !== "updown") S.mode = "up";
+  render();
+});
+})();
+</script>
+</body>
+</html>
