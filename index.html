@@ -307,6 +307,18 @@
   .keypad button.wide{grid-column:span 3; background:linear-gradient(160deg, var(--gold), var(--gold-2));
     color:var(--on-gold); border-color:transparent; font-weight:800}
 
+  /* Hauptmen\u00fc */
+  .tile{display:flex; gap:8px; margin-bottom:8px}
+  .tilemain{flex:1; min-width:0; text-align:left; padding:15px 16px; border-radius:var(--r);
+    background:var(--glass); border:1px solid var(--hair)}
+  .tilemain b{display:block; font-size:17px; font-weight:800; letter-spacing:-.02em}
+  .tilemain span{display:block; margin-top:2px; font-size:12.5px; color:var(--dim);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .tilemain .live-txt{margin-top:5px; font-size:13px; font-weight:700; color:var(--gold)}
+  .tile.live .tilemain{border-color:var(--gold); background:var(--tint)}
+  .tilenew{flex:none; width:58px; border-radius:var(--r); background:var(--glass);
+    border:1px solid var(--hair); font-size:13px; font-weight:700; color:var(--dim)}
+
   /* Umschalter */
   .tabs{position:fixed; left:0; right:0; bottom:0; display:flex;
     padding:8px 14px calc(8px + env(safe-area-inset-bottom));
@@ -344,9 +356,29 @@ var store = (function(){
 })();
 
 /* ---------- Zustand ---------- */
+var ALL = null;
 var S = null;
-function fresh(){ return { game:"wizard", names:[], mode:"up", strict:false, theme:"light",
-    rounds:[], draft:null, sheet:[], at:0, view:"round" }; }
+var GAMES = [
+  { id:"wizard",  name:"Wizard",   sub:"Stiche ansagen, Runde f\u00fcr Runde" },
+  { id:"kniffel", name:"Kniffel",  sub:"Dreizehn Felder, ein Block je Spieler" },
+  { id:"phase10", name:"Phase 10", sub:"Zehn Phasen, Restpunkte je Runde" },
+  { id:"skyjo",   name:"Skyjo",    sub:"Punkte sammeln bis 100, wenigste gewinnen" }
+];
+function fresh(){ return { theme:"light", cur:null, games:{} }; }
+function newGame(id, names){
+  return { game:id, names:names || [], mode:"up", strict:false,
+           rounds:[], draft:null, sheet:[], at:0, view:"round", setup:true };
+}
+function lastNames(){
+  var out = [];
+  GAMES.forEach(function(g){
+    var st = ALL.games[g.id];
+    if (st && st.names.length && !out.length) out = st.names.slice();
+  });
+  return out;
+}
+function openGame(id){ ALL.cur = id; S = ALL.games[id]; }
+function toHome(){ ALL.cur = null; S = null; }
 function baseRounds(count){
   count = count || (S.names ? S.names.length : 0);
   if (!count) return 0;
@@ -376,7 +408,7 @@ function totals(){
   });
 }
 function sum(a){ return a.reduce(function(x,y){ return x+y; }, 0); }
-function save(){ store.set(JSON.stringify(S)); }
+function save(){ store.set(JSON.stringify(ALL)); }
 
 /* ---------- Hilfen ---------- */
 var app = document.getElementById("app");
@@ -431,136 +463,100 @@ function stepper(value, max, isSet, onChange){
 
 /* ---------- Bildschirm: Einrichtung ---------- */
 function viewSetup(){
+  var id = S.game;
+  var meta = GAMES.filter(function(g){ return g.id === id; })[0];
   app.innerHTML = "";
-  app.appendChild(el(
-    '<div class="top"><div class="brand"><span class="hat">\u25B2</span> Wizard</div></div>'));
-  var game = S.game || "wizard";
-  var games = el('<div class="games">' +
-    '<button type="button" data-g="wizard"><b>Wizard</b><span>Stiche ansagen, Runde f\u00fcr Runde</span></button>' +
-    '<button type="button" data-g="kniffel"><b>Kniffel</b><span>Dreizehn Felder, ein Block je Spieler</span></button>' +
-    '<button type="button" data-g="phase10"><b>Phase 10</b><span>Zehn Phasen, Restpunkte je Runde</span></button>' +
-    '<button type="button" data-g="skyjo"><b>Skyjo</b><span>Punkte sammeln bis 100, wenigste gewinnen</span></button>' +
-    '</div>');
-  function paintGames(){
-    Array.prototype.forEach.call(games.children, function(b){
-      b.setAttribute("aria-current", b.dataset.g === game ? "true" : "false");
-    });
-    modeBox.style.display = game === "wizard" ? "" : "none";
-    ruleBtn.style.display = game === "wizard" ? "" : "none";
-    hint.textContent = game === "wizard"
-      ? names.length + " Spieler, " + schedule(names.length, mode).length + " Runden, h\u00f6chstens " +
-        maxOf(schedule(names.length, mode)) + " Karten"
-      : game === "kniffel" ? names.length + " Spieler, je 13 Felder"
-      : game === "phase10" ? names.length + " Spieler, zehn Phasen der Reihe nach"
-      : names.length + " Spieler, Schluss bei 100 Punkten";
-  }
-  Array.prototype.forEach.call(games.children, function(b){
-    b.onclick = function(){ game = b.dataset.g; paintGames(); };
-  });
+  app.appendChild(el('<div class="top"><div class="brand"><span class="hat">\u25B2</span> ' + meta.name + '</div></div>'));
+  app.querySelector(".top").appendChild(helpButton());
 
-  app.appendChild(el('<h1 class="headline">Was spielt ihr?</h1>'));
-  app.appendChild(games);
+  var names = S.names.length ? S.names.slice() : ["", "", ""];
+  var mode = S.mode || "up";
+  var strict = !!S.strict;
+
   app.appendChild(el('<h1 class="headline">Wer spielt mit?</h1>'));
   app.appendChild(el('<p class="lead-in">Drei bis sechs Spieler, in der Reihenfolge wie ihr am Tisch sitzt.</p>'));
 
-  var names = S.names.length ? S.names.slice() : ["", "", ""];
   var list = el('<div></div>');
   app.appendChild(list);
 
-  var startBtn = el('<button class="cta" type="button">' +
-    (S.setup && S.names.length ? "Neues Spiel starten" : "Spiel starten") + '</button>');
-  var hint = el('<p class="note"></p>');
   var addBtn = el('<button class="cta ghost" type="button">Spieler hinzuf\u00fcgen</button>');
+  var hint = el('<p class="note"></p>');
+  var startBtn = el('<button class="cta" type="button">Spiel starten</button>');
 
-  var mode = S.mode || "up";
-  var modeBox = el(
-    '<div class="modes">' +
-      '<button type="button" data-m="up"><b>Normal</b><span>1 Karte bis zum vollen Blatt</span></button>' +
-      '<button type="button" data-m="updown"><b>Auf und ab</b><span>hoch bis zur H\u00e4lfte, dann zur\u00fcck auf 1</span></button>' +
+  var modeBox = el('<div class="modes">' +
+    '<button type="button" data-m="up"><b>Normal</b><span>1 Karte hoch bis zum vollen Blatt</span></button>' +
+    '<button type="button" data-m="updown"><b>Auf und ab</b><span>hoch bis zur H\u00e4lfte, dann zur\u00fcck auf 1</span></button>' +
     '</div>');
-
+  var ruleBtn = el('<button class="toggle" type="button" aria-pressed="' + strict + '">' +
+    '<span class="box">\u2713</span><span><b>Vorhand-Regel</b>' +
+    '<span>Der Geber darf die Summe der Ansagen nicht genau aufgehen lassen.</span></span></button>');
+  ruleBtn.onclick = function(){ strict = !strict; ruleBtn.setAttribute("aria-pressed", strict); };
+  Array.prototype.forEach.call(modeBox.children, function(b){
+    b.onclick = function(){ mode = b.dataset.m; paintMode(); };
+  });
   function paintMode(){
     Array.prototype.forEach.call(modeBox.children, function(b){
       b.setAttribute("aria-current", b.dataset.m === mode ? "true" : "false");
     });
+    info();
   }
-  Array.prototype.forEach.call(modeBox.children, function(b){
-    b.onclick = function(){ mode = b.dataset.m; paintMode(); paint(); };
-  });
+  function info(){
+    if (id === "wizard") {
+      var pl = schedule(names.length, mode);
+      hint.textContent = names.length + " Spieler, " + pl.length + " Runden, h\u00f6chstens " + maxOf(pl) + " Karten";
+    } else if (id === "kniffel") {
+      hint.textContent = names.length + " Spieler, je 13 Felder";
+    } else if (id === "phase10") {
+      hint.textContent = names.length + " Spieler, zehn Phasen der Reihe nach";
+    } else {
+      hint.textContent = names.length + " Spieler, Schluss bei 100 Punkten";
+    }
+  }
 
   function paint(){
     list.innerHTML = "";
     names.forEach(function(n, i){
-      var row = el(
-        '<div class="pinput"><i style="--acc:' + hue(i) + '"></i>' +
+      var row = el('<div class="pinput"><i style="--acc:' + hue(i) + '"></i>' +
         '<input type="text" inputmode="text" autocomplete="off" placeholder="Spieler ' + (i+1) + '" value="' + esc(n) + '">' +
-        (names.length > 3 ? '<button class="rm" type="button" aria-label="entfernen">\u00d7</button>' : '') +
-        '</div>');
+        (names.length > 3 ? '<button class="rm" type="button" aria-label="entfernen">\u00d7</button>' : '') + '</div>');
       var input = row.querySelector("input");
       input.oninput = function(){ names[i] = input.value; };
       var rm = row.querySelector(".rm");
-      if (rm) rm.onclick = function(){ names.splice(i,1); paint(); };
+      if (rm) rm.onclick = function(){ names.splice(i, 1); paint(); };
       list.appendChild(row);
     });
     addBtn.disabled = names.length >= 6;
-    var T = Math.floor(60 / names.length);
-    var rounds = mode === "updown" ? 2 * Math.ceil(T/2) - 1 : T;
-    var peak = mode === "updown" ? Math.ceil(T/2) : T;
-    hint.textContent = names.length + " Spieler \u00b7 " + rounds + " Runden \u00b7 h\u00f6chstens " + peak + " Karten";
+    info();
   }
   addBtn.onclick = function(){ if (names.length < 6) { names.push(""); paint(); } };
 
   startBtn.onclick = function(){
     S.names = names.map(function(n, i){ return n.trim() || ("Spieler " + (i+1)); });
-    S.game = game;
-    S.sheet = S.names.map(function(){ return {}; });
-    S.at = 0;
     S.mode = mode;
     S.strict = strict;
-    S.theme = theme;
+    S.sheet = S.names.map(function(){ return {}; });
     S.rounds = [];
     S.draft = null;
+    S.at = 0;
     S.view = "round";
     S.setup = false;
-    save();
-    render();
+    save(); render();
   };
 
-  var strict = !!S.strict;
-  var ruleBtn = el('<button class="toggle" type="button" aria-pressed="' + strict + '">' +
-    '<span class="box">\u2713</span><span><b>Vorhand-Regel</b>' +
-    '<span>Der Geber darf die Summe der Ansagen nicht genau aufgehen lassen.</span></span></button>');
-  ruleBtn.onclick = function(){ strict = !strict; ruleBtn.setAttribute("aria-pressed", strict); };
-
-  var theme = S.theme || "light";
-  var swatches = el('<div class="swatches">' + THEMES.map(function(t){
-    return '<button type="button" data-t="' + t.id + '" style="background:' + t.bg + ';color:' + t.fg + '">' +
-           t.name + '</button>';
-  }).join("") + '</div>');
-  function paintTheme(){
-    Array.prototype.forEach.call(swatches.children, function(b){
-      b.setAttribute("aria-current", b.dataset.t === theme ? "true" : "false");
-    });
-  }
-  Array.prototype.forEach.call(swatches.children, function(b){
-    b.onclick = function(){ theme = b.dataset.t; S.theme = theme; applyTheme(); paintTheme(); };
-  });
-  paintTheme();
-
-  app.appendChild(modeBox);
-  app.appendChild(ruleBtn);
-  app.appendChild(swatches);
+  if (id === "wizard") { app.appendChild(modeBox); app.appendChild(ruleBtn); }
   app.appendChild(addBtn);
   app.appendChild(startBtn);
-  if (S.setup && S.names.length) {
-    var back = el('<button class="cta ghost" type="button">Abbrechen, laufendes Spiel weiterspielen</button>');
-    back.onclick = function(){ S.setup = false; save(); render(); };
-    app.appendChild(back);
-  }
+  var back = el('<button class="cta ghost" type="button">Zur\u00fcck zum Hauptmen\u00fc</button>');
+  back.onclick = function(){
+    if (!S.names.length) delete ALL.games[id];
+    toHome(); save(); render();
+  };
+  app.appendChild(back);
   app.appendChild(hint);
-  app.appendChild(el(
-    '<div class="rules"><b>Punkte</b> \u00b7 Ansage getroffen: 20 Punkte plus 10 je Stich. ' +
-    'Daneben: 10 Punkte Abzug je Stich Differenz.</div>'));
+  if (id === "wizard") {
+    app.appendChild(el('<div class="rules"><b>Punkte</b> \u00b7 Ansage getroffen: 20 Punkte plus 10 je Stich. ' +
+      'Daneben: 10 Punkte Abzug je Stich Differenz.</div>'));
+  }
   paint();
   paintMode();
 }
@@ -753,7 +749,7 @@ function viewFinal(){
   again.onclick = function(){ S.rounds = []; S.draft = null; save(); render(); };
   app.appendChild(again);
   var reset = el('<button class="cta ghost" type="button">Spieler \u00e4ndern</button>');
-  reset.onclick = function(){ S = fresh(); save(); render(); };
+  reset.onclick = function(){ S.setup = true; save(); render(); };
   app.appendChild(reset);
   app.appendChild(tabs());
 }
@@ -1339,6 +1335,78 @@ function viewSkyjoFinal(){
   app.appendChild(tabs());
 }
 
+
+/* ---------- Hauptmen\u00fc ---------- */
+function statusOf(id){
+  var st = ALL.games[id];
+  if (!st || !st.names.length || st.setup) return null;
+  var prev = S, txt = "";
+  S = st;
+  try {
+    if (id === "wizard") {
+      txt = st.rounds.length >= totalRounds()
+        ? "fertig, Ergebnis steht"
+        : "Runde " + (st.rounds.length + 1) + " von " + totalRounds();
+    } else if (id === "kniffel") {
+      var filled = st.names.reduce(function(a, _, i){ return a + filledOf(i); }, 0);
+      txt = kniffelDone() ? "fertig, Ergebnis steht"
+                          : filled + " von " + (st.names.length * CATS.length) + " Feldern";
+    } else if (id === "phase10") {
+      var top = Math.max.apply(null, st.names.map(function(_, i){ return phaseOf(i); }));
+      txt = p10Done() ? "fertig, Ergebnis steht"
+                      : "Runde " + (st.rounds.length + 1) + ", h\u00f6chste Phase " + top;
+    } else {
+      var high = st.rounds.length ? Math.max.apply(null, st.names.map(function(_, i){ return skyjoTotal(i); })) : 0;
+      txt = skyjoDone() ? "fertig, Ergebnis steht"
+                        : "Runde " + (st.rounds.length + 1) + ", Stand " + high + " von 100";
+    }
+  } catch(e){ txt = ""; }
+  S = prev;
+  return txt ? { txt:txt, who:st.names.join(", ") } : null;
+}
+
+function viewHome(){
+  app.innerHTML = "";
+  app.appendChild(el('<div class="top"><div class="brand"><span class="hat">\u25B2</span> Spielblock</div></div>'));
+  app.querySelector(".top").appendChild(helpButton());
+  app.appendChild(el('<h1 class="headline">Was spielt ihr?</h1>'));
+  app.appendChild(el('<p class="lead-in">Jedes Spiel hat seinen eigenen Stand, du kannst also mehrere nebeneinander laufen lassen.</p>'));
+
+  GAMES.forEach(function(g){
+    var st = statusOf(g.id);
+    var tile = el('<div class="tile' + (st ? ' live' : '') + '"></div>');
+    var main = el('<button class="tilemain" type="button"><b>' + g.name + '</b>' +
+      '<span>' + (st ? esc(st.who) : g.sub) + '</span>' +
+      (st ? '<span class="live-txt">' + st.txt + '</span>' : '') + '</button>');
+    bindTap(main, function(){
+      if (st) { openGame(g.id); save(); render(); }
+      else { ALL.games[g.id] = newGame(g.id, lastNames()); openGame(g.id); save(); render(); }
+    });
+    tile.appendChild(main);
+    if (st) {
+      var fresh2 = el('<button class="tilenew" type="button">Neu</button>');
+      bindTap(fresh2, function(){
+        if (confirm(g.name + " neu anfangen? Der laufende Stand geht verloren.")) {
+          ALL.games[g.id] = newGame(g.id, ALL.games[g.id].names.slice());
+          openGame(g.id); save(); render();
+        }
+      });
+      tile.appendChild(fresh2);
+    }
+    app.appendChild(tile);
+  });
+
+  app.appendChild(el('<p class="group">Darstellung</p>'));
+  var swatches = el('<div class="swatches">' + THEMES.map(function(t){
+    return '<button type="button" data-t="' + t.id + '" style="background:' + t.bg + ';color:' + t.fg + '">' +
+      t.name + '</button>'; }).join("") + '</div>');
+  Array.prototype.forEach.call(swatches.children, function(b){
+    b.setAttribute("aria-current", b.dataset.t === ALL.theme ? "true" : "false");
+    b.onclick = function(){ ALL.theme = b.dataset.t; save(); render(); };
+  });
+  app.appendChild(swatches);
+}
+
 /* ---------- Bildschirm wachhalten ---------- */
 var lock = null;
 function keepAwake(on){
@@ -1442,15 +1510,15 @@ function openMenu(){
     }
     item("Farbe wechseln", "", function(){
       var i = 0;
-      THEMES.forEach(function(t, k){ if (t.id === S.theme) i = k; });
-      S.theme = THEMES[(i + 1) % THEMES.length].id; save(); render();
+      THEMES.forEach(function(t, k){ if (t.id === ALL.theme) i = k; });
+      ALL.theme = THEMES[(i + 1) % THEMES.length].id; save(); render();
     });
     item("Neues Spiel, gleiche Spieler", "danger", function(){
       if (confirm("Alle Runden verwerfen und neu anfangen?")) {
         S.rounds = []; S.draft = null; S.view = "round"; save(); render();
       }
     });
-    item("Zur\u00fcck zum Startmen\u00fc", "danger", function(){ S.setup = true; save(); render(); });
+    item("Zur\u00fcck zum Hauptmen\u00fc", "", function(){ toHome(); save(); render(); });
     item("Abbrechen", "", function(){});
     sheet.onclick = function(e){ if (e.target === sheet) sheet.remove(); };
     document.body.appendChild(sheet);
@@ -1459,15 +1527,15 @@ function openMenu(){
   if (S.game === "kniffel") {
     item("Farbe wechseln", "", function(){
       var i = 0;
-      THEMES.forEach(function(t, k){ if (t.id === S.theme) i = k; });
-      S.theme = THEMES[(i + 1) % THEMES.length].id; save(); render();
+      THEMES.forEach(function(t, k){ if (t.id === ALL.theme) i = k; });
+      ALL.theme = THEMES[(i + 1) % THEMES.length].id; save(); render();
     });
     item("Neues Spiel, gleiche Spieler", "danger", function(){
       if (confirm("Alle Eintr\u00e4ge im Block l\u00f6schen und neu anfangen?")) {
         S.sheet = S.names.map(function(){ return {}; }); S.at = 0; S.view = "round"; save(); render();
       }
     });
-    item("Zur\u00fcck zum Startmen\u00fc", "danger", function(){ S.setup = true; save(); render(); });
+    item("Zur\u00fcck zum Hauptmen\u00fc", "", function(){ toHome(); save(); render(); });
     item("Abbrechen", "", function(){});
     sheet.onclick = function(e){ if (e.target === sheet) sheet.remove(); };
     document.body.appendChild(sheet);
@@ -1489,17 +1557,15 @@ function openMenu(){
   });
   item("Farbe wechseln", "", function(){
     var i = 0;
-    THEMES.forEach(function(t, k){ if (t.id === S.theme) i = k; });
-    S.theme = THEMES[(i + 1) % THEMES.length].id; save(); render();
+    THEMES.forEach(function(t, k){ if (t.id === ALL.theme) i = k; });
+    ALL.theme = THEMES[(i + 1) % THEMES.length].id; save(); render();
   });
   item("Neues Spiel, gleiche Spieler", "danger", function(){
     if (confirm("Alle Punkte verwerfen und neu anfangen?")) {
       S.rounds = []; S.draft = null; S.view = "round"; save(); render();
     }
   });
-  item("Zur\u00fcck zum Startmen\u00fc", "danger", function(){
-    S.setup = true; save(); render();
-  });
+  item("Zur\u00fcck zum Hauptmen\u00fc", "", function(){ toHome(); save(); render(); });
   item("Abbrechen", "", function(){});
   sheet.onclick = function(e){ if (e.target === sheet) close(); };
   document.body.appendChild(sheet);
@@ -1529,14 +1595,15 @@ var THEMES = [
   { id:"dark",  name:"Dunkel", bg:"linear-gradient(150deg,#2E2E2E,#121212)", fg:"#4DFFBC" }
 ];
 function applyTheme(){
-  var ok = THEMES.some(function(t){ return t.id === S.theme; });
-  if (!ok) S.theme = "light";
-  document.documentElement.setAttribute("data-theme", S.theme);
+  var ok = THEMES.some(function(t){ return t.id === ALL.theme; });
+  if (!ok) ALL.theme = "light";
+  document.documentElement.setAttribute("data-theme", ALL.theme);
 }
 
 function render(){
   applyTheme();
-  keepAwake(!!S.names.length && !S.setup);
+  keepAwake(!!S && !!S.names.length && !S.setup);
+  if (!S) return viewHome();
   if (S.setup || !S.names.length) return viewSetup();
   if (S.game === "skyjo") {
     if (S.view === "table") return viewSkyjoTable();
@@ -1559,9 +1626,21 @@ function render(){
 }
 
 Promise.resolve(store.get()).then(function(raw){
-  try { S = raw ? JSON.parse(raw) : fresh(); } catch(e){ S = fresh(); }
-  if (!S || !Array.isArray(S.names)) S = fresh();
-  if (S.mode !== "updown") S.mode = "up";
+  var data = null;
+  try { data = raw ? JSON.parse(raw) : null; } catch(e){ data = null; }
+  if (data && data.games) {
+    ALL = data;
+  } else if (data && data.names) {
+    // alter Spielstand mit nur einem Spiel
+    ALL = { theme: data.theme || "light", cur: data.names.length ? (data.game || "wizard") : null, games:{} };
+    data.setup = false;
+    ALL.games[data.game || "wizard"] = data;
+  } else {
+    ALL = fresh();
+  }
+  if (!ALL.games) ALL.games = {};
+  S = ALL.cur && ALL.games[ALL.cur] ? ALL.games[ALL.cur] : null;
+  if (!S) ALL.cur = null;
   render();
 });
 })();
