@@ -274,6 +274,39 @@
     color:var(--on-gold); border-color:transparent}
   .sheet .panel .numgrid button.wide{grid-column:span 5; height:46px; font-size:15px; font-weight:700}
 
+  /* Phase 10 */
+  .games{flex-direction:column}
+  .games button{display:flex; align-items:center; gap:12px}
+  .games button b{font-size:16px}
+  .games button .txt{min-width:0}
+  .check{width:46px; height:46px; flex:none; border-radius:13px; background:var(--well);
+    border:1px solid var(--hair); font-size:19px; color:var(--dim)}
+  .check[aria-pressed="true"]{background:linear-gradient(160deg, var(--gold), var(--gold-2));
+    color:var(--on-gold); border-color:transparent}
+  .pill{min-width:62px; height:46px; padding:0 12px; border-radius:13px; background:var(--well);
+    border:1px solid var(--hair); font-size:19px; font-weight:800; font-variant-numeric:tabular-nums}
+  .pill.zero{color:var(--dim); font-weight:600}
+  .acts{display:flex; gap:6px; align-items:center}
+  .who .sub.wrap{white-space:normal; line-height:1.3}
+  .counter{padding:4px 8px 8px}
+  .counter .crow{display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:9px 8px; border-top:1px solid var(--hair)}
+  .counter .crow:first-child{border-top:none}
+  .counter .crow b{font-size:15px; font-weight:600}
+  .counter .crow span{display:block; font-size:12px; color:var(--dim)}
+  .counter .total{display:flex; justify-content:space-between; padding:12px 8px 4px;
+    font-size:17px; font-weight:800}
+
+  /* Ziffernfeld */
+  .keyval{padding:8px 16px 2px; font-size:36px; font-weight:800; text-align:center;
+    font-variant-numeric:tabular-nums; letter-spacing:-.02em}
+  .keyval.empty{color:var(--dim)}
+  .keypad{display:grid; grid-template-columns:repeat(3,1fr); gap:7px; padding:8px}
+  .keypad button{padding:0; height:56px; border-radius:13px; text-align:center; font-size:21px;
+    font-weight:700; background:var(--glass); border:1px solid var(--hair)}
+  .keypad button.wide{grid-column:span 3; background:linear-gradient(160deg, var(--gold), var(--gold-2));
+    color:var(--on-gold); border-color:transparent; font-weight:800}
+
   /* Umschalter */
   .tabs{position:fixed; left:0; right:0; bottom:0; display:flex;
     padding:8px 14px calc(8px + env(safe-area-inset-bottom));
@@ -314,10 +347,16 @@ var store = (function(){
 var S = null;
 function fresh(){ return { game:"wizard", names:[], mode:"up", strict:false, theme:"light",
     rounds:[], draft:null, sheet:[], at:0, view:"round" }; }
-function baseRounds(){ return Math.floor(60 / S.names.length); }
-function schedule(){
-  var T = baseRounds(), a = [], i;
-  if (S.mode === "updown") {
+function baseRounds(count){
+  count = count || (S.names ? S.names.length : 0);
+  if (!count) return 0;
+  return Math.floor(60 / count);
+}
+function schedule(count, mode){
+  var T = baseRounds(count), a = [], i;
+  mode = mode || S.mode;
+  if (!isFinite(T) || T < 1) return [];
+  if (mode === "updown") {
     var peak = Math.ceil(T / 2);
     for (i = 1; i <= peak; i++) a.push(i);
     for (i = peak - 1; i >= 1; i--) a.push(i);
@@ -326,6 +365,7 @@ function schedule(){
   }
   return a;
 }
+function maxOf(a){ return a.length ? Math.max.apply(null, a) : 0; }
 function totalRounds(){ return schedule().length; }
 function cardsFor(r){ return schedule()[r-1]; }
 function roundNo(){ return S.rounds.length + 1; }
@@ -366,7 +406,7 @@ var HUES = ["#E0982A", "#12A79B", "#E05A63", "#7B5BD6", "#6E9E22", "#2D82C7"];
 function hue(i){ return HUES[i % HUES.length]; }
 
 function strip(cur){
-  var pl = schedule(), top = Math.max.apply(null, pl);
+  var pl = schedule(), top = maxOf(pl) || 1;
   var bars = pl.map(function(c, i){
     var cls = i < cur - 1 ? "done" : (i === cur - 1 ? "now" : "");
     return '<i class="' + cls + '" style="height:' + Math.round(14 + 30 * (c / top)) + 'px"></i>';
@@ -398,6 +438,8 @@ function viewSetup(){
   var games = el('<div class="games">' +
     '<button type="button" data-g="wizard"><b>Wizard</b><span>Stiche ansagen, Runde f\u00fcr Runde</span></button>' +
     '<button type="button" data-g="kniffel"><b>Kniffel</b><span>Dreizehn Felder, ein Block je Spieler</span></button>' +
+    '<button type="button" data-g="phase10"><b>Phase 10</b><span>Zehn Phasen, Restpunkte je Runde</span></button>' +
+    '<button type="button" data-g="skyjo"><b>Skyjo</b><span>Punkte sammeln bis 100, wenigste gewinnen</span></button>' +
     '</div>');
   function paintGames(){
     Array.prototype.forEach.call(games.children, function(b){
@@ -407,8 +449,10 @@ function viewSetup(){
     ruleBtn.style.display = game === "wizard" ? "" : "none";
     hint.textContent = game === "wizard"
       ? names.length + " Spieler, " + schedule(names.length, mode).length + " Runden, h\u00f6chstens " +
-        Math.max.apply(null, schedule(names.length, mode)) + " Karten"
-      : names.length + " Spieler, je 13 Felder";
+        maxOf(schedule(names.length, mode)) + " Karten"
+      : game === "kniffel" ? names.length + " Spieler, je 13 Felder"
+      : game === "phase10" ? names.length + " Spieler, zehn Phasen der Reihe nach"
+      : names.length + " Spieler, Schluss bei 100 Punkten";
   }
   Array.prototype.forEach.call(games.children, function(b){
     b.onclick = function(){ game = b.dataset.g; paintGames(); };
@@ -889,6 +933,412 @@ function viewKniffelFinal(){
   app.appendChild(tabs());
 }
 
+
+/* ---------- Phase 10 ---------- */
+var PHASES = [
+  "2 Drillinge",
+  "1 Drilling und 1 Folge aus 4",
+  "1 Vierling und 1 Folge aus 4",
+  "1 Folge aus 7 Karten",
+  "1 Folge aus 8 Karten",
+  "1 Folge aus 9 Karten",
+  "2 Vierlinge",
+  "7 Karten einer Farbe",
+  "1 F\u00fcnfling und 1 Paar",
+  "1 F\u00fcnfling und 1 Drilling"
+];
+var CARDVALS = [
+  { name:"Karten 1 bis 9", sub:"je 5 Punkte", v:5, max:10 },
+  { name:"Karten 10 bis 12", sub:"je 10 Punkte", v:10, max:10 },
+  { name:"Aussetzen", sub:"je 15 Punkte, 4 im Deck", v:15, max:4 },
+  { name:"Joker", sub:"je 25 Punkte, 8 im Deck", v:25, max:8 }
+];
+function phaseOf(pi){
+  var done = S.rounds.filter(function(r){ return r.done[pi]; }).length;
+  return Math.min(done + 1, 10);
+}
+function clearedTen(pi){
+  return S.rounds.filter(function(r){ return r.done[pi]; }).length >= 10;
+}
+function p10Points(pi){
+  return S.rounds.reduce(function(a, r){ return a + r.pts[pi]; }, 0);
+}
+function p10Done(){ return S.names.some(function(_, i){ return clearedTen(i); }); }
+
+function counterSheet(cur, onPick){
+  var counts = [0, 0, 0, 0];
+  var sheet = el('<div class="sheet"><div class="panel"><div class="head">Restkarten z\u00e4hlen</div>' +
+    '<div class="counter"></div></div></div>');
+  var box = sheet.querySelector(".counter");
+  function sum4(){ return counts.reduce(function(a, c, i){ return a + c * CARDVALS[i].v; }, 0); }
+  function paint(){
+    box.innerHTML = "";
+    CARDVALS.forEach(function(c, i){
+      var row = el('<div class="crow"><div><b>' + c.name + '</b><span>' + c.sub + '</span></div></div>');
+      row.appendChild(stepper(counts[i], c.max, counts[i] > 0, function(v){ counts[i] = v; paint(); }));
+      box.appendChild(row);
+    });
+    var cards = counts.reduce(function(a, c){ return a + c; }, 0);
+    var row = el('<div class="total"><span>' + cards + (cards === 1 ? ' Karte' : ' Karten') +
+      '</span><span class="num">' + sum4() + ' Punkte</span></div>');
+    if (cards > 10) row.firstElementChild.style.color = "var(--miss)";
+    box.appendChild(row);
+  }
+  paint();
+  var ok = el('<button type="button">\u00dcbernehmen</button>');
+  ok.onclick = function(){ sheet.remove(); onPick(sum4()); };
+  var cancel = el('<button type="button">Abbrechen</button>');
+  cancel.onclick = function(){ sheet.remove(); };
+  sheet.querySelector(".panel").appendChild(ok);
+  sheet.querySelector(".panel").appendChild(cancel);
+  sheet.onclick = function(e){ if (e.target === sheet) sheet.remove(); };
+  document.body.appendChild(sheet);
+}
+
+function pointsSheet(title, cur, min, onPick){
+  var sheet = el('<div class="sheet"><div class="panel scrollable"><div class="head">' + title + '</div>' +
+    '<p class="hintline" style="padding:0 16px">Punkte der Karten, die noch auf der Hand waren.' +
+    (min > 0 ? ' Ohne ausgelegte Phase sind es genau zehn Karten, also mindestens 50.' : '') + '</p>' +
+    '<div class="numgrid"></div></div></div>');
+  var grid = sheet.querySelector(".numgrid");
+  grid.style.overflowY = "auto"; grid.style.maxHeight = "50vh"; grid.style.touchAction = "pan-y";
+  for (var v = min; v <= 230; v += 5) {
+    (function(v){
+      var b = el('<button type="button" aria-current="' + (v === cur) + '">' + v + '</button>');
+      b.onclick = function(){ sheet.remove(); onPick(v); };
+      grid.appendChild(b);
+    })(v);
+  }
+  var count = el('<button class="wide" type="button">Karten z\u00e4hlen statt rechnen</button>');
+  count.onclick = function(){ sheet.remove(); counterSheet(cur, onPick); };
+  grid.appendChild(count);
+  var cancel = el('<button type="button">Abbrechen</button>');
+  cancel.onclick = function(){ sheet.remove(); };
+  sheet.querySelector(".panel").appendChild(cancel);
+  sheet.onclick = function(e){ if (e.target === sheet) sheet.remove(); };
+  document.body.appendChild(sheet);
+}
+
+function viewPhase(){
+  var n = S.rounds.length + 1;
+  if (!S.draft) S.draft = { done:S.names.map(function(){ return false; }), pts:S.names.map(function(){ return 0; }) };
+  var d = S.draft;
+  app.innerHTML = "";
+  app.appendChild(el('<div class="top"><div class="brand"><span class="hat">\u25B2</span> Phase 10</div></div>'));
+  topBtns();
+  app.appendChild(el('<h1 class="headline num">Runde ' + n + '</h1>'));
+  app.appendChild(el('<p class="meta">Haken setzen, wer seine Phase geschafft hat, dann die Restpunkte eintragen.</p>'));
+
+  S.names.forEach(function(nm, i){
+    var ph = phaseOf(i);
+    var row = el('<div class="row" style="--acc:' + hue(i) + '"><div class="who">' +
+      '<div class="name"><span class="nm">' + esc(nm) + '</span><span class="badge">Phase ' + ph + '</span></div>' +
+      '<div class="sub wrap">' + PHASES[ph-1] + '</div></div>' +
+      '<div class="acts"></div></div>');
+    var acts = row.querySelector(".acts");
+
+    var chk = el('<button class="check" type="button" aria-pressed="' + d.done[i] + '" aria-label="Phase geschafft">\u2713</button>');
+    bindTap(chk, function(){
+      d.done[i] = !d.done[i];
+      if (!d.done[i] && d.pts[i] < 50) d.pts[i] = 50;
+      save(); render();
+    });
+    acts.appendChild(chk);
+
+    var pill = el('<button class="pill num' + (d.pts[i] === 0 ? ' zero' : '') + '" type="button">' + d.pts[i] + '</button>');
+    bindTap(pill, function(){
+      pointsSheet("Restpunkte, " + nm, d.pts[i], d.done[i] ? 0 : 50, function(v){ d.pts[i] = v; save(); render(); });
+    });
+    acts.appendChild(pill);
+    app.appendChild(row);
+  });
+
+  var stuck = S.names.filter(function(_, i){ return !d.done[i] && d.pts[i] < 50; });
+  var zeros = d.pts.filter(function(v){ return v === 0; }).length;
+
+  var cta = el('<button class="cta" type="button">Runde eintragen</button>');
+  cta.disabled = stuck.length > 0;
+  cta.onclick = function(){
+    S.rounds.push({ done:d.done.slice(), pts:d.pts.slice() });
+    S.draft = null; save(); render();
+  };
+  app.appendChild(cta);
+
+  var note = el('<p class="note"></p>');
+  if (stuck.length) {
+    note.className = "note warn";
+    if (stuck.length === S.names.length) {
+      note.textContent = "Ohne ausgelegte Phase bleiben zehn Karten auf der Hand. Trag die Punkte ein, mindestens 50.";
+    } else {
+      var names = stuck.length > 1
+        ? stuck.slice(0, -1).join(", ") + " und " + stuck[stuck.length - 1]
+        : stuck[0];
+      note.textContent = "Bei " + names + " fehlen die Restpunkte. Ohne ausgelegte Phase sind es mindestens 50.";
+    }
+  } else if (zeros === 0) {
+    note.textContent = "Niemand steht auf null. Wer als Erster alle Karten los war, hat keine Restpunkte.";
+  } else if (zeros > 1) {
+    note.textContent = "Zwei Spieler stehen auf null. Rausgekommen sein kann aber nur einer.";
+  } else {
+    note.textContent = "Haken heißt: Phase ausgelegt. Punkte z\u00e4hlen trotzdem mit.";
+  }
+  app.appendChild(note);
+  app.appendChild(tabs());
+}
+
+function viewPhaseTable(){
+  app.innerHTML = "";
+  app.appendChild(el('<div class="top"><div class="brand"><span class="hat">\u25B2</span> Phase 10</div></div>'));
+  topBtns();
+  app.appendChild(el('<h1 class="headline num">' + S.rounds.length + ' <em>Runden gespielt</em></h1>'));
+  app.appendChild(el('<p class="meta">Haken heißt Phase geschafft, daneben die Punkte der Runde.</p>'));
+
+  if (!S.rounds.length) { app.appendChild(tabs()); return; }
+
+  var head = '<tr><th class="rnd">Rd</th>' + S.names.map(function(nm, i){
+    return '<th><i style="--acc:' + hue(i) + '"></i>' + esc(nm.length > 8 ? nm.slice(0,8) + "\u2026" : nm) + '</th>';
+  }).join("") + '</tr>';
+  var body = S.rounds.map(function(r, ri){
+    return '<tr><td class="rnd">' + (ri+1) + '</td>' + S.names.map(function(_, i){
+      return '<td><span class="bid ' + (r.done[i] ? "hit" : "miss") + '">' +
+        (r.done[i] ? "geschafft" : "offen") + '</span>' + r.pts[i] + '</td>';
+    }).join("") + '</tr>';
+  }).join("");
+  var phaseRow = '<tr><td class="rnd">Phase</td>' + S.names.map(function(_, i){
+    return '<td>' + (clearedTen(i) ? "fertig" : phaseOf(i)) + '</td>'; }).join("") + '</tr>';
+  var tot = S.names.map(function(_, i){ return p10Points(i); });
+  var low = Math.min.apply(null, tot);
+  var foot = '<tr><th class="rnd">Punkte</th>' + tot.map(function(t){
+    return '<td' + (t === low ? ' class="lead"' : '') + '>' + t + '</td>'; }).join("") + '</tr>';
+
+  app.appendChild(el('<div class="scroller"><table><thead>' + head + '</thead><tbody>' + body + phaseRow +
+    '</tbody><tfoot>' + foot + '</tfoot></table></div>'));
+  app.appendChild(tabs());
+}
+
+function viewPhaseFinal(){
+  var order = S.names.map(function(nm, i){
+    return { nm:nm, idx:i, ph:S.rounds.filter(function(r){ return r.done[i]; }).length, pt:p10Points(i) };
+  }).sort(function(a, b){ return b.ph - a.ph || a.pt - b.pt; });
+
+  app.innerHTML = "";
+  app.appendChild(el('<div class="top"><div class="brand"><span class="hat">\u25B2</span> Phase 10</div></div>'));
+  topBtns();
+  app.appendChild(el('<div class="final"><h2>' + esc(order[0].nm) + ' gewinnt</h2>' +
+    '<p>Phase 10 geschafft, ' + order[0].pt + ' Punkte nach ' + S.rounds.length + ' Runden.</p></div>'));
+  order.forEach(function(p, i){
+    app.appendChild(el('<div class="rank' + (i === 0 ? ' first' : '') + '" style="--acc:' + hue(p.idx) + '">' +
+      '<span class="pos num">' + (i+1) + '</span><span class="nm">' + esc(p.nm) +
+      '</span><span class="pt num">' + p.pt + '</span></div>'));
+  });
+
+  var stats = el('<div class="stats"><h3>Auswertung</h3></div>');
+  function line(label, value){ stats.appendChild(el('<div><span>' + label + '</span><b>' + value + '</b></div>')); }
+  var far = order.map(function(p){ return p.ph; });
+  line("Weiteste Phase", order[0].ph >= 10 ? "Phase 10 abgeschlossen" : "Phase " + (order[0].ph + 1));
+  var cleanest = order.slice().sort(function(a, b){ return a.pt - b.pt; })[0];
+  line("Wenigste Restpunkte", esc(cleanest.nm) + ' <em>' + cleanest.pt + ' Punkte</em>');
+  var phasesDone = far.reduce(function(a, b){ return a + b; }, 0);
+  line("Geschaffte Phasen", phasesDone + ' <em>von ' + (S.rounds.length * S.names.length) + ' Versuchen</em>');
+  app.appendChild(stats);
+
+  var again = el('<button class="cta" type="button">Neues Spiel, gleiche Runde</button>');
+  again.onclick = function(){ S.rounds = []; S.draft = null; S.view = "round"; save(); render(); };
+  app.appendChild(again);
+  var reset = el('<button class="cta ghost" type="button">Spieler \u00e4ndern</button>');
+  reset.onclick = function(){ S.setup = true; save(); render(); };
+  app.appendChild(reset);
+  app.appendChild(tabs());
+}
+
+
+/* ---------- Skyjo ---------- */
+function keypadSheet(title, cur, onPick){
+  var txt = (typeof cur === "number") ? String(cur) : "";
+  var sheet = el('<div class="sheet"><div class="panel"><div class="head">' + title + '</div>' +
+    '<p class="keyval empty">0</p><div class="keypad"></div></div></div>');
+  var out = sheet.querySelector(".keyval");
+  var pad = sheet.querySelector(".keypad");
+  function paint(){
+    out.textContent = txt === "" || txt === "-" ? (txt === "-" ? "-0" : "0") : txt;
+    out.className = "keyval" + (txt === "" ? " empty" : "");
+  }
+  function press(k){
+    if (k === "+/-") txt = txt.charAt(0) === "-" ? txt.slice(1) : "-" + txt;
+    else if (k === "del") txt = txt.slice(0, -1);
+    else if ((txt.replace("-", "")).length < 3) txt += k;
+    paint();
+  }
+  ["1","2","3","4","5","6","7","8","9","+/-","0","del"].forEach(function(k){
+    var b = el('<button type="button">' + (k === "del" ? "\u232b" : k) + '</button>');
+    b.onclick = function(){ press(k); };
+    pad.appendChild(b);
+  });
+  var ok = el('<button class="wide" type="button">\u00dcbernehmen</button>');
+  ok.onclick = function(){
+    var v = parseInt(txt, 10);
+    if (isNaN(v)) v = 0;
+    v = Math.max(-30, Math.min(200, v));
+    sheet.remove(); onPick(v);
+  };
+  pad.appendChild(ok);
+  var cancel = el('<button type="button">Abbrechen</button>');
+  cancel.onclick = function(){ sheet.remove(); };
+  sheet.querySelector(".panel").appendChild(cancel);
+  sheet.onclick = function(e){ if (e.target === sheet) sheet.remove(); };
+  document.body.appendChild(sheet);
+  paint();
+}
+
+function skyjoFinal(raw, ender, i){
+  var v = raw[i];
+  if (i !== ender || typeof v !== "number" || v <= 0) return v;
+  var beaten = raw.some(function(o, k){ return k !== ender && typeof o === "number" && o <= v; });
+  return beaten ? v * 2 : v;
+}
+function skyjoTotal(i){
+  return S.rounds.reduce(function(a, r){ return a + skyjoFinal(r.raw, r.ender, i); }, 0);
+}
+function skyjoDone(){
+  return S.rounds.length > 0 && S.names.some(function(_, i){ return skyjoTotal(i) >= 100; });
+}
+
+function viewSkyjo(){
+  var n = S.rounds.length + 1;
+  if (!S.draft) S.draft = { raw:S.names.map(function(){ return null; }), ender:null };
+  var d = S.draft;
+  app.innerHTML = "";
+  app.appendChild(el('<div class="top"><div class="brand"><span class="hat">\u25B2</span> Skyjo</div></div>'));
+  topBtns();
+  var tot = S.names.map(function(_, i){ return skyjoTotal(i); });
+  var high = S.rounds.length ? Math.max.apply(null, tot) : 0;
+  app.appendChild(el('<h1 class="headline num">Runde ' + n + '</h1>'));
+  app.appendChild(el('<p class="meta">' + (S.rounds.length
+    ? 'H\u00f6chster Stand ' + high + ' von 100. '
+    : 'Bis 100 Punkte. ') + 'Fahne setzen, wer die Runde beendet hat.</p>'));
+
+  S.names.forEach(function(nm, i){
+    var v = d.raw[i];
+    var fin = skyjoFinal(d.raw, d.ender, i);
+    var sub;
+    if (typeof v !== "number") sub = "noch offen";
+    else if (fin !== v) sub = v + " verdoppelt auf " + fin;
+    else sub = "Stand " + (tot[i] + fin);
+    var row = el('<div class="row" style="--acc:' + hue(i) + '"><div class="who">' +
+      '<div class="name"><span class="nm">' + esc(nm) + '</span>' +
+      (d.ender === i ? '<span class="badge">beendet</span>' : '') + '</div>' +
+      '<div class="sub wrap">' + sub + '</div></div><div class="acts"></div></div>');
+    var acts = row.querySelector(".acts");
+
+    var flag = el('<button class="check" type="button" aria-pressed="' + (d.ender === i) +
+      '" aria-label="hat die Runde beendet">\u2691</button>');
+    bindTap(flag, function(){ d.ender = (d.ender === i) ? null : i; save(); render(); });
+    acts.appendChild(flag);
+
+    var pill = el('<button class="pill num' + (typeof v !== "number" ? ' zero' : '') + '" type="button">' +
+      (typeof v === "number" ? v : "\u2013") + '</button>');
+    bindTap(pill, function(){
+      keypadSheet("Punkte, " + nm, v, function(nv){ d.raw[i] = nv; save(); render(); });
+    });
+    acts.appendChild(pill);
+    app.appendChild(row);
+  });
+
+  var missing = S.names.filter(function(_, i){ return typeof d.raw[i] !== "number"; });
+  var cta = el('<button class="cta" type="button">Runde eintragen</button>');
+  cta.disabled = missing.length > 0 || d.ender === null;
+  cta.onclick = function(){
+    S.rounds.push({ raw:d.raw.slice(), ender:d.ender });
+    S.draft = null; save(); render();
+  };
+  app.appendChild(cta);
+
+  var note = el('<p class="note"></p>');
+  if (missing.length) {
+    note.textContent = missing.length === S.names.length
+      ? "Punkte der Runde eintragen, Minus geht \u00fcber die Taste plus minus."
+      : "Es fehlen noch die Punkte von " + missing.join(" und ") + ".";
+  } else if (d.ender === null) {
+    note.className = "note warn";
+    note.textContent = "Setz die Fahne bei dem Spieler, der zuerst alle Karten offen hatte.";
+  } else if (skyjoFinal(d.raw, d.ender, d.ender) !== d.raw[d.ender]) {
+    note.textContent = S.names[d.ender] + " hat beendet, aber nicht allein die wenigsten Punkte. Verdoppelt.";
+  } else {
+    note.textContent = S.names[d.ender] + " hat beendet und die wenigsten Punkte. Keine Verdopplung.";
+  }
+  app.appendChild(note);
+  app.appendChild(tabs());
+}
+
+function viewSkyjoTable(){
+  app.innerHTML = "";
+  app.appendChild(el('<div class="top"><div class="brand"><span class="hat">\u25B2</span> Skyjo</div></div>'));
+  topBtns();
+  var tot = S.names.map(function(_, i){ return skyjoTotal(i); });
+  var low = S.rounds.length ? Math.min.apply(null, tot) : 0;
+  app.appendChild(el('<h1 class="headline num">' + S.rounds.length + ' <em>Runden gespielt</em></h1>'));
+  app.appendChild(el('<p class="meta">Fahne heißt, dieser Spieler hat die Runde beendet.</p>'));
+  if (!S.rounds.length) { app.appendChild(tabs()); return; }
+
+  var head = '<tr><th class="rnd">Rd</th>' + S.names.map(function(nm, i){
+    return '<th><i style="--acc:' + hue(i) + '"></i>' + esc(nm.length > 8 ? nm.slice(0,8) + "\u2026" : nm) + '</th>';
+  }).join("") + '</tr>';
+  var run = S.names.map(function(){ return 0; });
+  var body = S.rounds.map(function(r, ri){
+    return '<tr><td class="rnd">' + (ri+1) + '</td>' + S.names.map(function(_, i){
+      var fin = skyjoFinal(r.raw, r.ender, i);
+      run[i] += fin;
+      var mark = (r.ender === i ? "\u2691 " : "") + (fin !== r.raw[i] ? r.raw[i] + "\u00d72" : signed(fin));
+      return '<td><span class="bid ' + (fin <= 0 ? "hit" : "miss") + '">' + mark + '</span>' + run[i] + '</td>';
+    }).join("") + '</tr>';
+  }).join("");
+  var foot = '<tr><th class="rnd">Stand</th>' + tot.map(function(t){
+    return '<td' + (t === low ? ' class="lead"' : '') + '>' + t + '</td>'; }).join("") + '</tr>';
+  app.appendChild(el('<div class="scroller"><table><thead>' + head + '</thead><tbody>' + body +
+    '</tbody><tfoot>' + foot + '</tfoot></table></div>'));
+  app.appendChild(tabs());
+}
+
+function viewSkyjoFinal(){
+  var order = S.names.map(function(nm, i){ return { nm:nm, idx:i, pt:skyjoTotal(i) }; })
+                     .sort(function(a, b){ return a.pt - b.pt; });
+  app.innerHTML = "";
+  app.appendChild(el('<div class="top"><div class="brand"><span class="hat">\u25B2</span> Skyjo</div></div>'));
+  topBtns();
+  app.appendChild(el('<div class="final"><h2>' + esc(order[0].nm) + ' gewinnt</h2>' +
+    '<p>' + order[0].pt + ' Punkte nach ' + S.rounds.length + ' Runden.</p></div>'));
+  order.forEach(function(p, i){
+    app.appendChild(el('<div class="rank' + (i === 0 ? ' first' : '') + '" style="--acc:' + hue(p.idx) + '">' +
+      '<span class="pos num">' + (i+1) + '</span><span class="nm">' + esc(p.nm) +
+      '</span><span class="pt num">' + p.pt + '</span></div>'));
+  });
+
+  var stats = el('<div class="stats"><h3>Auswertung</h3></div>');
+  function line(label, value){ stats.appendChild(el('<div><span>' + label + '</span><b>' + value + '</b></div>')); }
+  var best = { pt:999, who:"", nr:0 };
+  S.rounds.forEach(function(r, ri){
+    S.names.forEach(function(nm, i){
+      var f = skyjoFinal(r.raw, r.ender, i);
+      if (f < best.pt) best = { pt:f, who:nm, nr:ri+1 };
+    });
+  });
+  var ends = S.names.map(function(_, i){ return S.rounds.filter(function(r){ return r.ender === i; }).length; });
+  var most = 0; ends.forEach(function(e, i){ if (e > ends[most]) most = i; });
+  var doubles = S.rounds.filter(function(r){ return skyjoFinal(r.raw, r.ender, r.ender) !== r.raw[r.ender]; }).length;
+  line("Beste Einzelrunde", esc(best.who) + ' <em>' + best.pt + ' in Runde ' + best.nr + '</em>');
+  line("Am h\u00e4ufigsten beendet", esc(S.names[most]) + ' <em>' + ends[most] + ' mal</em>');
+  line("Verdopplungen", doubles + ' <em>von ' + S.rounds.length + ' Runden</em>');
+  app.appendChild(stats);
+
+  var again = el('<button class="cta" type="button">Neues Spiel, gleiche Runde</button>');
+  again.onclick = function(){ S.rounds = []; S.draft = null; S.view = "round"; save(); render(); };
+  app.appendChild(again);
+  var reset = el('<button class="cta ghost" type="button">Spieler \u00e4ndern</button>');
+  reset.onclick = function(){ S.setup = true; save(); render(); };
+  app.appendChild(reset);
+  app.appendChild(tabs());
+}
+
 /* ---------- Bildschirm wachhalten ---------- */
 var lock = null;
 function keepAwake(on){
@@ -916,6 +1366,25 @@ var RULES_WIZARD = [
   ["Stich", "Der erste gespielte Zauberer gewinnt, sonst der h\u00f6chste Trumpf, sonst die h\u00f6chste Karte der angespielten Farbe. Nur Narren: der erste gewinnt."],
   ["Vorhand-Regel", "Optional: Der Geber darf die Summe der Ansagen nicht genau auf die Stichzahl bringen. Dann liegt immer mindestens einer daneben."]
 ];
+var RULES_SKYJO = [
+  ["Ziel", "M\u00f6glichst wenige Punkte sammeln. Sobald jemand bei Rundenende 100 oder mehr Punkte hat, ist das Spiel vorbei und der niedrigste Stand gewinnt."],
+  ["Aufbau", "Jeder bekommt zw\u00f6lf verdeckte Karten in drei Reihen zu viert und deckt zwei davon auf. Die Werte reichen von minus zwei bis zw\u00f6lf."],
+  ["Zug", "Entweder die oberste Karte vom Ablagestapel oder eine vom verdeckten Stapel nehmen. Damit tauschst du eine deiner Karten, oder du wirfst sie ab und deckst daf\u00fcr eine eigene Karte auf."],
+  ["Spalten", "Sind alle drei Karten einer Spalte gleich, fliegt die ganze Spalte raus und z\u00e4hlt null."],
+  ["Rundenende", "Wer zuerst alle zw\u00f6lf Karten offen hat, beendet die Runde. Alle anderen sind noch genau einmal dran, danach wird aufgedeckt und gez\u00e4hlt."],
+  ["Verdopplung", "Wer die Runde beendet hat, aber nicht allein die wenigsten Punkte, bekommt seine Rundenpunkte verdoppelt. Bei null oder Minuspunkten passiert nichts."],
+  ["Punkte", "Jede offene Karte z\u00e4hlt ihren Wert. Minus zwei bis minus eins bringen also Abzug, w\u00e4hrend hohe Karten wehtun."]
+];
+var RULES_PHASE = [
+  ["Ziel", "Zehn Phasen der Reihe nach abschlie\u00dfen. Wer zuerst Phase 10 schafft, gewinnt. Schaffen es mehrere in derselben Runde, entscheiden die wenigsten Punkte."],
+  ["Ablauf", "Ziehen, ablegen, und sobald die eigene Phase auf der Hand ist, wird sie offen ausgelegt. Danach darf man eigene und fremde Auslagen erg\u00e4nzen und versuchen, alle Karten loszuwerden."],
+  ["Runde vorbei", "Sobald jemand seine letzte Karte ablegt, endet die Runde. Alle anderen z\u00e4hlen ihre Handkarten."],
+  ["Punkte", "Karten 1 bis 9 je 5, Karten 10 bis 12 je 10, Aussetzen 15, Joker 25. Punkte sind schlecht, wenige gewinnen. Das Deck hat 108 Karten, darunter 8 Joker und 4 Aussetzen."],
+  ["Zehn Karten", "Pro Zug wird eine Karte gezogen und eine abgeworfen, die Hand bleibt also bei zehn Karten, bis die eigene Phase ausliegt. Erst danach darf man an eigene und fremde Auslagen anlegen und Karten loswerden."],
+  ["Phase verpasst", "Wer seine Phase nicht ausgelegt hat, bleibt in der n\u00e4chsten Runde bei derselben Phase und z\u00e4hlt trotzdem seine Restpunkte."],
+  ["Die Phasen", "1: zwei Drillinge. 2: Drilling und Folge aus 4. 3: Vierling und Folge aus 4. 4: Folge aus 7. 5: Folge aus 8. 6: Folge aus 9. 7: zwei Vierlinge. 8: sieben Karten einer Farbe. 9: F\u00fcnfling und Paar. 10: F\u00fcnfling und Drilling."],
+  ["Joker und Aussetzen", "Der Joker ersetzt jede Karte. Aussetzen setzt einen Mitspieler eine Runde aus und kann nicht abgelegt werden."]
+];
 var RULES_KNIFFEL = [
   ["Ziel", "Dreizehn Felder, jedes wird genau einmal gef\u00fcllt. Wer am Ende die meisten Punkte hat, gewinnt."],
   ["Zug", "Bis zu drei W\u00fcrfe pro Zug. Nach dem ersten und zweiten Wurf darfst du beliebige W\u00fcrfel liegen lassen und den Rest neu werfen."],
@@ -928,8 +1397,8 @@ var RULES_KNIFFEL = [
 function helpButton(){
   var b = el('<button class="menubtn" type="button" aria-label="Spielanleitung">?</button>');
   b.onclick = function(){
-    var sheet = el('<div class="sheet"><div class="panel scrollable"><div class="head">' + (S.game === "kniffel" ? "Kniffel" : "Wizard") + ' in Kurzform</div>' +
-      '<div class="rules-body">' + (S.game === "kniffel" ? RULES_KNIFFEL : RULES_WIZARD).map(function(r){
+    var sheet = el('<div class="sheet"><div class="panel scrollable"><div class="head">' + (S.game === "kniffel" ? "Kniffel" : S.game === "phase10" ? "Phase 10" : S.game === "skyjo" ? "Skyjo" : "Wizard") + ' in Kurzform</div>' +
+      '<div class="rules-body">' + (S.game === "kniffel" ? RULES_KNIFFEL : S.game === "phase10" ? RULES_PHASE : S.game === "skyjo" ? RULES_SKYJO : RULES_WIZARD).map(function(r){
         return '<section><h3>' + r[0] + '</h3><p>' + r[1] + '</p></section>'; }).join("") + '</div></div></div>');
     var close = el('<button type="button">Schlie\u00dfen</button>');
     close.onclick = function(){ sheet.remove(); };
@@ -959,6 +1428,33 @@ function openMenu(){
     var b = el('<button type="button"' + (cls ? ' class="' + cls + '"' : '') + '>' + label + '</button>');
     b.onclick = function(){ close(); fn(); };
     panel.appendChild(b);
+  }
+  if (S.game === "phase10" || S.game === "skyjo") {
+    if (S.draft) {
+      item("Eingaben dieser Runde zur\u00fccksetzen", "", function(){
+        S.draft = null; S.view = "round"; save(); render();
+      });
+    }
+    if (S.rounds.length) {
+      item("Runde " + S.rounds.length + " l\u00f6schen", "", function(){
+        S.rounds.pop(); S.draft = null; S.view = "round"; save(); render();
+      });
+    }
+    item("Farbe wechseln", "", function(){
+      var i = 0;
+      THEMES.forEach(function(t, k){ if (t.id === S.theme) i = k; });
+      S.theme = THEMES[(i + 1) % THEMES.length].id; save(); render();
+    });
+    item("Neues Spiel, gleiche Spieler", "danger", function(){
+      if (confirm("Alle Runden verwerfen und neu anfangen?")) {
+        S.rounds = []; S.draft = null; S.view = "round"; save(); render();
+      }
+    });
+    item("Zur\u00fcck zum Startmen\u00fc", "danger", function(){ S.setup = true; save(); render(); });
+    item("Abbrechen", "", function(){});
+    sheet.onclick = function(e){ if (e.target === sheet) sheet.remove(); };
+    document.body.appendChild(sheet);
+    return;
   }
   if (S.game === "kniffel") {
     item("Farbe wechseln", "", function(){
@@ -1013,6 +1509,8 @@ function openMenu(){
 function tabs(){
   var first;
   if (S.game === "kniffel") first = kniffelDone() ? "Ergebnis" : "Block";
+  else if (S.game === "phase10") first = p10Done() ? "Ergebnis" : "Runde";
+  else if (S.game === "skyjo") first = skyjoDone() ? "Ergebnis" : "Runde";
   else first = S.rounds.length >= totalRounds() ? "Ergebnis" : "Runde";
   var node = el('<nav class="tabs"><div class="inner">' +
     '<button type="button">' + first + '</button>' +
@@ -1040,6 +1538,16 @@ function render(){
   applyTheme();
   keepAwake(!!S.names.length && !S.setup);
   if (S.setup || !S.names.length) return viewSetup();
+  if (S.game === "skyjo") {
+    if (S.view === "table") return viewSkyjoTable();
+    if (skyjoDone()) return viewSkyjoFinal();
+    return viewSkyjo();
+  }
+  if (S.game === "phase10") {
+    if (S.view === "table") return viewPhaseTable();
+    if (p10Done()) return viewPhaseFinal();
+    return viewPhase();
+  }
   if (S.game === "kniffel") {
     if (S.view === "table") return viewKniffelTable();
     if (kniffelDone()) return viewKniffelFinal();
