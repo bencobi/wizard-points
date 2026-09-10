@@ -162,6 +162,8 @@
     border:1px solid var(--hair); border-radius:var(--r); margin-bottom:8px; position:relative; overflow:hidden}
   .rank::before{content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--acc)}
   .rank.first{background:linear-gradient(90deg, var(--tint), var(--glass) 65%)}
+  .rank.tap{width:100%; text-align:left; font:inherit}
+  .rank.tap:active{background:var(--glass-2)}
   .rank .pos{font-size:15px; font-weight:800; color:var(--dim); width:18px}
   .rank .nm{flex:1; min-width:0; font-weight:700; overflow:hidden}
   .rank .nm .sub{display:block; font-size:12px; font-weight:600; color:var(--dim);
@@ -341,8 +343,9 @@
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
 var KEY = "wizard:state";
-// Adresse der Neon Data API. Zum Wechseln des Anbieters nur diese Zeile anfassen.
-var API = "https://ep-rapid-unit-b2adyvou.apirest.c-6.eu-central-1.aws.neon.tech/neondb/rest/v1";
+// Adresse des Vermittlers vor der Datenbank.
+// Zum Wechseln des Anbieters nur diese Zeile anfassen.
+var API = "https://spielblock-api.bencobi.workers.dev";
 var store = (function(){
   if (window.storage && typeof window.storage.get === "function") {
     return {
@@ -1466,11 +1469,17 @@ function syncNow(){
   .then(function(){ return rpc("partien_lesen", { p_code: code }); })
   .then(function(rows){
     var known = {};
-    ALL.history.forEach(function(h){ known[h.id] = true; });
+    ALL.history.forEach(function(h){ known[h.id] = h; });
     (rows || []).forEach(function(r){
-      if (!known[r.id]) {
-        ALL.history.push({ id: r.id, game: r.spiel, date: String(r.gespielt_am).slice(0, 10),
-                           rows: r.ergebnis, synced: true });
+      var entry = { id: r.id, game: r.spiel, date: String(r.gespielt_am).slice(0, 10),
+                    rows: r.ergebnis, synced: true };
+      if (known[r.id]) {
+        known[r.id].rows = entry.rows;
+        known[r.id].game = entry.game;
+        known[r.id].date = entry.date;
+        known[r.id].synced = true;
+      } else {
+        ALL.history.push(entry);
       }
     });
     ALL.history.sort(function(a, b){ return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
@@ -1515,6 +1524,52 @@ function logButton(order){
   return b;
 }
 
+
+function renamePlayer(from, to){
+  to = to.trim();
+  if (!to) return;
+  var key = from.trim().toLowerCase();
+  ALL.history.forEach(function(h){
+    h.rows.forEach(function(r){
+      if (String(r.name).trim().toLowerCase() === key) r.name = to;
+    });
+  });
+  save();
+  if (ALL.group) {
+    rpc("namen_umbenennen", { p_code: ALL.group, p_von: from, p_nach: to })
+      .then(function(){ ALL.syncErr = null; })
+      .catch(function(e){ ALL.syncErr = "Umbenennen nicht \u00fcbertragen: " + (e.message || ""); })
+      .then(function(){ save(); render(); });
+  } else {
+    render();
+  }
+}
+
+function playerSheet(name, others){
+  var sheet = el('<div class="sheet"><div class="panel scrollable"><div class="head">' + esc(name) + '</div>' +
+    '<p class="hintline" style="padding:0 16px">Zusammenf\u00fchren, wenn derselbe Spieler doppelt in der Liste steht.</p>' +
+    '</div></div>');
+  var panel = sheet.querySelector(".panel");
+  function item(label, cls, fn){
+    var b = el('<button type="button"' + (cls ? ' class="' + cls + '"' : '') + '>' + label + '</button>');
+    b.onclick = function(){ sheet.remove(); fn(); };
+    panel.appendChild(b);
+  }
+  others.forEach(function(o){
+    item("Mit " + esc(o) + " zusammenf\u00fchren", "", function(){
+      if (confirm(name + " und " + o + " zusammenf\u00fchren? Alle Partien laufen danach auf " + o + ".")) {
+        renamePlayer(name, o);
+      }
+    });
+  });
+  item("Namen \u00e4ndern", "", function(){
+    var neu = prompt("Neuer Name f\u00fcr " + name, name);
+    if (neu) renamePlayer(name, neu);
+  });
+  item("Abbrechen", "", function(){});
+  sheet.onclick = function(e){ if (e.target === sheet) sheet.remove(); };
+  document.body.appendChild(sheet);
+}
 
 function groupBox(){
   var box = el('<div></div>');
@@ -1629,12 +1684,17 @@ function viewStats(){
 
   people.forEach(function(p, i){
     var quote = Math.round(100 * p.wins / p.games);
-    app.appendChild(el('<div class="rank' + (i === 0 ? ' first' : '') + '" style="--acc:' + hue(i) + '">' +
+    var row = el('<button class="rank tap' + (i === 0 ? ' first' : '') + '" type="button" style="--acc:' + hue(i) + '">' +
       '<span class="pos num">' + (i+1) + '</span>' +
       '<span class="nm">' + esc(p.name) + '<span class="sub">' + p.wins + ' von ' + p.games +
-      ' gewonnen, bester Wert ' + p.best + '</span></span>' +
-      '<span class="pt num">' + quote + '%</span></div>'));
+      ' gewonnen' + (filter === "all" ? '' : ', bester Wert ' + p.best) + '</span></span>' +
+      '<span class="pt num">' + quote + '%</span></button>');
+    bindTap(row, function(){
+      playerSheet(p.name, people.filter(function(o){ return o !== p; }).map(function(o){ return o.name; }));
+    });
+    app.appendChild(row);
   });
+  app.appendChild(el('<p class="hintline">Namen antippen, um doppelte Spieler zusammenzuf\u00fchren.</p>'));
 
   app.appendChild(el('<p class="group">Letzte Partien</p>'));
   list.slice().reverse().slice(0, 12).forEach(function(h){
