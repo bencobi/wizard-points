@@ -374,7 +374,7 @@ var GAMES = [
 function fresh(){ return { theme:"light", cur:null, games:{}, history:[] }; }
 function newGame(id, names){
   return { game:id, names:names || [], mode:"up", strict:false,
-           rounds:[], draft:null, sheet:[], at:0, view:"round", setup:true };
+           rounds:[], draft:null, sheet:[], at:0, view:"round", logged:null, setup:true };
 }
 function lastNames(){
   var out = [];
@@ -546,6 +546,7 @@ function viewSetup(){
     S.draft = null;
     S.at = 0;
     S.view = "round";
+    S.logged = null;
     S.setup = false;
     save(); render();
   };
@@ -929,7 +930,7 @@ function viewKniffelFinal(){
 
   app.appendChild(logButton(order));
   var again = el('<button class="cta" type="button">Neues Spiel, gleiche Runde</button>');
-  again.onclick = function(){ S.sheet = S.names.map(function(){ return {}; }); S.at = 0; S.logged = false; S.view = "round"; save(); render(); };
+  again.onclick = function(){ S.sheet = S.names.map(function(){ return {}; }); S.at = 0; S.logged = null; S.view = "round"; save(); render(); };
   app.appendChild(again);
   var reset = el('<button class="cta ghost" type="button">Spieler \u00e4ndern</button>');
   reset.onclick = function(){ S.setup = true; save(); render(); };
@@ -1148,7 +1149,7 @@ function viewPhaseFinal(){
 
   app.appendChild(logButton(order));
   var again = el('<button class="cta" type="button">Neues Spiel, gleiche Runde</button>');
-  again.onclick = function(){ S.rounds = []; S.draft = null; S.logged = false; S.view = "round"; save(); render(); };
+  again.onclick = function(){ S.rounds = []; S.draft = null; S.logged = null; S.view = "round"; save(); render(); };
   app.appendChild(again);
   var reset = el('<button class="cta ghost" type="button">Spieler \u00e4ndern</button>');
   reset.onclick = function(){ S.setup = true; save(); render(); };
@@ -1337,7 +1338,7 @@ function viewSkyjoFinal(){
 
   app.appendChild(logButton(order));
   var again = el('<button class="cta" type="button">Neues Spiel, gleiche Runde</button>');
-  again.onclick = function(){ S.rounds = []; S.draft = null; S.logged = false; S.view = "round"; save(); render(); };
+  again.onclick = function(){ S.rounds = []; S.draft = null; S.logged = null; S.view = "round"; save(); render(); };
   app.appendChild(again);
   var reset = el('<button class="cta ghost" type="button">Spieler \u00e4ndern</button>');
   reset.onclick = function(){ S.setup = true; save(); render(); };
@@ -1503,21 +1504,23 @@ function gameInfo(id){
   return out;
 }
 function logButton(order){
-  if (S.logged) {
+  var drin = S.logged && ALL.history.some(function(h){ return h.id === S.logged; });
+  if (drin) {
     var done = el('<p class="note">In der ewigen Tabelle eingetragen.</p>');
     return done;
   }
   var b = el('<button class="cta ghost" type="button">In die ewige Tabelle eintragen</button>');
   b.onclick = function(){
+    var neueId = uuid();
     ALL.history.push({
-      id: uuid(),
+      id: neueId,
       game: S.game,
       date: new Date().toISOString().slice(0, 10),
       rows: order.map(function(p){ return { name:p.nm, pts:p.pt }; }),
       synced: false
     });
     if (ALL.history.length > 200) ALL.history = ALL.history.slice(-200);
-    S.logged = true;
+    S.logged = neueId;
     save(); render();
     if (ALL.group) syncNow();
   };
@@ -1820,7 +1823,7 @@ function openMenu(){
     });
     item("Neues Spiel, gleiche Spieler", "danger", function(){
       if (confirm("Alle Runden verwerfen und neu anfangen?")) {
-        S.rounds = []; S.draft = null; S.view = "round"; save(); render();
+        S.rounds = []; S.draft = null; S.logged = null; S.view = "round"; save(); render();
       }
     });
     item("Zur\u00fcck zum Hauptmen\u00fc", "", function(){ toHome(); save(); render(); });
@@ -1837,7 +1840,7 @@ function openMenu(){
     });
     item("Neues Spiel, gleiche Spieler", "danger", function(){
       if (confirm("Alle Eintr\u00e4ge im Block l\u00f6schen und neu anfangen?")) {
-        S.sheet = S.names.map(function(){ return {}; }); S.at = 0; S.view = "round"; save(); render();
+        S.sheet = S.names.map(function(){ return {}; }); S.at = 0; S.logged = null; S.view = "round"; save(); render();
       }
     });
     item("Zur\u00fcck zum Hauptmen\u00fc", "", function(){ toHome(); save(); render(); });
