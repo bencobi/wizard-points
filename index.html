@@ -342,6 +342,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
+var VERSION = "2026-09-12.3";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -1423,6 +1424,7 @@ function viewHome(){
     b.onclick = function(){ ALL.theme = b.dataset.t; save(); render(); };
   });
   app.appendChild(swatches);
+  app.appendChild(el('<p class="hintline" style="text-align:center;margin-top:14px">Version ' + VERSION + '</p>'));
 }
 
 
