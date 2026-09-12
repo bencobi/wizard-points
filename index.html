@@ -753,8 +753,9 @@ function viewFinal(){
   line("Trefferquote der Runde", Math.round(100 * sum(hits) / (rounds * S.names.length)) + ' <em>Prozent aller Ansagen</em>');
   app.appendChild(stats);
 
+  app.appendChild(logButton(order));
   var again = el('<button class="cta" type="button">Neues Spiel, gleiche Runde</button>');
-  again.onclick = function(){ S.rounds = []; S.draft = null; save(); render(); };
+  again.onclick = function(){ S.rounds = []; S.draft = null; S.logged = null; save(); render(); };
   app.appendChild(again);
   var reset = el('<button class="cta ghost" type="button">Spieler \u00e4ndern</button>');
   reset.onclick = function(){ S.setup = true; save(); render(); };
