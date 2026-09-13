@@ -335,6 +335,12 @@
     border:1px solid var(--hair); color:var(--dim); font-size:13px; font-weight:700}
   .livechip.an{border-color:var(--gold); color:var(--gold); background:var(--tint)}
 
+  .codeeingabe{padding:4px 16px 8px}
+  .codeeingabe input{width:100%; padding:14px; border-radius:13px; background:var(--well);
+    border:1px solid var(--hair); color:var(--text); font-size:22px; font-weight:800;
+    letter-spacing:.12em; text-align:center}
+  .scanbox{padding:8px 16px}
+  .scanbox video{width:100%; border-radius:14px; background:#000; aspect-ratio:1/1; object-fit:cover}
   .qrbox{display:flex; justify-content:center; padding:12px 16px 2px}
   .qrbox .qr{border-radius:10px; background:#fff; padding:8px; box-shadow:0 4px 14px rgba(0,0,0,.18)}
   .bigcode{margin:10px 16px 6px; padding:16px; text-align:center; border-radius:14px;
@@ -367,7 +373,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-13.1";
+var VERSION = "2026-09-13.2";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -2305,15 +2311,93 @@ function codeSheet(){
   document.body.appendChild(sheet);
 }
 
-function beitreten(){
-  var code = normCode(prompt("Beitrittscode eingeben"));
-  if (!code || code.length < 4) return;
+function beitretenMit(code){
+  code = normCode(code);
+  if (!code || code.length < 4) return false;
   if (S) S.live = null;
   toHome();
   ALL.pendingJoin = code;
   ALL.joinLeer = false;
   liveVersion = 0; letzterStand = null;
   save(); render(); liveVerbinden();
+  return true;
+}
+
+function beitreten(){
+  var kannScannen = typeof window.BarcodeDetector === "function" &&
+                    navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
+  var sheet = el('<div class="sheet"><div class="panel"><div class="head">Partie beitreten</div>' +
+    '<p class="hintline" style="padding:0 16px 6px">Code vom Gastgeber eintippen. ' +
+    (kannScannen ? 'Oder den QR-Code scannen.'
+                 : 'Den QR-Code scannst du mit der Kamera-App deines iPhones, dann \u00f6ffnet sich die Partie von selbst.') +
+    '</p><div class="codeeingabe"><input type="text" inputmode="text" autocomplete="off" ' +
+    'autocapitalize="characters" spellcheck="false" placeholder="ABC123" maxlength="24"></div></div></div>');
+  var panel = sheet.querySelector(".panel");
+  var feld = sheet.querySelector("input");
+  feld.oninput = function(){ feld.value = feld.value.toUpperCase(); };
+
+  var los = el('<button type="button">Beitreten</button>');
+  los.onclick = function(){
+    if (beitretenMit(feld.value)) sheet.remove();
+    else feld.focus();
+  };
+  panel.appendChild(los);
+
+  if (kannScannen) {
+    var scan = el('<button type="button">Mit Kamera scannen</button>');
+    scan.onclick = function(){ sheet.remove(); scannen(); };
+    panel.appendChild(scan);
+  }
+  var ab = el('<button type="button">Abbrechen</button>');
+  ab.onclick = function(){ sheet.remove(); };
+  panel.appendChild(ab);
+  sheet.onclick = function(e){ if (e.target === sheet) sheet.remove(); };
+  document.body.appendChild(sheet);
+  setTimeout(function(){ try { feld.focus(); } catch(e){} }, 60);
+}
+
+function codeAusText(text){
+  var m = String(text).match(/[?&]join=([^&\s]+)/);
+  return normCode(m ? decodeURIComponent(m[1]) : text);
+}
+
+function scannen(){
+  var sheet = el('<div class="sheet"><div class="panel"><div class="head">QR-Code scannen</div>' +
+    '<div class="scanbox"><video playsinline muted></video></div></div></div>');
+  var panel = sheet.querySelector(".panel");
+  var video = sheet.querySelector("video");
+  var laeuft = true, strom = null;
+  function zu(){
+    laeuft = false;
+    if (strom) strom.getTracks().forEach(function(t){ t.stop(); });
+    sheet.remove();
+  }
+  var ab = el('<button type="button">Abbrechen</button>');
+  ab.onclick = zu;
+  panel.appendChild(ab);
+  sheet.onclick = function(e){ if (e.target === sheet) zu(); };
+  document.body.appendChild(sheet);
+
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+    .then(function(s2){
+      strom = s2; video.srcObject = s2; video.play();
+      var det = new window.BarcodeDetector({ formats: ["qr_code"] });
+      (function suche(){
+        if (!laeuft) return;
+        det.detect(video).then(function(treffer){
+          if (!laeuft) return;
+          if (treffer && treffer.length) {
+            var code = codeAusText(treffer[0].rawValue);
+            if (code.length >= 4) { zu(); beitretenMit(code); return; }
+          }
+          setTimeout(suche, 300);
+        }).catch(function(){ setTimeout(suche, 500); });
+      })();
+    })
+    .catch(function(){
+      panel.insertBefore(el('<p class="hintline" style="padding:0 16px 8px">Kamera nicht verf\u00fcgbar. ' +
+        'Tipp den Code von Hand ein.</p>'), ab);
+    });
 }
 
 function viewJoining(){
@@ -2338,6 +2422,8 @@ function liveSheet(){
     panel.appendChild(b);
   }
   if (S.live) {
+    panel.appendChild(el('<div class="qrbox">' + (qrSVG(beitrittsLink(S.live), 190) || "") + '</div>'));
+    panel.appendChild(el('<div class="bigcode">' + esc(S.live) + '</div>'));
     panel.appendChild(el('<p class="hintline" style="padding:0 16px 4px">Code <b>' + esc(S.live) + '</b>, ' +
       (sock && sock.readyState === 1 ? liveAnzahl + ' Ger\u00e4te verbunden' : 'nicht verbunden') +
       '. Jedes Ger\u00e4t darf f\u00fcr jeden eintragen. ' +
