@@ -373,7 +373,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-13.2";
+var VERSION = "2026-09-13.3";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -1015,24 +1015,45 @@ function p10Done(){ return S.names.some(function(_, i){ return clearedTen(i); })
 function counterSheet(cur, onPick){
   var counts = [0, 0, 0, 0];
   var sheet = el('<div class="sheet"><div class="panel"><div class="head">Restkarten z\u00e4hlen</div>' +
+    '<p class="hintline" style="padding:0 16px 2px">Wie viele Karten hatte der Spieler noch auf der Hand?</p>' +
     '<div class="counter"></div></div></div>');
   var box = sheet.querySelector(".counter");
+  var summe = el('<div class="total"><span></span><span class="num"></span></div>');
+  var ok = el('<button type="button"></button>');
+
   function sum4(){ return counts.reduce(function(a, c, i){ return a + c * CARDVALS[i].v; }, 0); }
-  function paint(){
-    box.innerHTML = "";
-    CARDVALS.forEach(function(c, i){
-      var row = el('<div class="crow"><div><b>' + c.name + '</b><span>' + c.sub + '</span></div></div>');
-      row.appendChild(stepper(counts[i], c.max, counts[i] > 0, function(v){ counts[i] = v; paint(); }));
-      box.appendChild(row);
-    });
-    var cards = counts.reduce(function(a, c){ return a + c; }, 0);
-    var row = el('<div class="total"><span>' + cards + (cards === 1 ? ' Karte' : ' Karten') +
-      '</span><span class="num">' + sum4() + ' Punkte</span></div>');
-    if (cards > 10) row.firstElementChild.style.color = "var(--miss)";
-    box.appendChild(row);
+  function frisch(){
+    var karten = counts.reduce(function(a, c){ return a + c; }, 0);
+    summe.firstElementChild.textContent = karten + (karten === 1 ? " Karte" : " Karten");
+    summe.firstElementChild.style.color = karten > 10 ? "var(--miss)" : "";
+    summe.lastElementChild.textContent = sum4() + " Punkte";
+    ok.textContent = "\u00dcbernehmen, " + sum4() + " Punkte";
   }
-  paint();
-  var ok = el('<button type="button">\u00dcbernehmen</button>');
+
+  // Die Zeilen werden einmal gebaut und danach nur noch beschriftet.
+  // Vorher wurde bei jedem Tipp alles neu aufgebaut, dabei verschwand
+  // der Knopf unter dem Finger.
+  CARDVALS.forEach(function(c, i){
+    var zeile = el('<div class="crow"><div><b>' + c.name + '</b><span>' + c.sub + '</span></div>' +
+      '<div class="stepper"><button type="button" aria-label="weniger">\u2212</button>' +
+      '<span class="val">0</span>' +
+      '<button type="button" aria-label="mehr">+</button></div></div>');
+    var st = zeile.querySelector(".stepper");
+    var minus = st.children[0], wert = st.children[1], plus = st.children[2];
+    function zeige(){
+      wert.textContent = counts[i];
+      wert.className = "val" + (counts[i] > 0 ? " set" : "");
+      minus.disabled = counts[i] <= 0;
+      plus.disabled = counts[i] >= c.max;
+      frisch();
+    }
+    bindTap(minus, function(){ if (counts[i] > 0) { counts[i]--; zeige(); } });
+    bindTap(plus, function(){ if (counts[i] < c.max) { counts[i]++; zeige(); } });
+    box.appendChild(zeile);
+    zeige();
+  });
+  box.appendChild(summe);
+
   ok.onclick = function(){ sheet.remove(); onPick(sum4()); };
   var cancel = el('<button type="button">Abbrechen</button>');
   cancel.onclick = function(){ sheet.remove(); };
@@ -1040,6 +1061,7 @@ function counterSheet(cur, onPick){
   sheet.querySelector(".panel").appendChild(cancel);
   sheet.onclick = function(e){ if (e.target === sheet) sheet.remove(); };
   document.body.appendChild(sheet);
+  frisch();
 }
 
 function pointsSheet(title, cur, min, onPick){
@@ -1073,13 +1095,23 @@ function viewPhase(){
   app.innerHTML = "";
   app.appendChild(el('<div class="top"><div class="brand"><span class="hat">\u25B2</span> Phase 10</div></div>'));
   topBtns();
+  var anzahl = S.names.length;
+  var geber = (n - 1) % anzahl;
   app.appendChild(el('<h1 class="headline num">Runde ' + n + '</h1>'));
-  app.appendChild(el('<p class="meta">Haken setzen, wer seine Phase geschafft hat, dann die Restpunkte eintragen.</p>'));
+  app.appendChild(el('<p class="meta">' + esc(S.names[geber]) + ' gibt, ' +
+    esc(S.names[(geber + 1) % anzahl]) + ' f\u00e4ngt an. Haken setzen, wer seine Phase geschafft hat.</p>'));
 
-  S.names.forEach(function(nm, i){
+  var reihe = [];
+  for (var k = 0; k < anzahl; k++) reihe.push((geber + 1 + k) % anzahl);
+
+  reihe.forEach(function(i, platz){
+    var nm = S.names[i];
     var ph = phaseOf(i);
+    var zeichen = i === geber ? '<span class="badge">gibt</span>'
+                : (platz === 0 ? '<span class="badge">beginnt</span>' : '');
     var row = el('<div class="row" style="--acc:' + hue(i) + '"><div class="who">' +
-      '<div class="name"><span class="nm">' + esc(nm) + '</span><span class="badge">Phase ' + ph + '</span></div>' +
+      '<div class="name"><span class="nm">' + esc(nm) + '</span>' + zeichen +
+      '<span class="badge">Phase ' + ph + '</span></div>' +
       '<div class="sub wrap">' + PHASES[ph-1] + '</div></div>' +
       '<div class="acts"></div></div>');
     var acts = row.querySelector(".acts");
