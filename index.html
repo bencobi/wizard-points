@@ -365,7 +365,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-12.6";
+var VERSION = "2026-09-12.7";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -781,12 +781,15 @@ function viewFinal(){
   app.appendChild(stats);
 
   app.appendChild(logButton(order));
-  var again = el('<button class="cta" type="button">Neues Spiel, gleiche Runde</button>');
+  var again = el('<button class="cta" type="button"' + ((S.live && !S.hostet) ? ' disabled' : '') +
+    '>Neues Spiel, gleiche Runde</button>');
   again.onclick = function(){ S.rounds = []; S.draft = null; S.logged = null; save(); render(); };
   app.appendChild(again);
-  var reset = el('<button class="cta ghost" type="button">Spieler \u00e4ndern</button>');
-  reset.onclick = function(){ S.setup = true; save(); render(); };
-  app.appendChild(reset);
+  if (!(S.live && !S.hostet)) {
+    var reset = el('<button class="cta ghost" type="button">Spieler \u00e4ndern</button>');
+    reset.onclick = function(){ S.setup = true; save(); render(); };
+    app.appendChild(reset);
+  }
   app.appendChild(tabs());
 }
 
@@ -957,12 +960,15 @@ function viewKniffelFinal(){
   app.appendChild(stats);
 
   app.appendChild(logButton(order));
-  var again = el('<button class="cta" type="button">Neues Spiel, gleiche Runde</button>');
+  var again = el('<button class="cta" type="button"' + ((S.live && !S.hostet) ? ' disabled' : '') +
+    '>Neues Spiel, gleiche Runde</button>');
   again.onclick = function(){ S.sheet = S.names.map(function(){ return {}; }); S.at = 0; S.logged = null; S.view = "round"; save(); render(); };
   app.appendChild(again);
-  var reset = el('<button class="cta ghost" type="button">Spieler \u00e4ndern</button>');
-  reset.onclick = function(){ S.setup = true; save(); render(); };
-  app.appendChild(reset);
+  if (!(S.live && !S.hostet)) {
+    var reset = el('<button class="cta ghost" type="button">Spieler \u00e4ndern</button>');
+    reset.onclick = function(){ S.setup = true; save(); render(); };
+    app.appendChild(reset);
+  }
   app.appendChild(tabs());
 }
 
@@ -1176,12 +1182,15 @@ function viewPhaseFinal(){
   app.appendChild(stats);
 
   app.appendChild(logButton(order));
-  var again = el('<button class="cta" type="button">Neues Spiel, gleiche Runde</button>');
+  var again = el('<button class="cta" type="button"' + ((S.live && !S.hostet) ? ' disabled' : '') +
+    '>Neues Spiel, gleiche Runde</button>');
   again.onclick = function(){ S.rounds = []; S.draft = null; S.logged = null; S.view = "round"; save(); render(); };
   app.appendChild(again);
-  var reset = el('<button class="cta ghost" type="button">Spieler \u00e4ndern</button>');
-  reset.onclick = function(){ S.setup = true; save(); render(); };
-  app.appendChild(reset);
+  if (!(S.live && !S.hostet)) {
+    var reset = el('<button class="cta ghost" type="button">Spieler \u00e4ndern</button>');
+    reset.onclick = function(){ S.setup = true; save(); render(); };
+    app.appendChild(reset);
+  }
   app.appendChild(tabs());
 }
 
@@ -1365,12 +1374,15 @@ function viewSkyjoFinal(){
   app.appendChild(stats);
 
   app.appendChild(logButton(order));
-  var again = el('<button class="cta" type="button">Neues Spiel, gleiche Runde</button>');
+  var again = el('<button class="cta" type="button"' + ((S.live && !S.hostet) ? ' disabled' : '') +
+    '>Neues Spiel, gleiche Runde</button>');
   again.onclick = function(){ S.rounds = []; S.draft = null; S.logged = null; S.view = "round"; save(); render(); };
   app.appendChild(again);
-  var reset = el('<button class="cta ghost" type="button">Spieler \u00e4ndern</button>');
-  reset.onclick = function(){ S.setup = true; save(); render(); };
-  app.appendChild(reset);
+  if (!(S.live && !S.hostet)) {
+    var reset = el('<button class="cta ghost" type="button">Spieler \u00e4ndern</button>');
+    reset.onclick = function(){ S.setup = true; save(); render(); };
+    app.appendChild(reset);
+  }
   app.appendChild(tabs());
 }
 
@@ -1921,6 +1933,13 @@ function liveVerbinden(){
       liveVersion = n.version;
     } else if (n.type === "anwesend") {
       render();
+    } else if (n.type === "ende") {
+      if (S && !S.hostet) {
+        S.live = null;
+        liveTrennen();
+        save(); render();
+        alert("Der Gastgeber hat die Freigabe beendet. Dein Stand bleibt als Kopie erhalten.");
+      }
     }
   };
 }
@@ -1936,10 +1955,26 @@ function liveTrennen(){
   }
 }
 
+function laeuft(st){
+  if (!st || !st.names.length || st.setup) return false;
+  if (st.rounds && st.rounds.length) return true;
+  if (st.sheet && st.sheet.some(function(b){ return b && Object.keys(b).length; })) return true;
+  return false;
+}
 function beitrittUebernehmen(stand){
   var g = stand.game || "wizard";
+  var alt = ALL.games[g];
+  if (laeuft(alt) && !alt.live) {
+    var name = g;
+    GAMES.forEach(function(x){ if (x.id === g) name = x.name; });
+    if (!confirm("Bei dir l\u00e4uft schon eine " + name + "-Partie. Die gemeinsame ersetzt sie. Fortfahren?")) {
+      ALL.pendingJoin = null; ALL.joinLeer = false; liveTrennen(); save(); render();
+      return;
+    }
+  }
   if (!ALL.games[g]) ALL.games[g] = newGame(g, stand.names || []);
   ALL.games[g].live = ALL.pendingJoin;
+  ALL.games[g].hostet = false;
   ALL.pendingJoin = null;
   ALL.joinLeer = false;
   openGame(g);
@@ -2053,7 +2088,9 @@ function liveSheet(){
   if (S.live) {
     panel.appendChild(el('<p class="hintline" style="padding:0 16px 4px">Code <b>' + esc(S.live) + '</b>, ' +
       (sock && sock.readyState === 1 ? liveAnzahl + ' Ger\u00e4te verbunden' : 'nicht verbunden') +
-      '. Jedes Ger\u00e4t darf f\u00fcr jeden eintragen.</p>'));
+      '. Jedes Ger\u00e4t darf f\u00fcr jeden eintragen. ' +
+      (S.hostet ? 'Du bist Gastgeber: Zur\u00fccksetzen und L\u00f6schen liegt bei dir.'
+                : 'Der Gastgeber kann Runden l\u00f6schen und neu starten.') + '</p>'));
     if (navigator.share || navigator.clipboard) {
       item("Code teilen", "", function(){
         var txt = "Spielblock, tritt der Partie bei mit dem Code " + S.live;
@@ -2061,14 +2098,30 @@ function liveSheet(){
         else navigator.clipboard.writeText(S.live);
       });
     }
-    item("Freigabe beenden", "danger", function(){
-      S.live = null; liveTrennen(); save(); render();
-    });
+    if (S.hostet) {
+      item("Freigabe beenden", "danger", function(){
+        if (sock && sock.readyState === 1) {
+          try { sock.send(JSON.stringify({ type: "ende" })); } catch (e){}
+        }
+        S.live = null; S.hostet = false; liveTrennen(); save(); render();
+      });
+    } else {
+      item("Partie verlassen", "danger", function(){
+        var g = S.game;
+        S.live = null; liveTrennen();
+        if (confirm("Die Partie geh\u00f6rt dem Gastgeber. Kopie auf diesem Ger\u00e4t l\u00f6schen?")) {
+          delete ALL.games[g];
+          toHome();
+        }
+        save(); render();
+      });
+    }
   } else {
     panel.appendChild(el('<p class="hintline" style="padding:0 16px 4px">Alle sehen denselben Stand, ' +
       'jedes Ger\u00e4t kann eintragen. Zwei Handys f\u00fcr vier Leute gehen genauso.</p>'));
     item("Partie freigeben", "", function(){
-      S.live = liveCode(); letzterStand = null; liveVersion = 0; save(); render(); liveVerbinden();
+      S.live = liveCode(); S.hostet = true;
+      letzterStand = null; liveVersion = 0; save(); render(); liveVerbinden();
       codeSheet();
     });
     item("Partie beitreten", "", beitreten);
@@ -2173,13 +2226,14 @@ function openMenu(){
     b.onclick = function(){ close(); fn(); };
     panel.appendChild(b);
   }
+  var gast = !!(S.live && !S.hostet);
   if (S.game === "phase10" || S.game === "skyjo") {
-    if (S.draft) {
+    if (S.draft && !gast) {
       item("Eingaben dieser Runde zur\u00fccksetzen", "", function(){
         S.draft = null; S.view = "round"; save(); render();
       });
     }
-    if (S.rounds.length) {
+    if (S.rounds.length && !gast) {
       item("Runde " + S.rounds.length + " l\u00f6schen", "", function(){
         S.rounds.pop(); S.draft = null; S.view = "round"; save(); render();
       });
@@ -2190,7 +2244,7 @@ function openMenu(){
       THEMES.forEach(function(t, k){ if (t.id === ALL.theme) i = k; });
       ALL.theme = THEMES[(i + 1) % THEMES.length].id; save(); render();
     });
-    item("Neues Spiel, gleiche Spieler", "danger", function(){
+    if (!gast) item("Neues Spiel, gleiche Spieler", "danger", function(){
       if (confirm("Alle Runden verwerfen und neu anfangen?")) {
         S.rounds = []; S.draft = null; S.logged = null; S.view = "round"; save(); render();
       }
@@ -2208,7 +2262,7 @@ function openMenu(){
       THEMES.forEach(function(t, k){ if (t.id === ALL.theme) i = k; });
       ALL.theme = THEMES[(i + 1) % THEMES.length].id; save(); render();
     });
-    item("Neues Spiel, gleiche Spieler", "danger", function(){
+    if (!gast) item("Neues Spiel, gleiche Spieler", "danger", function(){
       if (confirm("Alle Eintr\u00e4ge im Block l\u00f6schen und neu anfangen?")) {
         S.sheet = S.names.map(function(){ return {}; }); S.at = 0; S.logged = null; S.view = "round"; save(); render();
       }
@@ -2220,17 +2274,17 @@ function openMenu(){
     return;
   }
   var n = roundNo();
-  if (S.draft && S.rounds.length < totalRounds()) {
+  if (S.draft && S.rounds.length < totalRounds() && !gast) {
     item("Eingaben in Runde " + n + " zur\u00fccksetzen", "", function(){
       S.draft = null; S.view = "round"; save(); render();
     });
   }
-  if (S.rounds.length) {
+  if (S.rounds.length && !gast) {
     item("Runde " + S.rounds.length + " l\u00f6schen und neu eintragen", "", function(){
       S.rounds.pop(); S.draft = null; S.view = "round"; save(); render();
     });
   }
-  item("Vorhand-Regel " + (S.strict ? "ausschalten" : "einschalten"), "", function(){
+  if (!gast) item("Vorhand-Regel " + (S.strict ? "ausschalten" : "einschalten"), "", function(){
     S.strict = !S.strict; save(); render();
   });
   item("Farbe wechseln", "", function(){
@@ -2239,7 +2293,7 @@ function openMenu(){
     ALL.theme = THEMES[(i + 1) % THEMES.length].id; save(); render();
   });
   item(S.live ? "Gemeinsam spielen, Code " + S.live : "Gemeinsam spielen", "", liveSheet);
-  item("Neues Spiel, gleiche Spieler", "danger", function(){
+  if (!gast) item("Neues Spiel, gleiche Spieler", "danger", function(){
     if (confirm("Alle Punkte verwerfen und neu anfangen?")) {
       S.rounds = []; S.draft = null; S.view = "round"; save(); render();
     }
