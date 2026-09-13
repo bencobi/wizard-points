@@ -323,6 +323,14 @@
   .tilenew{flex:none; width:58px; border-radius:var(--r); background:var(--glass);
     border:1px solid var(--hair); font-size:13px; font-weight:700; color:var(--dim)}
 
+  .sub2{display:block; font-size:12px; font-weight:600; color:var(--dim)}
+  .form{display:inline-flex; gap:3px; vertical-align:1px; margin-right:6px}
+  .form i{width:9px; height:9px; border-radius:9px; background:var(--glass-2)}
+  .form i.win{background:linear-gradient(160deg, var(--gold), var(--gold-2))}
+  .form i.loss{background:var(--glass-2); border:1px solid var(--hair)}
+  .line .v.gut{color:var(--hit)}
+  .line .v.schlecht{color:var(--miss)}
+
   /* Umschalter */
   .update{position:fixed; left:12px; right:12px; bottom:calc(74px + env(safe-area-inset-bottom));
     z-index:30; display:flex; align-items:center; gap:10px; padding:11px 12px 11px 15px;
@@ -349,7 +357,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-12.3";
+var VERSION = "2026-09-12.4";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -1644,6 +1652,14 @@ function groupBox(){
   return box;
 }
 
+function nameKey(n){ return String(n).trim().toLowerCase(); }
+function platzVon(h, key){
+  for (var i = 0; i < h.rows.length; i++) {
+    if (nameKey(h.rows[i].name) === key) return i;
+  }
+  return -1;
+}
+
 function viewStats(){
   var filter = ALL.filter || "all";
   var list = ALL.history.filter(function(h){ return filter === "all" || h.game === filter; });
@@ -1676,8 +1692,8 @@ function viewStats(){
   list.forEach(function(h){
     var info = gameInfo(h.game);
     h.rows.forEach(function(r, idx){
-      var key = r.name.trim().toLowerCase();
-      if (!by[key]) by[key] = { name:r.name, games:0, wins:0, best:null, sum:0 };
+      var key = nameKey(r.name);
+      if (!by[key]) by[key] = { key:key, name:r.name, games:0, wins:0, best:null, sum:0 };
       var p = by[key];
       p.games++;
       if (idx === 0) p.wins++;
@@ -1708,6 +1724,58 @@ function viewStats(){
     app.appendChild(row);
   });
   app.appendChild(el('<p class="hintline">Namen antippen, um doppelte Spieler zusammenzuf\u00fchren.</p>'));
+
+  // ----- Kopf an Kopf -----
+  var fokusKey = ALL.focus;
+  var fokus = null;
+  people.forEach(function(pp){ if (pp.key === fokusKey) fokus = pp; });
+  if (!fokus) fokus = people[0];
+
+  if (people.length > 1) {
+    app.appendChild(el('<p class="group">Kopf an Kopf</p>'));
+    var wahl = el('<div class="players"></div>');
+    people.forEach(function(pp){
+      var b = el('<button type="button" aria-current="' + (pp === fokus) + '" style="--acc:' +
+        hue(people.indexOf(pp)) + '"><i></i>' + esc(pp.name) + '</button>');
+      b.onclick = function(){ ALL.focus = pp.key; save(); render(); };
+      wahl.appendChild(b);
+    });
+    app.appendChild(wahl);
+
+    // Form: die letzten fuenf Partien
+    var eigene = list.filter(function(h){ return platzVon(h, fokus.key) >= 0; });
+    var letzte = eigene.slice(-5);
+    var punkte = letzte.map(function(h){
+      return '<i class="' + (platzVon(h, fokus.key) === 0 ? "win" : "loss") + '"></i>';
+    }).join("");
+    var siege5 = letzte.filter(function(h){ return platzVon(h, fokus.key) === 0; }).length;
+    app.appendChild(el('<div class="line"><span>Form<span class="sub2">letzte ' + letzte.length +
+      ' Partien</span></span><span class="v"><span class="form">' + punkte + '</span> ' +
+      siege5 + '</span></div>'));
+
+    // laengste Siegesserie
+    var serie = 0, best = 0;
+    eigene.forEach(function(h){
+      if (platzVon(h, fokus.key) === 0) { serie++; if (serie > best) best = serie; } else serie = 0;
+    });
+    app.appendChild(el('<div class="line calc"><span>L\u00e4ngste Siegesserie</span>' +
+      '<span class="v num">' + best + '</span></div>'));
+
+    // Bilanz gegen jeden anderen
+    people.forEach(function(gegner){
+      if (gegner === fokus) return;
+      var vor = 0, zurueck = 0;
+      list.forEach(function(h){
+        var a = platzVon(h, fokus.key), b = platzVon(h, gegner.key);
+        if (a < 0 || b < 0) return;
+        if (a < b) vor++; else if (b < a) zurueck++;
+      });
+      if (!vor && !zurueck) return;
+      app.appendChild(el('<div class="line"><span>gegen ' + esc(gegner.name) + '</span>' +
+        '<span class="v num' + (vor > zurueck ? " gut" : vor < zurueck ? " schlecht" : "") + '">' +
+        vor + " zu " + zurueck + '</span></div>'));
+    });
+  }
 
   app.appendChild(el('<p class="group">Letzte Partien</p>'));
   list.slice().reverse().slice(0, 12).forEach(function(h){
