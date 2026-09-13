@@ -331,6 +331,10 @@
   .line .v.gut{color:var(--hit)}
   .line .v.schlecht{color:var(--miss)}
 
+  .livechip{flex:none; height:36px; padding:0 11px; border-radius:12px; background:var(--glass);
+    border:1px solid var(--hair); color:var(--dim); font-size:13px; font-weight:700}
+  .livechip.an{border-color:var(--gold); color:var(--gold); background:var(--tint)}
+
   /* Umschalter */
   .update{position:fixed; left:12px; right:12px; bottom:calc(74px + env(safe-area-inset-bottom));
     z-index:30; display:flex; align-items:center; gap:10px; padding:11px 12px 11px 15px;
@@ -357,7 +361,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-12.4";
+var VERSION = "2026-09-12.5";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -431,7 +435,10 @@ function totals(){
   });
 }
 function sum(a){ return a.reduce(function(x,y){ return x+y; }, 0); }
-function save(){ store.set(JSON.stringify(ALL)); }
+function save(){
+  store.set(JSON.stringify(ALL));
+  if (!wendetAn && S && S.live) liveSenden(false);
+}
 
 /* ---------- Hilfen ---------- */
 var app = document.getElementById("app");
@@ -1816,6 +1823,191 @@ function zeigeUpdate(neu){
   document.body.appendChild(bar);
 }
 
+
+/* ---------- Gemeinsam spielen ---------- */
+var sock = null, sockCode = null, liveVersion = 0, letzterStand = null, wendetAn = false, liveAnzahl = 1;
+var verbindet = false, neuTimer = null;
+var LIVE_KEYS = ["game", "names", "mode", "strict", "rounds", "draft", "sheet"];
+
+function standVon(st){
+  var o = {};
+  LIVE_KEYS.forEach(function(k){ o[k] = st[k]; });
+  return JSON.parse(JSON.stringify(o));
+}
+function gleich(a, b){ return JSON.stringify(a) === JSON.stringify(b); }
+
+function patchesAus(alt, neu){
+  var out = [];
+  LIVE_KEYS.forEach(function(k){
+    var a = alt ? alt[k] : undefined, b = neu[k];
+    if (gleich(a, b)) return;
+    var tief = (k === "draft" || k === "sheet") && a && b && typeof a === "object" && typeof b === "object";
+    if (!tief) { out.push({ path: [k], value: b }); return; }
+    var keys = Object.keys(a).concat(Object.keys(b)).filter(function(v, i, arr){ return arr.indexOf(v) === i; });
+    keys.forEach(function(k2){
+      var a2 = a[k2], b2 = b[k2];
+      if (gleich(a2, b2)) return;
+      if (Array.isArray(a2) && Array.isArray(b2) && a2.length === b2.length) {
+        b2.forEach(function(v, i){ if (!gleich(a2[i], v)) out.push({ path: [k, k2, i], value: v }); });
+      } else {
+        out.push({ path: [k, k2], value: b2 });
+      }
+    });
+  });
+  return out;
+}
+function setzeTief(ziel, pfad, wert){
+  var o = ziel;
+  for (var i = 0; i < pfad.length - 1; i++) {
+    var k = pfad[i];
+    if (o[k] === null || typeof o[k] !== "object") o[k] = typeof pfad[i+1] === "number" ? [] : {};
+    o = o[k];
+  }
+  o[pfad[pfad.length - 1]] = wert;
+}
+
+function spaeterNeu(){
+  if (neuTimer || !S || !S.live) return;
+  neuTimer = setTimeout(function(){ neuTimer = null; liveVerbinden(); }, 3000);
+}
+function liveVerbinden(){
+  if (!S || !S.live) return;
+  if (verbindet) return;
+  if (sock && sockCode === S.live && sock.readyState <= 1) return;
+  liveTrennen();
+  verbindet = true;
+  sockCode = S.live;
+  var url = API.replace(/^http/, "ws") + "/live/" + encodeURIComponent(sockCode);
+  try { sock = new WebSocket(url); } catch (e) { sock = null; verbindet = false; spaeterNeu(); return; }
+
+  sock.onopen = function(){ verbindet = false; render(); };
+  sock.onclose = function(){
+    verbindet = false; sock = null; liveAnzahl = 1;
+    spaeterNeu();
+    render();
+  };
+  sock.onerror = function(){ verbindet = false; };
+  sock.onmessage = function(ev){
+    var n;
+    try { n = JSON.parse(ev.data); } catch (e) { return; }
+    if (typeof n.verbunden === "number") liveAnzahl = n.verbunden;
+
+    if (n.type === "stand") {
+      liveVersion = n.version;
+      if (!n.stand) { liveSenden(true); return; }
+      uebernehmen(n.stand);
+    } else if (n.type === "patch") {
+      liveVersion = n.version;
+      var kopie = standVon(S);
+      n.patches.forEach(function(p){ setzeTief(kopie, p.path, p.value); });
+      uebernehmen(kopie);
+    } else if (n.type === "bestaetigt") {
+      liveVersion = n.version;
+    } else if (n.type === "anwesend") {
+      render();
+    }
+  };
+}
+function liveTrennen(){
+  var alt = sock;
+  sock = null; sockCode = null; liveAnzahl = 1; verbindet = false;
+  if (neuTimer) { clearTimeout(neuTimer); neuTimer = null; }
+  if (alt) {
+    // Erst abklemmen, dann schliessen: sonst loest das Schliessen
+    // sofort wieder einen Verbindungsversuch aus.
+    alt.onopen = null; alt.onclose = null; alt.onerror = null; alt.onmessage = null;
+    try { alt.close(); } catch (e){}
+  }
+}
+
+function uebernehmen(stand){
+  if (!stand) return;
+  wendetAn = true;
+  if (stand.game && stand.game !== S.game) {
+    // Die Partie gehoert zu einem anderen Spiel: dorthin wechseln
+    if (!ALL.games[stand.game]) ALL.games[stand.game] = newGame(stand.game, stand.names || []);
+    ALL.games[stand.game].live = S.live;
+    S.live = null;
+    openGame(stand.game);
+    S.setup = false;
+  }
+  LIVE_KEYS.forEach(function(k){ if (k !== "game") S[k] = stand[k]; });
+  S.setup = false;
+  if (S.at >= S.names.length) S.at = 0;
+  letzterStand = standVon(S);
+  wendetAn = false;
+  save();
+  render();
+}
+
+function liveSenden(voll){
+  if (!sock || sock.readyState !== 1 || !S || !S.live) return;
+  var jetzt = standVon(S);
+  if (voll || !letzterStand) {
+    sock.send(JSON.stringify({ type: "setze", base: liveVersion, stand: jetzt }));
+    letzterStand = jetzt;
+    return;
+  }
+  var p = patchesAus(letzterStand, jetzt);
+  if (!p.length) return;
+  sock.send(JSON.stringify({ type: "patch", patches: p }));
+  letzterStand = jetzt;
+}
+
+function liveCode(){
+  var abc = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", out = "";
+  for (var i = 0; i < 6; i++) out += abc.charAt(Math.floor(Math.random() * abc.length));
+  return out;
+}
+
+function liveChip(){
+  if (!S || !S.live) return null;
+  var an = sock && sock.readyState === 1;
+  var chip = el('<button class="livechip' + (an ? " an" : "") + '" type="button">' +
+    (an ? '\u25cf ' + liveAnzahl : '\u25cb') + '</button>');
+  chip.onclick = liveSheet;
+  return chip;
+}
+
+function liveSheet(){
+  var sheet = el('<div class="sheet"><div class="panel"><div class="head">Gemeinsam spielen</div></div></div>');
+  var panel = sheet.querySelector(".panel");
+  function item(label, cls, fn){
+    var b = el('<button type="button"' + (cls ? ' class="' + cls + '"' : '') + '>' + label + '</button>');
+    b.onclick = function(){ sheet.remove(); fn(); };
+    panel.appendChild(b);
+  }
+  if (S.live) {
+    panel.appendChild(el('<p class="hintline" style="padding:0 16px 4px">Code <b>' + esc(S.live) + '</b>, ' +
+      (sock && sock.readyState === 1 ? liveAnzahl + ' Ger\u00e4te verbunden' : 'nicht verbunden') +
+      '. Jedes Ger\u00e4t darf f\u00fcr jeden eintragen.</p>'));
+    if (navigator.share || navigator.clipboard) {
+      item("Code teilen", "", function(){
+        var txt = "Spielblock, tritt der Partie bei mit dem Code " + S.live;
+        if (navigator.share) navigator.share({ text: txt }).catch(function(){});
+        else navigator.clipboard.writeText(S.live);
+      });
+    }
+    item("Freigabe beenden", "danger", function(){
+      S.live = null; liveTrennen(); save(); render();
+    });
+  } else {
+    panel.appendChild(el('<p class="hintline" style="padding:0 16px 4px">Alle sehen denselben Stand, ' +
+      'jedes Ger\u00e4t kann eintragen. Zwei Handys f\u00fcr vier Leute gehen genauso.</p>'));
+    item("Partie freigeben", "", function(){
+      S.live = liveCode(); letzterStand = null; liveVersion = 0; save(); render(); liveVerbinden();
+    });
+    item("Partie beitreten", "", function(){
+      var code = normCode(prompt("Beitrittscode eingeben"));
+      if (!code || code.length < 4) return;
+      S.live = code; letzterStand = null; liveVersion = 0; save(); render(); liveVerbinden();
+    });
+  }
+  item("Abbrechen", "", function(){});
+  sheet.onclick = function(e){ if (e.target === sheet) sheet.remove(); };
+  document.body.appendChild(sheet);
+}
+
 /* ---------- Bildschirm wachhalten ---------- */
 var lock = null;
 function keepAwake(on){
@@ -1890,6 +2082,8 @@ function helpButton(){
 }
 function topBtns(){
   var t = app.querySelector(".top");
+  var chip = liveChip();
+  if (chip) t.appendChild(chip);
   t.appendChild(helpButton());
   t.appendChild(menuButton());
 }
@@ -1920,6 +2114,7 @@ function openMenu(){
         S.rounds.pop(); S.draft = null; S.view = "round"; save(); render();
       });
     }
+    item(S.live ? "Gemeinsam spielen, Code " + S.live : "Gemeinsam spielen", "", liveSheet);
     item("Farbe wechseln", "", function(){
       var i = 0;
       THEMES.forEach(function(t, k){ if (t.id === ALL.theme) i = k; });
@@ -1937,6 +2132,7 @@ function openMenu(){
     return;
   }
   if (S.game === "kniffel") {
+    item(S.live ? "Gemeinsam spielen, Code " + S.live : "Gemeinsam spielen", "", liveSheet);
     item("Farbe wechseln", "", function(){
       var i = 0;
       THEMES.forEach(function(t, k){ if (t.id === ALL.theme) i = k; });
@@ -1972,6 +2168,7 @@ function openMenu(){
     THEMES.forEach(function(t, k){ if (t.id === ALL.theme) i = k; });
     ALL.theme = THEMES[(i + 1) % THEMES.length].id; save(); render();
   });
+  item(S.live ? "Gemeinsam spielen, Code " + S.live : "Gemeinsam spielen", "", liveSheet);
   item("Neues Spiel, gleiche Spieler", "danger", function(){
     if (confirm("Alle Punkte verwerfen und neu anfangen?")) {
       S.rounds = []; S.draft = null; S.view = "round"; save(); render();
@@ -2014,6 +2211,7 @@ function applyTheme(){
 
 function render(){
   applyTheme();
+  if (S && S.live) liveVerbinden(); else if (sock) liveTrennen();
   keepAwake(!!S && !!S.names.length && !S.setup);
   if (!S) return ALL.view === "stats" ? viewStats() : viewHome();
   if (S.setup || !S.names.length) return viewSetup();
