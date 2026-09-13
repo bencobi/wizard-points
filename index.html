@@ -335,6 +335,10 @@
     border:1px solid var(--hair); color:var(--dim); font-size:13px; font-weight:700}
   .livechip.an{border-color:var(--gold); color:var(--gold); background:var(--tint)}
 
+  .bigcode{margin:10px 16px 6px; padding:16px; text-align:center; border-radius:14px;
+    background:var(--tint); border:1px dashed var(--gold); color:var(--text);
+    font-size:34px; font-weight:800; letter-spacing:.14em}
+
   /* Umschalter */
   .update{position:fixed; left:12px; right:12px; bottom:calc(74px + env(safe-area-inset-bottom));
     z-index:30; display:flex; align-items:center; gap:10px; padding:11px 12px 11px 15px;
@@ -361,7 +365,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-12.5";
+var VERSION = "2026-09-12.6";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -1431,6 +1435,10 @@ function viewHome(){
     app.appendChild(tile);
   });
 
+  var join = el('<button class="cta ghost" type="button">Partie beitreten</button>');
+  join.onclick = beitreten;
+  app.appendChild(join);
+
   var stats = el('<button class="cta ghost" type="button">Ewige Tabelle' +
     (ALL.history.length ? ' \u00b7 ' + ALL.history.length +
       (ALL.history.length === 1 ? ' Partie' : ' Partien') : '') + '</button>');
@@ -1867,16 +1875,19 @@ function setzeTief(ziel, pfad, wert){
 }
 
 function spaeterNeu(){
-  if (neuTimer || !S || !S.live) return;
+  if (neuTimer || !aktiverCode()) return;
   neuTimer = setTimeout(function(){ neuTimer = null; liveVerbinden(); }, 3000);
 }
+function aktiverCode(){ return (S && S.live) || ALL.pendingJoin || null; }
+
 function liveVerbinden(){
-  if (!S || !S.live) return;
+  var code = aktiverCode();
+  if (!code) return;
   if (verbindet) return;
-  if (sock && sockCode === S.live && sock.readyState <= 1) return;
+  if (sock && sockCode === code && sock.readyState <= 1) return;
   liveTrennen();
   verbindet = true;
-  sockCode = S.live;
+  sockCode = code;
   var url = API.replace(/^http/, "ws") + "/live/" + encodeURIComponent(sockCode);
   try { sock = new WebSocket(url); } catch (e) { sock = null; verbindet = false; spaeterNeu(); return; }
 
@@ -1894,6 +1905,11 @@ function liveVerbinden(){
 
     if (n.type === "stand") {
       liveVersion = n.version;
+      if (ALL.pendingJoin) {
+        if (!n.stand) { ALL.joinLeer = true; render(); return; }
+        beitrittUebernehmen(n.stand);
+        return;
+      }
       if (!n.stand) { liveSenden(true); return; }
       uebernehmen(n.stand);
     } else if (n.type === "patch") {
@@ -1918,6 +1934,17 @@ function liveTrennen(){
     alt.onopen = null; alt.onclose = null; alt.onerror = null; alt.onmessage = null;
     try { alt.close(); } catch (e){}
   }
+}
+
+function beitrittUebernehmen(stand){
+  var g = stand.game || "wizard";
+  if (!ALL.games[g]) ALL.games[g] = newGame(g, stand.names || []);
+  ALL.games[g].live = ALL.pendingJoin;
+  ALL.pendingJoin = null;
+  ALL.joinLeer = false;
+  openGame(g);
+  S.setup = false;
+  uebernehmen(stand);
 }
 
 function uebernehmen(stand){
@@ -1969,6 +1996,52 @@ function liveChip(){
   return chip;
 }
 
+function codeSheet(){
+  var sheet = el('<div class="sheet"><div class="panel"><div class="head">Partie freigegeben</div>' +
+    '<p class="hintline" style="padding:0 16px 2px">Diesen Code sagen die anderen ihrer App unter ' +
+    '\u201eGemeinsam spielen\u201c. Spieler eintragen muss niemand mehr.</p>' +
+    '<div class="bigcode">' + esc(S.live) + '</div></div></div>');
+  var panel = sheet.querySelector(".panel");
+  if (navigator.share || navigator.clipboard) {
+    var teilen = el('<button type="button">Code teilen</button>');
+    teilen.onclick = function(){
+      var txt = "Spielblock, tritt der Partie bei mit dem Code " + S.live;
+      if (navigator.share) navigator.share({ text: txt }).catch(function(){});
+      else navigator.clipboard.writeText(S.live);
+    };
+    panel.appendChild(teilen);
+  }
+  var zu = el('<button type="button">Fertig</button>');
+  zu.onclick = function(){ sheet.remove(); };
+  panel.appendChild(zu);
+  sheet.onclick = function(e){ if (e.target === sheet) sheet.remove(); };
+  document.body.appendChild(sheet);
+}
+
+function beitreten(){
+  var code = normCode(prompt("Beitrittscode eingeben"));
+  if (!code || code.length < 4) return;
+  if (S) S.live = null;
+  toHome();
+  ALL.pendingJoin = code;
+  ALL.joinLeer = false;
+  liveVersion = 0; letzterStand = null;
+  save(); render(); liveVerbinden();
+}
+
+function viewJoining(){
+  app.innerHTML = "";
+  app.appendChild(el('<div class="top"><div class="brand"><span class="hat">\u25B2</span> Spielblock</div></div>'));
+  app.appendChild(el('<h1 class="headline">Partie beitreten</h1>'));
+  app.appendChild(el('<div class="bigcode">' + esc(ALL.pendingJoin) + '</div>'));
+  app.appendChild(el('<p class="meta" style="text-align:center">' + (ALL.joinLeer
+    ? "Unter diesem Code l\u00e4uft noch keine Partie. Stimmt er, warte kurz, bis der andere freigegeben hat."
+    : (sock && sock.readyState === 1 ? "Verbunden, hole den Spielstand \u2026" : "Verbinde \u2026")) + '</p>'));
+  var ab = el('<button class="cta ghost" type="button">Abbrechen</button>');
+  ab.onclick = function(){ ALL.pendingJoin = null; ALL.joinLeer = false; liveTrennen(); save(); render(); };
+  app.appendChild(ab);
+}
+
 function liveSheet(){
   var sheet = el('<div class="sheet"><div class="panel"><div class="head">Gemeinsam spielen</div></div></div>');
   var panel = sheet.querySelector(".panel");
@@ -1996,12 +2069,9 @@ function liveSheet(){
       'jedes Ger\u00e4t kann eintragen. Zwei Handys f\u00fcr vier Leute gehen genauso.</p>'));
     item("Partie freigeben", "", function(){
       S.live = liveCode(); letzterStand = null; liveVersion = 0; save(); render(); liveVerbinden();
+      codeSheet();
     });
-    item("Partie beitreten", "", function(){
-      var code = normCode(prompt("Beitrittscode eingeben"));
-      if (!code || code.length < 4) return;
-      S.live = code; letzterStand = null; liveVersion = 0; save(); render(); liveVerbinden();
-    });
+    item("Partie beitreten", "", beitreten);
   }
   item("Abbrechen", "", function(){});
   sheet.onclick = function(e){ if (e.target === sheet) sheet.remove(); };
@@ -2211,8 +2281,9 @@ function applyTheme(){
 
 function render(){
   applyTheme();
-  if (S && S.live) liveVerbinden(); else if (sock) liveTrennen();
+  if (aktiverCode()) liveVerbinden(); else if (sock) liveTrennen();
   keepAwake(!!S && !!S.names.length && !S.setup);
+  if (!S && ALL.pendingJoin) return viewJoining();
   if (!S) return ALL.view === "stats" ? viewStats() : viewHome();
   if (S.setup || !S.names.length) return viewSetup();
   if (S.game === "skyjo") {
