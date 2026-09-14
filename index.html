@@ -405,6 +405,20 @@
   .mzeile.danger .mtext b{color:var(--warn)}
   .mzeile.danger .mzeichen{color:var(--warn)}
 
+  .antwort .tipper{position:absolute; right:10px; top:50%; transform:translateY(-50%); display:flex; gap:4px}
+  .antwort .marke{right:auto; left:auto; position:static; transform:none; margin-left:8px}
+  .flieger{width:25px; height:25px; border-radius:50%; background:var(--acc); color:#fff;
+    display:grid; place-items:center; font-size:12px; font-weight:800;
+    box-shadow:0 2px 8px rgba(0,0,0,.18); animation:einflug .5s cubic-bezier(.2,.9,.3,1) both}
+  .flieger.still{animation:none}
+  @keyframes einflug{
+    0%{opacity:0; transform:translateY(-26px) scale(.4)}
+    60%{opacity:1; transform:translateY(3px) scale(1.12)}
+    100%{opacity:1; transform:none}}
+  .nachher{transition:opacity .35s ease}
+  .nachher.wartet{opacity:0; pointer-events:none}
+  @media (prefers-reduced-motion:reduce){ .flieger{animation:none} .nachher{transition:none} }
+
   .wersteht{display:flex; flex-wrap:wrap; gap:7px; justify-content:center; margin:0 0 14px}
   .wp{display:inline-flex; align-items:center; gap:6px; padding:5px 11px 5px 6px; border-radius:999px;
     background:var(--glass-2); border:1px solid var(--hair); opacity:.55;
@@ -478,7 +492,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-14.3";
+var VERSION = "2026-09-14.4";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -2881,6 +2895,7 @@ function viewQuizLobby(){
 }
 
 var meinTipp = null;   // { idx, wert } - bleibt ueber Neuzeichnen hinweg stehen
+var aufGezeigt = -1;   // fuer welche Frage die Aufloesung schon gelaufen ist
 var letzteFrage = null;
 
 function viewCountdown(){
@@ -2922,6 +2937,7 @@ function viewQuizFrage(){
   letzteFrage = f;
   if (z.zeigenAb && Date.now() < z.zeigenAb) return viewCountdown();
   if (meinTipp && meinTipp.idx !== z.idx) meinTipp = null;
+  if (aufGezeigt !== z.idx) aufGezeigt = -1;
   var ichHabe = z.geantwortet.indexOf(meinName()) >= 0;
   quizKopf(null, null);
   app.appendChild(el('<p class="meta">Frage ' + (z.idx + 1) + ' von ' + z.gesamt +
@@ -2999,20 +3015,47 @@ function viewQuizAuf(){
   var f = letzteFrage;
   if (f && f.frage) app.appendChild(el('<h1 class="frage">' + esc(f.frage) + '</h1>'));
 
+  var wenigerBewegung = false;
+  try { wenigerBewegung = window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) {}
+  var sofort = aufGezeigt === z.idx || wenigerBewegung || typeof requestAnimationFrame !== "function";
+  var felder = [];
+
   if (a.typ === "mc" && f && f.optionen) {
     f.optionen.forEach(function(o, i){
       var richtig = i === a.loesung;
       var meins = meinTipp && meinTipp.wert === i;
-      app.appendChild(el('<div class="antwort' + (richtig ? " richtig" : (meins ? " falsch" : " ruhig")) +
-        '"><span class="buchstabe">' + "ABCD".charAt(i) + '</span>' + esc(o) +
+      var endklasse = richtig ? "richtig" : (meins ? "falsch" : "ruhig");
+      var feld = el('<div class="antwort' + (sofort ? " " + endklasse : "") + '">' +
+        '<span class="buchstabe">' + "ABCD".charAt(i) + '</span>' + esc(o) +
         (richtig ? '<span class="marke">richtig</span>' : (meins ? '<span class="marke">dein Tipp</span>' : '')) +
-        '</div>'));
+        '<span class="tipper"></span></div>');
+      feld.setAttribute("data-ende", endklasse);
+      felder.push(feld);
+      app.appendChild(feld);
+    });
+
+    // Erst fliegen die Spieler auf ihre Antwort, danach wird aufgeloest.
+    var flieger = 0;
+    S.names.forEach(function(nm, i){
+      var wahl = a.antworten[nm];
+      if (wahl === undefined || !felder[wahl]) return;
+      var marke = el('<span class="flieger" style="--acc:' + hue(i) + '" title="' + esc(nm) + '">' +
+        esc(nm.charAt(0).toUpperCase()) + '</span>');
+      if (!sofort) marke.style.animationDelay = (flieger * 130) + "ms";
+      else marke.classList.add("still");
+      felder[wahl].querySelector(".tipper").appendChild(marke);
+      flieger++;
     });
   } else {
     app.appendChild(el('<div class="loesung">' +
       esc(String(a.loesung) + (a.einheit ? " " + a.einheit : "")) + '</div>'));
     app.appendChild(zahlenstrahl(a));
   }
+
+  var rest = el('<div class="nachher' + (sofort ? "" : " wartet") + '"></div>');
+  app.appendChild(rest);
+  var vorher = app;
+  app = rest;
   if (a.info) app.appendChild(el('<p class="hintline" style="text-align:center">' + esc(a.info) + '</p>'));
 
   var reihe = S.names.map(function(nm, i){ return { nm: nm, i: i }; }).sort(function(x, y){
@@ -3033,8 +3076,21 @@ function viewQuizAuf(){
       '<span class="sub">' + (punkte ? "+" + punkte : "\u00b10") + '</span></span></div>'));
   });
 
-  rangAnimieren("stand");
+  app = vorher;
 
+  if (!sofort) {
+    var mcFelder = felder.length ? felder : [];
+    quizTakt = setTimeout(function(){
+      mcFelder.forEach(function(feld){ feld.classList.add(feld.getAttribute("data-ende")); });
+      rest.classList.remove("wartet");
+      aufGezeigt = z.idx;
+      rangAnimieren("stand");
+    }, Math.max(900, 380 + 130 * S.names.length));
+  } else {
+    rangAnimieren("stand");
+  }
+
+  app = rest;
   if (S.hostet) {
     var w = el('<button class="cta" type="button">' +
       (z.idx + 1 >= z.gesamt ? (z.modus === "rad" ? "Ergebnis der Runde" : "Ergebnis zeigen") : "N\u00e4chste Frage") + '</button>');
@@ -3043,6 +3099,7 @@ function viewQuizAuf(){
   } else {
     app.appendChild(el('<p class="note">Der Gastgeber schaltet weiter.</p>'));
   }
+  app = vorher;
   app.appendChild(tabs());
 }
 
