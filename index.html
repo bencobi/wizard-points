@@ -405,6 +405,30 @@
   .mzeile.danger .mtext b{color:var(--warn)}
   .mzeile.danger .mzeichen{color:var(--warn)}
 
+  .wersteht{display:flex; flex-wrap:wrap; gap:7px; justify-content:center; margin:0 0 14px}
+  .wp{display:inline-flex; align-items:center; gap:6px; padding:5px 11px 5px 6px; border-radius:999px;
+    background:var(--glass-2); border:1px solid var(--hair); opacity:.55;
+    transition:opacity .3s ease, background .3s ease, border-color .3s ease}
+  .wp b{width:21px; height:21px; border-radius:50%; display:grid; place-items:center;
+    background:var(--hair); color:var(--dim); font-size:11px; font-weight:800}
+  .wp i{font-style:normal; font-size:12.5px; font-weight:600; color:var(--dim)}
+  .wp.fertig{opacity:1; background:var(--tint); border-color:var(--acc)}
+  .wp.fertig b{background:var(--acc); color:#fff}
+  .wp.fertig i{color:var(--text)}
+
+  .strahl{position:relative; height:104px; margin:6px 12px 18px}
+  .strahl .linie{position:absolute; left:0; right:0; top:52px; height:3px; border-radius:2px; background:var(--hair)}
+  .strahl .ziel{position:absolute; top:34px; bottom:34px; width:3px; background:#2E9E5B; border-radius:2px}
+  .strahl .ziel span{position:absolute; top:-21px; left:50%; transform:translateX(-50%); white-space:nowrap;
+    font-size:11.5px; font-weight:800; color:#2E9E5B}
+  .strahl .tipp{position:absolute; top:52px; transform:translateX(-50%)}
+  .strahl .tipp i{display:block; width:11px; height:11px; border-radius:50%; background:var(--acc);
+    border:2px solid var(--card); margin:-4px auto 0}
+  .strahl .tipp span{position:absolute; top:11px; left:50%; transform:translateX(-50%); white-space:nowrap;
+    font-size:11px; font-weight:700; color:var(--dim)}
+  .strahl .tipp.e1 span{top:27px}
+  .strahl .tipp.e2 span{top:43px}
+
   .countdown{position:relative; width:min(54vw,190px); margin:14px auto 10px; aspect-ratio:1/1}
   .countdown svg{width:100%; height:100%; transform:rotate(-90deg)}
   .countdown .bahn{fill:none; stroke:var(--glass-2); stroke-width:9}
@@ -454,7 +478,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-14.2";
+var VERSION = "2026-09-14.3";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -2345,6 +2369,7 @@ function liveVerbinden(){
     } else if (n.type === "bestaetigt") {
       liveVersion = n.version;
     } else if (n.type === "quiz") {
+      if (n.gestellt) GESTELLT = n.gestellt;
       var vorher = QUIZ;
       QUIZ = n.zustand;
       if (nurFortschritt(vorher, QUIZ)) fortschrittAuffrischen();
@@ -2632,6 +2657,7 @@ function liveSheet(){
 
 
 /* ---------- Quiz ---------- */
+var GESTELLT = [];
 var QUIZ = null, quizLaedt = false, quizFehler = null, quizTakt = null;
 var THEMEN = ["Allgemeinwissen", "Musik der 90er", "Filme und Serien", "Tiere und Natur",
               "Fu\u00dfball", "Weltgeschichte", "Essen und Trinken", "Technik und Erfindungen",
@@ -2655,11 +2681,83 @@ function nurFortschritt(alt, neu){
   if ((alt.geantwortet.indexOf(ich) >= 0) !== (neu.geantwortet.indexOf(ich) >= 0)) return false;
   return true;
 }
+function zahlenstrahl(a){
+  var werte = [], namen = [];
+  S.names.forEach(function(nm, i){
+    var w = Number(a.antworten[nm]);
+    if (isFinite(w)) { werte.push(w); namen.push({ nm: nm, w: w, i: i }); }
+  });
+  var loesung = Number(a.loesung);
+  if (!namen.length || !isFinite(loesung)) return el('<div></div>');
+
+  var alle = werte.concat([loesung]);
+  var min = Math.min.apply(null, alle), max = Math.max.apply(null, alle);
+  var spanne = max - min || Math.max(1, Math.abs(loesung) * 0.2);
+  min -= spanne * 0.12; max += spanne * 0.12;
+  var pos = function(w){ return ((w - min) / (max - min)) * 100; };
+  var zahl = function(w){
+    var abs = Math.abs(w);
+    if (abs >= 10000) return Math.round(w / 1000) + "k";
+    return (Math.round(w * 100) / 100) + "";
+  };
+
+  var box = el('<div class="strahl"></div>');
+  box.appendChild(el('<div class="linie"></div>'));
+  box.appendChild(el('<div class="ziel" style="left:' + pos(loesung).toFixed(2) + '%">' +
+    '<span>' + esc(zahl(loesung)) + '</span></div>'));
+
+  // dicht beieinander liegende Tipps abwechselnd hoeher setzen
+  var sortiert = namen.slice().sort(function(x, y){ return x.w - y.w; });
+  var letzte = -99, etage = 0;
+  sortiert.forEach(function(e){
+    var p = pos(e.w);
+    etage = (p - letzte < 12) ? (etage + 1) % 3 : 0;
+    letzte = p;
+    box.appendChild(el('<div class="tipp e' + etage + '" style="left:' + p.toFixed(2) + '%; --acc:' + hue(e.i) + '">' +
+      '<i></i><span>' + esc(e.nm.charAt(0).toUpperCase()) + " " + esc(zahl(e.w)) + '</span></div>'));
+  });
+  return box;
+}
+
+var RANG_POS = {};
+function rangAnimieren(schluessel){
+  var zeilen = [].slice.call(app.querySelectorAll(".rank[data-nm]"));
+  if (!zeilen.length) return;
+  var alt = RANG_POS[schluessel] || {}, neu = {}, bewegt = [];
+  zeilen.forEach(function(zeile){
+    var nm = zeile.getAttribute("data-nm");
+    neu[nm] = zeile.offsetTop;
+    if (alt[nm] !== undefined && alt[nm] !== neu[nm]) {
+      zeile.style.transition = "none";
+      zeile.style.transform = "translateY(" + (alt[nm] - neu[nm]) + "px)";
+      bewegt.push(zeile);
+    }
+  });
+  RANG_POS[schluessel] = neu;
+  if (!bewegt.length || typeof requestAnimationFrame !== "function") return;
+  requestAnimationFrame(function(){
+    bewegt.forEach(function(zeile){
+      zeile.style.transition = "transform .5s cubic-bezier(.2,.8,.25,1)";
+      zeile.style.transform = "none";
+    });
+  });
+}
+
+function spielerPunkte(z){
+  var reihe = el('<div class="wersteht fortschritt"></div>');
+  S.names.forEach(function(nm, i){
+    var da = z.geantwortet.indexOf(nm) >= 0;
+    reihe.appendChild(el('<span class="wp' + (da ? " fertig" : "") + '" style="--acc:' + hue(i) +
+      '" title="' + esc(nm) + '"><b>' + esc(nm.charAt(0).toUpperCase()) + '</b><i>' + esc(nm) + '</i></span>'));
+  });
+  return reihe;
+}
+
 function fortschrittAuffrischen(){
-  var zeile = app.querySelector(".meta.fortschritt");
-  if (!zeile) { render(); return; }
-  zeile.textContent = "Frage " + (QUIZ.idx + 1) + " von " + QUIZ.gesamt +
-    " \u00b7 " + QUIZ.geantwortet.length + " von " + S.names.length + " geantwortet";
+  var reihe = app.querySelector(".wersteht.fortschritt");
+  if (!reihe) { render(); return; }
+  var neu = spielerPunkte(QUIZ);
+  reihe.innerHTML = neu.innerHTML;
 }
 
 function quizSenden(obj){
@@ -2674,7 +2772,7 @@ function quizFragenHolen(thema, anzahl){
   fetch(API + "/fragen", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ thema: thema, anzahl: anzahl })
+    body: JSON.stringify({ thema: thema, anzahl: anzahl, vermeiden: GESTELLT })
   }).then(function(r){
     return r.json().then(function(d){ if (!r.ok) throw new Error(d.message || ("Fehler " + r.status)); return d; });
   }).then(function(d){
@@ -2826,8 +2924,9 @@ function viewQuizFrage(){
   if (meinTipp && meinTipp.idx !== z.idx) meinTipp = null;
   var ichHabe = z.geantwortet.indexOf(meinName()) >= 0;
   quizKopf(null, null);
-  app.appendChild(el('<p class="meta fortschritt">Frage ' + (z.idx + 1) + ' von ' + z.gesamt +
-    ' \u00b7 ' + z.geantwortet.length + ' von ' + S.names.length + ' geantwortet</p>'));
+  app.appendChild(el('<p class="meta">Frage ' + (z.idx + 1) + ' von ' + z.gesamt +
+    (z.thema ? ' \u00b7 ' + esc(z.thema) : '') + '</p>'));
+  app.appendChild(spielerPunkte(z));
 
   var balken = el('<div class="uhr"><i></i><span></span></div>');
   app.appendChild(balken);
@@ -2912,6 +3011,7 @@ function viewQuizAuf(){
   } else {
     app.appendChild(el('<div class="loesung">' +
       esc(String(a.loesung) + (a.einheit ? " " + a.einheit : "")) + '</div>'));
+    app.appendChild(zahlenstrahl(a));
   }
   if (a.info) app.appendChild(el('<p class="hintline" style="text-align:center">' + esc(a.info) + '</p>'));
 
@@ -2926,15 +3026,18 @@ function viewQuizAuf(){
     var text = wert === undefined ? "keine Antwort"
       : (a.typ === "mc" ? "ABCD".charAt(wert) : String(wert) + (a.einheit ? " " + a.einheit : ""));
     if (a.tempo && a.tempo[nm]) text += " \u00b7 " + a.tempo[nm] + " Tempo";
-    app.appendChild(el('<div class="rank' + (punkte >= 100 ? ' first' : '') + '" style="--acc:' + hue(i) + '">' +
+    app.appendChild(el('<div class="rank' + (punkte >= 100 ? ' first' : '') + '" data-nm="' + esc(nm) +
+      '" style="--acc:' + hue(i) + '">' +
       '<span class="nm">' + esc(nm) + '<span class="sub">' + esc(text) + '</span></span>' +
       '<span class="pt num">' + (z.punkte[nm] || 0) +
       '<span class="sub">' + (punkte ? "+" + punkte : "\u00b10") + '</span></span></div>'));
   });
 
+  rangAnimieren("stand");
+
   if (S.hostet) {
     var w = el('<button class="cta" type="button">' +
-      (z.idx + 1 >= z.gesamt ? (z.modus === "rad" ? "Zwischenstand" : "Ergebnis zeigen") : "N\u00e4chste Frage") + '</button>');
+      (z.idx + 1 >= z.gesamt ? (z.modus === "rad" ? "Ergebnis der Runde" : "Ergebnis zeigen") : "N\u00e4chste Frage") + '</button>');
     w.onclick = function(){ quizSenden({ tat: "weiter" }); };
     app.appendChild(w);
   } else {
@@ -3104,12 +3207,14 @@ function radAnsicht(z){
     quizKopf("Gesamtstand", letzte ? "Alle waren dran. Gleich das Endergebnis."
       : "Noch " + (S.names.length - z.dran - 1) + " Spieler, dann ist Schluss.");
     stand.forEach(function(p, i){
-      app.appendChild(el('<div class="rank' + (i === 0 ? ' first' : '') + '" style="--acc:' + hue(p.idx) + '">' +
+      app.appendChild(el('<div class="rank' + (i === 0 ? ' first' : '') + '" data-nm="' + esc(p.nm) +
+        '" style="--acc:' + hue(p.idx) + '">' +
         '<span class="pos num">' + (i + 1) + '</span>' +
         '<span class="nm">' + esc(p.nm) + '<span class="sub">' +
         (p.zu > 0 ? "diese Runde +" + p.zu : "diese Runde nichts") + '</span></span>' +
         '<span class="pt num">' + p.pt + '</span></div>'));
     });
+    rangAnimieren("stand");
     if (S.hostet) {
       var w = el('<button class="cta" type="button">' +
         (letzte ? "Endergebnis zeigen" : S.names[z.dran + 1] + " ans Rad") + '</button>');
@@ -3137,7 +3242,7 @@ function radFragenHolen(thema, anzahl){
   if (radHolt) return;
   radHolt = true;
   fetch(API + "/fragen", { method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ thema: thema, anzahl: anzahl }) })
+    body: JSON.stringify({ thema: thema, anzahl: anzahl, vermeiden: GESTELLT }) })
     .then(function(r){ return r.json().then(function(d){ if (!r.ok) throw new Error(d.message); return d; }); })
     .then(function(d){ radHolt = false; quizSenden({ tat: "fragen", fragen: d.fragen }); })
     .catch(function(e){ radHolt = false; quizSenden({ tat: "fehler", text: "Fragen: " + (e.message || "Fehler") }); });
