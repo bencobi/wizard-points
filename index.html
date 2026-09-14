@@ -433,6 +433,16 @@
   .strahl{position:relative; height:104px; margin:6px 12px 18px}
   .strahl .linie{position:absolute; left:0; right:0; top:52px; height:3px; border-radius:2px; background:var(--hair)}
   .strahl .ziel{position:absolute; top:34px; bottom:34px; width:3px; background:#2E9E5B; border-radius:2px}
+  .strahl.laeuft .linie{transform:scaleX(0); transform-origin:left center; transition:transform .5s ease}
+  .strahl.laeuft.an .linie{transform:none}
+  .strahl.laeuft .ziel{opacity:0; transform:translateY(-10px); transition:opacity .35s ease, transform .35s ease}
+  .strahl.laeuft.an .ziel{opacity:1; transform:none; transition-delay:.2s}
+  .strahl.laeuft .tipp{transition:left .55s cubic-bezier(.2,.8,.25,1)}
+  .strahl.laeuft .tipp span{opacity:0; transform:translateY(8px);
+    transition:opacity .3s ease, transform .3s ease}
+  .strahl.laeuft.an .tipp span{opacity:1; transform:none; transition-delay:.7s}
+  @media (prefers-reduced-motion:reduce){ .strahl.laeuft .linie, .strahl.laeuft .ziel,
+    .strahl.laeuft .tipp, .strahl.laeuft .tipp span{transition:none} }
   .strahl .ziel span{position:absolute; top:-21px; left:50%; transform:translateX(-50%); white-space:nowrap;
     font-size:11.5px; font-weight:800; color:#2E9E5B}
   .strahl .tipp{position:absolute; top:52px; transform:translateX(-50%)}
@@ -492,7 +502,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-14.4";
+var VERSION = "2026-09-14.5";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -611,6 +621,48 @@ function merkeEingabe(feld, schluessel){
 function entwurfWeg(schluessel){
   delete ENTWURF[schluessel];
   if (ENTWURF_FOKUS === schluessel) ENTWURF_FOKUS = null;
+}
+
+function fmtZahl(n){
+  if (n === null || n === undefined || !isFinite(Number(n))) return String(n);
+  var z = Number(n), neg = z < 0, abs = Math.abs(z);
+  var ganz = Math.floor(abs), rest = abs - ganz;
+  var text = String(ganz).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  if (rest > 0.0001) {
+    var nk = String(Math.round(rest * 100) / 100).slice(2, 4);
+    if (nk) text += "," + nk;
+  }
+  return (neg ? "\u2212" : "") + text;
+}
+function fmtKurz(n){
+  var abs = Math.abs(Number(n));
+  if (abs >= 1000000) return fmtZahl(Math.round(Number(n) / 100000) / 10) + " Mio";
+  return fmtZahl(n);
+}
+function parseZahl(text){
+  var roh = String(text).replace(/[\s\u2212]/g, function(t){ return t === "\u2212" ? "-" : ""; })
+                        .replace(/\./g, "").replace(",", ".");
+  var v = parseFloat(roh);
+  return isFinite(v) ? v : NaN;
+}
+// Trennt schon beim Tippen, damit Millionenwerte lesbar bleiben
+function tausenderFeld(feld){
+  var eingabe = feld.tagName === "INPUT" ? feld : feld.querySelector("input");
+  if (!eingabe) return feld;
+  eingabe.addEventListener("input", function(){
+    var roh = eingabe.value;
+    var neg = /^\s*-/.test(roh);
+    var teile = roh.replace(/[^0-9,]/g, "").split(",");
+    var ziffern = teile[0].replace(/^0+(?=\d)/, "");
+    var text = ziffern ? ziffern.replace(/\B(?=(\d{3})+(?!\d))/g, ".") : "";
+    if (teile.length > 1) text += "," + teile[1].slice(0, 2);
+    if (neg && text) text = "-" + text;
+    if (text !== eingabe.value) {
+      eingabe.value = text;
+      try { eingabe.setSelectionRange(text.length, text.length); } catch (e) {}
+    }
+  });
+  return feld;
 }
 
 function bindTap(btn, fn){
@@ -2709,27 +2761,43 @@ function zahlenstrahl(a){
   var spanne = max - min || Math.max(1, Math.abs(loesung) * 0.2);
   min -= spanne * 0.12; max += spanne * 0.12;
   var pos = function(w){ return ((w - min) / (max - min)) * 100; };
-  var zahl = function(w){
-    var abs = Math.abs(w);
-    if (abs >= 10000) return Math.round(w / 1000) + "k";
-    return (Math.round(w * 100) / 100) + "";
-  };
+  var zahl = fmtKurz;
 
-  var box = el('<div class="strahl"></div>');
+  var laufen = true;   // im Zweifel animieren
+  try { if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) laufen = false; } catch (e) {}
+  if (typeof requestAnimationFrame !== "function") laufen = false;
+
+  var box = el('<div class="strahl' + (laufen ? " laeuft" : "") + '"></div>');
   box.appendChild(el('<div class="linie"></div>'));
-  box.appendChild(el('<div class="ziel" style="left:' + pos(loesung).toFixed(2) + '%">' +
-    '<span>' + esc(zahl(loesung)) + '</span></div>'));
+  var ziel = el('<div class="ziel" style="left:' + pos(loesung).toFixed(2) + '%">' +
+    '<span>' + esc(zahl(loesung)) + '</span></div>');
+  box.appendChild(ziel);
 
   // dicht beieinander liegende Tipps abwechselnd hoeher setzen
   var sortiert = namen.slice().sort(function(x, y){ return x.w - y.w; });
-  var letzte = -99, etage = 0;
-  sortiert.forEach(function(e){
+  var letzte = -99, etage = 0, punkte = [];
+  sortiert.forEach(function(e, k){
     var p = pos(e.w);
     etage = (p - letzte < 12) ? (etage + 1) % 3 : 0;
     letzte = p;
-    box.appendChild(el('<div class="tipp e' + etage + '" style="left:' + p.toFixed(2) + '%; --acc:' + hue(e.i) + '">' +
-      '<i></i><span>' + esc(e.nm.charAt(0).toUpperCase()) + " " + esc(zahl(e.w)) + '</span></div>'));
+    var t = el('<div class="tipp e' + etage + '" style="--acc:' + hue(e.i) + '">' +
+      '<i></i><span>' + esc(e.nm.charAt(0).toUpperCase()) + " " + esc(zahl(e.w)) + '</span></div>');
+    t.style.left = laufen ? "0%" : p.toFixed(2) + "%";
+    t.setAttribute("data-ziel", p.toFixed(2));
+    if (laufen) t.style.transitionDelay = (260 + k * 150) + "ms";
+    box.appendChild(t);
+    punkte.push(t);
   });
+
+  if (laufen) {
+    // Erst wächst die Achse, dann wandern die Tipps an ihren Platz, zuletzt fällt die Lösung ein.
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){
+        box.classList.add("an");
+        punkte.forEach(function(t){ t.style.left = t.getAttribute("data-ziel") + "%"; });
+      });
+    });
+  }
   return box;
 }
 
@@ -2966,16 +3034,16 @@ function viewQuizFrage(){
       : "Einmal tippen und die Antwort ist eingeloggt.") + '</p>'));
   } else if (ichHabe) {
     app.appendChild(el('<div class="antwort gewaehlt"><span class="buchstabe">=</span>' +
-      esc(meinTipp ? String(meinTipp.wert) + (f.einheit ? " " + f.einheit : "") : "abgegeben") +
+      esc(meinTipp ? fmtZahl(meinTipp.wert) + (f.einheit ? " " + f.einheit : "") : "abgegeben") +
       '<span class="marke">eingeloggt</span></div>'));
     app.appendChild(el('<p class="note">Eingeloggt. Ge\u00e4ndert wird nichts mehr.</p>'));
   } else {
-    var eingabe = merkeEingabe(el('<div class="codeeingabe"><input type="text" inputmode="decimal" placeholder="Zahl' +
-      (f.einheit ? " in " + esc(f.einheit) : "") + '"></div>'), "schaetz" + z.idx);
+    var eingabe = tausenderFeld(merkeEingabe(el('<div class="codeeingabe"><input type="text" inputmode="decimal" placeholder="Zahl' +
+      (f.einheit ? " in " + esc(f.einheit) : "") + '"></div>'), "schaetz" + z.idx));
     app.appendChild(eingabe);
     var ab = el('<button class="cta" type="button">Antwort einloggen</button>');
     ab.onclick = function(){
-      var v = parseFloat(String(eingabe.querySelector("input").value).replace(",", "."));
+      var v = parseZahl(eingabe.querySelector("input").value);
       if (!isFinite(v)) return;
       meinTipp = { idx: z.idx, wert: v };
       entwurfWeg("schaetz" + z.idx);
@@ -3048,7 +3116,7 @@ function viewQuizAuf(){
     });
   } else {
     app.appendChild(el('<div class="loesung">' +
-      esc(String(a.loesung) + (a.einheit ? " " + a.einheit : "")) + '</div>'));
+      esc(fmtZahl(a.loesung) + (a.einheit ? " " + a.einheit : "")) + '</div>'));
     app.appendChild(zahlenstrahl(a));
   }
 
@@ -3067,13 +3135,13 @@ function viewQuizAuf(){
     var wert = a.antworten[nm];
     var punkte = a.rundenpunkte[nm] || 0;
     var text = wert === undefined ? "keine Antwort"
-      : (a.typ === "mc" ? "ABCD".charAt(wert) : String(wert) + (a.einheit ? " " + a.einheit : ""));
+      : (a.typ === "mc" ? "ABCD".charAt(wert) : fmtZahl(wert) + (a.einheit ? " " + a.einheit : ""));
     if (a.tempo && a.tempo[nm]) text += " \u00b7 " + a.tempo[nm] + " Tempo";
     app.appendChild(el('<div class="rank' + (punkte >= 100 ? ' first' : '') + '" data-nm="' + esc(nm) +
       '" style="--acc:' + hue(i) + '">' +
       '<span class="nm">' + esc(nm) + '<span class="sub">' + esc(text) + '</span></span>' +
-      '<span class="pt num">' + (z.punkte[nm] || 0) +
-      '<span class="sub">' + (punkte ? "+" + punkte : "\u00b10") + '</span></span></div>'));
+      '<span class="pt num">' + fmtZahl(z.punkte[nm] || 0) +
+      '<span class="sub">' + (punkte ? "+" + fmtZahl(punkte) : "\u00b10") + '</span></span></div>'));
   });
 
   app = vorher;
@@ -3243,7 +3311,7 @@ function radAnsicht(z){
       app.appendChild(el('<div class="rank' + (i === 0 && p.zu > 0 ? ' first' : '') +
         '" style="--acc:' + hue(p.idx) + '">' +
         '<span class="pos num">' + (i + 1) + '</span><span class="nm">' + esc(p.nm) + '</span>' +
-        '<span class="pt num">' + (p.zu > 0 ? "+" + p.zu : "0") + '</span></div>'));
+        '<span class="pt num">' + (p.zu > 0 ? "+" + fmtZahl(p.zu) : "0") + '</span></div>'));
     });
     if (S.hostet) {
       var g = el('<button class="cta" type="button">Gesamtstand zeigen</button>');
@@ -3268,8 +3336,8 @@ function radAnsicht(z){
         '" style="--acc:' + hue(p.idx) + '">' +
         '<span class="pos num">' + (i + 1) + '</span>' +
         '<span class="nm">' + esc(p.nm) + '<span class="sub">' +
-        (p.zu > 0 ? "diese Runde +" + p.zu : "diese Runde nichts") + '</span></span>' +
-        '<span class="pt num">' + p.pt + '</span></div>'));
+        (p.zu > 0 ? "diese Runde +" + fmtZahl(p.zu) : "diese Runde nichts") + '</span></span>' +
+        '<span class="pt num">' + fmtZahl(p.pt) + '</span></div>'));
     });
     rangAnimieren("stand");
     if (S.hostet) {
