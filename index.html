@@ -364,6 +364,46 @@
   .loesung{margin:8px 2px; padding:18px; border-radius:var(--r); text-align:center;
     background:var(--tint); border:1px solid var(--gold); font-size:26px; font-weight:800}
 
+  .antwort{position:relative; transition:background .25s ease, border-color .25s ease, opacity .25s ease}
+  .antwort .marke{position:absolute; right:12px; top:50%; transform:translateY(-50%);
+    font-size:11px; letter-spacing:.06em; text-transform:uppercase; font-weight:700; opacity:.85}
+  .antwort.ruhig{opacity:.42}
+  .antwort.gewaehlt{border-color:var(--gold); background:var(--tint)}
+  .antwort.gewaehlt .buchstabe{background:var(--gold); color:#fff}
+  .antwort.richtig{border-color:#2E9E5B; background:rgba(46,158,91,.16); animation:aufdecken .6s ease}
+  .antwort.richtig .buchstabe{background:#2E9E5B; color:#fff}
+  .antwort.richtig .marke{color:#2E9E5B}
+  .antwort.falsch{border-color:var(--warn); background:rgba(200,60,60,.12)}
+  .antwort.falsch .buchstabe{background:var(--warn); color:#fff}
+  .antwort.falsch .marke{color:var(--warn)}
+  @keyframes aufdecken{0%{transform:scale(.97)}55%{transform:scale(1.02)}100%{transform:none}}
+  @media (prefers-reduced-motion:reduce){ .antwort.richtig{animation:none} .sheet.menu .panel{transition:none} }
+
+  .sheet.menu{align-items:flex-end}
+  .sheet.menu .panel{width:100%; max-width:560px; border-radius:26px 26px 0 0; padding:10px 14px calc(18px + env(safe-area-inset-bottom));
+    transform:translateY(14px); opacity:.6; transition:transform .18s ease, opacity .18s ease}
+  .sheet.menu.da .panel{transform:none; opacity:1}
+  .sheet.menu.zu .panel{transform:translateY(24px); opacity:0}
+  .griff{width:38px; height:4px; border-radius:2px; background:var(--hair); margin:2px auto 12px}
+  .mkopf{padding:0 6px 12px}
+  .mkopf b{display:block; font-size:19px; letter-spacing:-.01em}
+  .mkopf span{display:block; font-size:13px; color:var(--dim); margin-top:2px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .mgruppe{background:var(--glass-2); border:1px solid var(--hair); border-radius:16px; overflow:hidden; margin-bottom:10px}
+  .mzeile{display:flex; align-items:center; gap:12px; width:100%; padding:13px 14px; background:none; border:0;
+    border-top:1px solid var(--hair); text-align:left; color:var(--text); font:inherit; cursor:pointer}
+  .mgruppe .mzeile:first-child{border-top:0}
+  .mzeile:active{background:var(--tint)}
+  .mzeichen{flex:none; width:30px; height:30px; border-radius:10px; background:var(--tint); color:var(--dim);
+    display:grid; place-items:center; font-size:15px; line-height:1}
+  .mzeile.an .mzeichen{background:var(--gold); color:#fff}
+  .mtext{min-width:0}
+  .mtext b{display:block; font-size:16px; font-weight:600}
+  .mtext span{display:block; font-size:13px; color:var(--dim); margin-top:1px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .mzeile.danger .mtext b{color:var(--warn)}
+  .mzeile.danger .mzeichen{color:var(--warn)}
+
   .radbox{position:relative; width:min(78vw,300px); margin:6px auto 18px; aspect-ratio:1/1}
   .rad{width:100%; height:100%; display:block; transform-origin:50% 50%;
     filter:drop-shadow(0 8px 22px rgba(0,0,0,.28))}
@@ -402,7 +442,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-13.6";
+var VERSION = "2026-09-13.7";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -2676,8 +2716,13 @@ function viewQuizLobby(){
   app.appendChild(tabs());
 }
 
+var meinTipp = null;   // { idx, wert } - bleibt ueber Neuzeichnen hinweg stehen
+var letzteFrage = null;
+
 function viewQuizFrage(){
   var z = QUIZ, f = z.frage;
+  letzteFrage = f;
+  if (meinTipp && meinTipp.idx !== z.idx) meinTipp = null;
   var ichHabe = z.geantwortet.indexOf(meinName()) >= 0;
   quizKopf(null, null);
   app.appendChild(el('<p class="meta">Frage ' + (z.idx + 1) + ' von ' + z.gesamt +
@@ -2687,23 +2732,36 @@ function viewQuizFrage(){
   app.appendChild(balken);
   app.appendChild(el('<h1 class="frage">' + esc(f.frage) + '</h1>'));
 
-  if (ichHabe) {
-    app.appendChild(el('<p class="note">Antwort ist raus. Warten auf die anderen.</p>'));
-  } else if (f.typ === "mc") {
+  if (f.typ === "mc") {
     f.optionen.forEach(function(o, i){
-      var b = el('<button class="antwort" type="button"><span class="buchstabe">' +
-        "ABCD".charAt(i) + '</span>' + esc(o) + '</button>');
-      bindTap(b, function(){ quizSenden({ tat: "antwort", spieler: meinName(), wert: i, anzahl: S.names.length }); });
+      var meins = meinTipp && meinTipp.wert === i;
+      var b = el('<button class="antwort' + (ichHabe ? (meins ? " gewaehlt" : " ruhig") : "") +
+        '" type="button"><span class="buchstabe">' + "ABCD".charAt(i) + '</span>' + esc(o) +
+        (meins ? '<span class="marke">eingeloggt</span>' : '') + '</button>');
+      if (ichHabe) { b.setAttribute("aria-disabled", "true"); b.tabIndex = -1; }
+      else bindTap(b, function(){
+        meinTipp = { idx: z.idx, wert: i };
+        quizSenden({ tat: "antwort", spieler: meinName(), wert: i, anzahl: S.names.length });
+      });
       app.appendChild(b);
     });
+    app.appendChild(el('<p class="note">' + (ichHabe
+      ? "Eingeloggt. Ge\u00e4ndert wird nichts mehr."
+      : "Einmal tippen und die Antwort ist eingeloggt.") + '</p>'));
+  } else if (ichHabe) {
+    app.appendChild(el('<div class="antwort gewaehlt"><span class="buchstabe">=</span>' +
+      esc(meinTipp ? String(meinTipp.wert) + (f.einheit ? " " + f.einheit : "") : "abgegeben") +
+      '<span class="marke">eingeloggt</span></div>'));
+    app.appendChild(el('<p class="note">Eingeloggt. Ge\u00e4ndert wird nichts mehr.</p>'));
   } else {
     var eingabe = el('<div class="codeeingabe"><input type="text" inputmode="decimal" placeholder="Zahl' +
       (f.einheit ? " in " + esc(f.einheit) : "") + '"></div>');
     app.appendChild(eingabe);
-    var ab = el('<button class="cta" type="button">Antwort abgeben</button>');
+    var ab = el('<button class="cta" type="button">Antwort einloggen</button>');
     ab.onclick = function(){
       var v = parseFloat(String(eingabe.querySelector("input").value).replace(",", "."));
       if (!isFinite(v)) return;
+      meinTipp = { idx: z.idx, wert: v };
       quizSenden({ tat: "antwort", spieler: meinName(), wert: v, anzahl: S.names.length });
     };
     app.appendChild(ab);
@@ -2737,10 +2795,22 @@ function viewQuizAuf(){
   var z = QUIZ, a = z.aufloesung;
   quizKopf(null, null);
   app.appendChild(el('<p class="meta">Frage ' + (z.idx + 1) + ' von ' + z.gesamt + '</p>'));
-  app.appendChild(el('<div class="loesung">' +
-    (a.typ === "mc" ? esc("ABCD".charAt(a.loesung) + ": ") : "") +
-    esc(String(a.typ === "mc" ? "" : a.loesung) + (a.einheit ? " " + a.einheit : "")) +
-    '</div>'));
+  var f = letzteFrage;
+  if (f && f.frage) app.appendChild(el('<h1 class="frage">' + esc(f.frage) + '</h1>'));
+
+  if (a.typ === "mc" && f && f.optionen) {
+    f.optionen.forEach(function(o, i){
+      var richtig = i === a.loesung;
+      var meins = meinTipp && meinTipp.wert === i;
+      app.appendChild(el('<div class="antwort' + (richtig ? " richtig" : (meins ? " falsch" : " ruhig")) +
+        '"><span class="buchstabe">' + "ABCD".charAt(i) + '</span>' + esc(o) +
+        (richtig ? '<span class="marke">richtig</span>' : (meins ? '<span class="marke">dein Tipp</span>' : '')) +
+        '</div>'));
+    });
+  } else {
+    app.appendChild(el('<div class="loesung">' +
+      esc(String(a.loesung) + (a.einheit ? " " + a.einheit : "")) + '</div>'));
+  }
   if (a.info) app.appendChild(el('<p class="hintline" style="text-align:center">' + esc(a.info) + '</p>'));
 
   S.names.forEach(function(nm, i){
@@ -3022,90 +3092,92 @@ function menuButton(){
   return b;
 }
 function openMenu(){
-  var sheet = el('<div class="sheet"><div class="panel"></div></div>');
+  var sheet = el('<div class="sheet menu"><div class="panel"><div class="griff"></div></div></div>');
   var panel = sheet.querySelector(".panel");
-  function close(){ sheet.remove(); }
-  function item(label, cls, fn){
-    var b = el('<button type="button"' + (cls ? ' class="' + cls + '"' : '') + '>' + label + '</button>');
-    b.onclick = function(){ close(); fn(); };
-    panel.appendChild(b);
-  }
+  function close(){ sheet.classList.add("zu"); setTimeout(function(){ sheet.remove(); }, 160); }
+  sheet.onclick = function(e){ if (e.target === sheet) close(); };
+
   var gast = !!(S.live && !S.hostet);
-  if (S.game === "phase10" || S.game === "skyjo") {
-    if (S.draft && !gast) {
-      item("Eingaben dieser Runde zur\u00fccksetzen", "", function(){
+  var meta = GAMES.filter(function(g){ return g.id === S.game; })[0] || { name: "Spiel" };
+  panel.appendChild(el('<div class="mkopf"><b>' + esc(meta.name) + '</b><span>' +
+    esc(S.names.join(", ")) + '</span></div>'));
+
+  var gruppe = null;
+  function neueGruppe(){ gruppe = el('<div class="mgruppe"></div>'); panel.appendChild(gruppe); }
+  function zeile(zeichen, label, sub, cls, fn){
+    if (!gruppe) neueGruppe();
+    var b = el('<button class="mzeile' + (cls ? " " + cls : "") + '" type="button">' +
+      '<span class="mzeichen">' + zeichen + '</span>' +
+      '<span class="mtext"><b>' + label + '</b>' + (sub ? '<span>' + sub + '</span>' : '') + '</span>' +
+      '</button>');
+    bindTap(b, function(){ close(); setTimeout(fn, 60); });
+    gruppe.appendChild(b);
+    return b;
+  }
+
+  // --- Korrekturen, je nach Spiel ---
+  neueGruppe();
+  var korrektur = false;
+  if (!gast) {
+    if (S.game === "kniffel") {
+      var feldZahl = 0;
+      (S.sheet || []).forEach(function(bl){ feldZahl += Object.keys(bl || {}).length; });
+      if (feldZahl) { korrektur = true; zeile("\u21ba", "Block leeren", "Alle " + feldZahl + " Eintr\u00e4ge verwerfen", "", function(){
+        if (confirm("Alle Eintr\u00e4ge im Block l\u00f6schen?")) {
+          S.sheet = S.names.map(function(){ return {}; }); S.at = 0; S.logged = null; S.view = "round"; save(); render();
+        }
+      }); }
+    } else if (S.game !== "quiz") {
+      var nr = S.game === "wizard" ? roundNo() : S.rounds.length + 1;
+      if (S.draft) { korrektur = true; zeile("\u21ba", "Eingaben zur\u00fccksetzen", "Runde " + nr + " noch einmal beginnen", "", function(){
         S.draft = null; S.view = "round"; save(); render();
-      });
-    }
-    if (S.rounds.length && !gast) {
-      item("Runde " + S.rounds.length + " l\u00f6schen", "", function(){
+      }); }
+      if (S.rounds.length) { korrektur = true; zeile("\u2715", "Runde " + S.rounds.length + " l\u00f6schen",
+        "Letzte eingetragene Runde zur\u00fccknehmen", "", function(){
         S.rounds.pop(); S.draft = null; S.view = "round"; save(); render();
-      });
+      }); }
     }
-    item(S.live ? "Gemeinsam spielen, Code " + S.live : "Gemeinsam spielen", "", liveSheet);
-    item("Farbe wechseln", "", function(){
-      var i = 0;
-      THEMES.forEach(function(t, k){ if (t.id === ALL.theme) i = k; });
-      ALL.theme = THEMES[(i + 1) % THEMES.length].id; save(); render();
-    });
-    if (!gast) item("Neues Spiel, gleiche Spieler", "danger", function(){
-      if (confirm("Alle Runden verwerfen und neu anfangen?")) {
-        S.rounds = []; S.draft = null; S.logged = null; S.view = "round"; save(); render();
-      }
-    });
-    item("Zur\u00fcck zum Hauptmen\u00fc", "", function(){ toHome(); save(); render(); });
-    item("Abbrechen", "", function(){});
-    sheet.onclick = function(e){ if (e.target === sheet) sheet.remove(); };
-    document.body.appendChild(sheet);
-    return;
   }
-  if (S.game === "kniffel") {
-    item(S.live ? "Gemeinsam spielen, Code " + S.live : "Gemeinsam spielen", "", liveSheet);
-    item("Farbe wechseln", "", function(){
-      var i = 0;
-      THEMES.forEach(function(t, k){ if (t.id === ALL.theme) i = k; });
-      ALL.theme = THEMES[(i + 1) % THEMES.length].id; save(); render();
-    });
-    if (!gast) item("Neues Spiel, gleiche Spieler", "danger", function(){
-      if (confirm("Alle Eintr\u00e4ge im Block l\u00f6schen und neu anfangen?")) {
-        S.sheet = S.names.map(function(){ return {}; }); S.at = 0; S.logged = null; S.view = "round"; save(); render();
-      }
-    });
-    item("Zur\u00fcck zum Hauptmen\u00fc", "", function(){ toHome(); save(); render(); });
-    item("Abbrechen", "", function(){});
-    sheet.onclick = function(e){ if (e.target === sheet) sheet.remove(); };
-    document.body.appendChild(sheet);
-    return;
+  if (!korrektur) { panel.removeChild(gruppe); gruppe = null; }
+
+  // --- Regeln ---
+  if (S.game === "wizard" && !gast) {
+    neueGruppe();
+    zeile(S.strict ? "\u2713" : "\u25CB", "Vorhand-Regel", S.strict ? "Eingeschaltet" : "Ausgeschaltet",
+      S.strict ? "an" : "", function(){ S.strict = !S.strict; save(); render(); });
   }
-  var n = roundNo();
-  if (S.draft && S.rounds.length < totalRounds() && !gast) {
-    item("Eingaben in Runde " + n + " zur\u00fccksetzen", "", function(){
-      S.draft = null; S.view = "round"; save(); render();
-    });
-  }
-  if (S.rounds.length && !gast) {
-    item("Runde " + S.rounds.length + " l\u00f6schen und neu eintragen", "", function(){
-      S.rounds.pop(); S.draft = null; S.view = "round"; save(); render();
-    });
-  }
-  if (!gast) item("Vorhand-Regel " + (S.strict ? "ausschalten" : "einschalten"), "", function(){
-    S.strict = !S.strict; save(); render();
-  });
-  item("Farbe wechseln", "", function(){
+
+  // --- Gemeinsam und Aussehen ---
+  neueGruppe();
+  zeile("\u21C4", "Gemeinsam spielen",
+    S.live ? "Code " + S.live + (S.hostet ? "" : " \u00b7 als Gast dabei") : "Noch nicht freigegeben",
+    S.live ? "an" : "", liveSheet);
+  var themaName = "Hell";
+  THEMES.forEach(function(t){ if (t.id === ALL.theme) themaName = t.name; });
+  zeile("\u25D1", "Farbe", themaName, "", function(){
     var i = 0;
     THEMES.forEach(function(t, k){ if (t.id === ALL.theme) i = k; });
     ALL.theme = THEMES[(i + 1) % THEMES.length].id; save(); render();
   });
-  item(S.live ? "Gemeinsam spielen, Code " + S.live : "Gemeinsam spielen", "", liveSheet);
-  if (!gast) item("Neues Spiel, gleiche Spieler", "danger", function(){
-    if (confirm("Alle Punkte verwerfen und neu anfangen?")) {
-      S.rounds = []; S.draft = null; S.view = "round"; save(); render();
-    }
-  });
-  item("Zur\u00fcck zum Hauptmen\u00fc", "", function(){ toHome(); save(); render(); });
-  item("Abbrechen", "", function(){});
-  sheet.onclick = function(e){ if (e.target === sheet) close(); };
+
+  // --- Neu anfangen und zurueck ---
+  neueGruppe();
+  if (!gast && S.game === "quiz") {
+    zeile("\u21bb", "Neue Quizrunde", "Punkte zur\u00fccksetzen", "danger", function(){
+      if (confirm("Quiz neu anfangen?")) { QUIZ = null; quizFehler = null; S.logged = null; save(); render(); }
+    });
+  } else if (!gast && S.game !== "kniffel") {
+    zeile("\u21bb", "Neues Spiel, gleiche Spieler", "Alle Punkte verwerfen", "danger", function(){
+      if (confirm("Alle Runden verwerfen und neu anfangen?")) {
+        S.rounds = []; S.draft = null; S.logged = null; S.view = "round"; save(); render();
+      }
+    });
+  }
+  zeile("\u2302", "Zum Hauptmen\u00fc", "Spielstand bleibt erhalten", "", function(){ toHome(); save(); render(); });
+
   document.body.appendChild(sheet);
+  if (typeof requestAnimationFrame === "function") requestAnimationFrame(function(){ sheet.classList.add("da"); });
+  else sheet.classList.add("da");
 }
 
 /* ---------- Umschalter ---------- */
