@@ -402,7 +402,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-13.5";
+var VERSION = "2026-09-13.6";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -434,6 +434,15 @@ var GAMES = [
   { id:"quiz",    name:"Quiz",     sub:"Sch\u00e4tz- und Wissensfragen, jeder am eigenen Handy", low:false }
 ];
 function fresh(){ return { theme:"light", cur:null, games:{}, history:[] }; }
+function grenzen(id){
+  if (id === "kniffel") return { min: 1, max: 8 };   // allein spielbar
+  if (id === "skyjo")   return { min: 2, max: 8 };
+  if (id === "quiz")    return { min: 2, max: 8 };
+  if (id === "phase10") return { min: 2, max: 6 };
+  return { min: 2, max: 6 };                          // Wizard, offiziell ab 3
+}
+function minSpieler(id){ return grenzen(id).min; }
+
 function newGame(id, names){
   return { game:id, names:names || [], mode:"up", strict:false,
            rounds:[], draft:null, sheet:[], at:0, view:"round", logged:null, setup:true };
@@ -506,7 +515,7 @@ function bindTap(btn, fn){
   btn.addEventListener("click", function(){ if (!touched && !btn.disabled) fn(); });
 }
 
-var HUES = ["#E0982A", "#12A79B", "#E05A63", "#7B5BD6", "#6E9E22", "#2D82C7"];
+var HUES = ["#E0982A", "#12A79B", "#E05A63", "#7B5BD6", "#6E9E22", "#2D82C7", "#C2568F", "#8A6A3B"];
 function hue(i){ return HUES[i % HUES.length]; }
 
 function strip(cur){
@@ -541,12 +550,17 @@ function viewSetup(){
   app.appendChild(el('<div class="top"><div class="brand"><span class="hat">\u25B2</span> ' + meta.name + '</div></div>'));
   app.querySelector(".top").appendChild(helpButton());
 
-  var names = S.names.length ? S.names.slice() : ["", "", ""];
+  var gr = grenzen(id), min = gr.min, max = gr.max;
+  var names = S.names.length ? S.names.slice() : ["", "", ""].slice(0, Math.max(min, 3));
+  while (names.length < min) names.push("");
+  while (names.length > max) names.pop();
   var mode = S.mode || "up";
   var strict = !!S.strict;
 
   app.appendChild(el('<h1 class="headline">Wer spielt mit?</h1>'));
-  app.appendChild(el('<p class="lead-in">Drei bis sechs Spieler, in der Reihenfolge wie ihr am Tisch sitzt.</p>'));
+  app.appendChild(el('<p class="lead-in">' +
+    (min === 1 ? "Von allein bis " + max : min + " bis " + max) +
+    ' Spieler, in der Reihenfolge wie ihr am Tisch sitzt.</p>'));
 
   var list = el('<div></div>');
   app.appendChild(list);
@@ -573,11 +587,13 @@ function viewSetup(){
     info();
   }
   function info(){
+    startBtn.disabled = names.length < min;
     if (id === "wizard") {
       var pl = schedule(names.length, mode);
-      hint.textContent = names.length + " Spieler, " + pl.length + " Runden, h\u00f6chstens " + maxOf(pl) + " Karten";
+      hint.textContent = names.length + " Spieler, " + pl.length + " Runden, h\u00f6chstens " + maxOf(pl) + " Karten" +
+        (names.length < 3 ? " \u00b7 offiziell ab 3 Spielern" : "");
     } else if (id === "kniffel") {
-      hint.textContent = names.length + " Spieler, je 13 Felder";
+      hint.textContent = (names.length === 1 ? "allein" : names.length + " Spieler") + ", je 13 Felder";
     } else if (id === "phase10") {
       hint.textContent = names.length + " Spieler, zehn Phasen der Reihe nach";
     } else {
@@ -590,17 +606,17 @@ function viewSetup(){
     names.forEach(function(n, i){
       var row = el('<div class="pinput"><i style="--acc:' + hue(i) + '"></i>' +
         '<input type="text" inputmode="text" autocomplete="off" placeholder="Spieler ' + (i+1) + '" value="' + esc(n) + '">' +
-        (names.length > 3 ? '<button class="rm" type="button" aria-label="entfernen">\u00d7</button>' : '') + '</div>');
+        (names.length > min ? '<button class="rm" type="button" aria-label="entfernen">\u00d7</button>' : '') + '</div>');
       var input = row.querySelector("input");
       input.oninput = function(){ names[i] = input.value; };
       var rm = row.querySelector(".rm");
       if (rm) rm.onclick = function(){ names.splice(i, 1); paint(); };
       list.appendChild(row);
     });
-    addBtn.disabled = names.length >= 6;
+    addBtn.disabled = names.length >= max;
     info();
   }
-  addBtn.onclick = function(){ if (names.length < 6) { names.push(""); paint(); } };
+  addBtn.onclick = function(){ if (names.length < max) { names.push(""); paint(); } };
 
   startBtn.onclick = function(){
     S.names = names.map(function(n, i){ return n.trim() || ("Spieler " + (i+1)); });
