@@ -347,6 +347,35 @@
     background:var(--tint); border:1px dashed var(--gold); color:var(--text);
     font-size:34px; font-weight:800; letter-spacing:.14em}
 
+  .themen{display:flex; flex-wrap:wrap; gap:6px; margin:0 2px 14px}
+  .themen button{padding:8px 12px; border-radius:11px; background:var(--glass);
+    border:1px solid var(--hair); font-size:13.5px; font-weight:600; color:var(--dim)}
+  .frage{margin:6px 2px 16px; font-size:23px; font-weight:800; letter-spacing:-.02em; line-height:1.25}
+  .antwort{display:flex; align-items:center; gap:12px; width:100%; text-align:left; margin-bottom:8px;
+    padding:15px; border-radius:var(--r); background:var(--glass); border:1px solid var(--hair);
+    font-size:16px; font-weight:600}
+  .antwort:active{background:var(--tint); border-color:var(--gold)}
+  .antwort .buchstabe{flex:none; width:28px; height:28px; border-radius:9px; background:var(--glass-2);
+    display:grid; place-items:center; font-weight:800; font-size:14px; color:var(--gold)}
+  .uhr{position:relative; height:8px; border-radius:6px; background:var(--glass-2); margin:0 2px 16px}
+  .uhr i{position:absolute; left:0; top:0; bottom:0; border-radius:6px;
+    background:linear-gradient(90deg, var(--gold), var(--gold-2)); transition:width .2s linear}
+  .uhr span{position:absolute; right:2px; top:12px; font-size:12px; font-weight:700; color:var(--dim)}
+  .loesung{margin:8px 2px; padding:18px; border-radius:var(--r); text-align:center;
+    background:var(--tint); border:1px solid var(--gold); font-size:26px; font-weight:800}
+
+  .radbox{position:relative; width:min(78vw,300px); margin:6px auto 18px; aspect-ratio:1/1}
+  .rad{width:100%; height:100%; display:block; transform-origin:50% 50%;
+    filter:drop-shadow(0 8px 22px rgba(0,0,0,.28))}
+  .rad .feld{fill:var(--glass-2); stroke:var(--hair); stroke-width:.4}
+  .rad .feld.zwei{fill:var(--tint)}
+  .rad text{font-size:9px; font-weight:800; fill:var(--text); text-anchor:middle; dominant-baseline:middle}
+  .rad .nabe{fill:var(--gold)}
+  .zeiger{position:absolute; left:50%; top:-6px; width:0; height:0; transform:translateX(-50%); z-index:2;
+    border-left:11px solid transparent; border-right:11px solid transparent; border-top:20px solid var(--gold)}
+  .radergebnis{letter-spacing:.1em}
+  @media (prefers-reduced-motion:reduce){ .rad{transition:none !important} }
+
   /* Umschalter */
   .update{position:fixed; left:12px; right:12px; bottom:calc(74px + env(safe-area-inset-bottom));
     z-index:30; display:flex; align-items:center; gap:10px; padding:11px 12px 11px 15px;
@@ -373,7 +402,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-13.3";
+var VERSION = "2026-09-13.5";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -401,7 +430,8 @@ var GAMES = [
   { id:"wizard",  name:"Wizard",   sub:"Stiche ansagen, Runde f\u00fcr Runde", low:false },
   { id:"kniffel", name:"Kniffel",  sub:"Dreizehn Felder, ein Block je Spieler", low:false },
   { id:"phase10", name:"Phase 10", sub:"Zehn Phasen, Restpunkte je Runde", low:true },
-  { id:"skyjo",   name:"Skyjo",    sub:"Punkte sammeln bis 100, wenigste gewinnen", low:true }
+  { id:"skyjo",   name:"Skyjo",    sub:"Punkte sammeln bis 100, wenigste gewinnen", low:true },
+  { id:"quiz",    name:"Quiz",     sub:"Sch\u00e4tz- und Wissensfragen, jeder am eigenen Handy", low:false }
 ];
 function fresh(){ return { theme:"light", cur:null, games:{}, history:[] }; }
 function newGame(id, names){
@@ -2220,6 +2250,9 @@ function liveVerbinden(){
       uebernehmen(kopie);
     } else if (n.type === "bestaetigt") {
       liveVersion = n.version;
+    } else if (n.type === "quiz") {
+      QUIZ = n.zustand;
+      render();
     } else if (n.type === "anwesend") {
       render();
     } else if (n.type === "ende") {
@@ -2501,6 +2534,391 @@ function liveSheet(){
   document.body.appendChild(sheet);
 }
 
+
+/* ---------- Quiz ---------- */
+var QUIZ = null, quizLaedt = false, quizFehler = null, quizTakt = null;
+var THEMEN = ["Allgemeinwissen", "Musik der 90er", "Filme und Serien", "Tiere und Natur",
+              "Fu\u00dfball", "Weltgeschichte", "Essen und Trinken", "Technik und Erfindungen",
+              "Deutschland", "Sch\u00e4tzfragen extrem"];
+
+function quizSenden(obj){
+  if (!sock || sock.readyState !== 1) return;
+  obj.type = "quiz";
+  try { sock.send(JSON.stringify(obj)); } catch (e){}
+}
+function meinName(){ return (S && typeof S.ich === "number") ? S.names[S.ich] : null; }
+
+function quizFragenHolen(thema, anzahl){
+  quizLaedt = true; quizFehler = null; render();
+  fetch(API + "/fragen", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ thema: thema, anzahl: anzahl })
+  }).then(function(r){
+    return r.json().then(function(d){ if (!r.ok) throw new Error(d.message || ("Fehler " + r.status)); return d; });
+  }).then(function(d){
+    quizLaedt = false;
+    quizSenden({ tat: "neu", fragen: d.fragen, thema: thema, spieler: S.names });
+    quizSenden({ tat: "start" });
+  }).catch(function(e){
+    quizLaedt = false; quizFehler = e.message || "Fragen konnten nicht geholt werden"; render();
+  });
+}
+
+function quizKopf(titel, unter){
+  app.innerHTML = "";
+  app.appendChild(el('<div class="top"><div class="brand"><span class="hat">\u25B2</span> Quiz</div></div>'));
+  topBtns();
+  if (titel) app.appendChild(el('<h1 class="headline">' + titel + '</h1>'));
+  if (unter) app.appendChild(el('<p class="meta">' + unter + '</p>'));
+}
+
+function viewQuiz(){
+  if (quizTakt) { clearInterval(quizTakt); clearTimeout(quizTakt); quizTakt = null; }
+
+  // Ohne Freigabe geht Quiz nicht
+  if (!S.live) {
+    quizKopf("Quiz zu mehreren", "Beim Quiz spielt jeder auf dem eigenen Handy. Gib die Partie frei, damit die anderen beitreten k\u00f6nnen.");
+    var frei = el('<button class="cta" type="button">Partie freigeben</button>');
+    frei.onclick = function(){
+      S.live = liveCode(); S.hostet = true; letzterStand = null; liveVersion = 0;
+      save(); render(); liveVerbinden(); codeSheet();
+    };
+    app.appendChild(frei);
+    return;
+  }
+
+  // Wer sitzt an diesem Handy?
+  if (typeof S.ich !== "number" || !S.names[S.ich]) {
+    quizKopf("Wer bist du?", "W\u00e4hl deinen Namen, damit die Antworten zugeordnet werden.");
+    S.names.forEach(function(nm, i){
+      var b = el('<button class="rank tap" type="button" style="--acc:' + hue(i) + '">' +
+        '<span class="pos num">' + (i+1) + '</span><span class="nm">' + esc(nm) + '</span></button>');
+      bindTap(b, function(){ S.ich = i; save(); render(); });
+      app.appendChild(b);
+    });
+    app.appendChild(tabs());
+    return;
+  }
+
+  var z = QUIZ;
+  if (!z || z.phase === "lobby") return viewQuizLobby();
+  if (z.phase === "frage") return viewQuizFrage();
+  if (z.phase === "auf") return viewQuizAuf();
+  if (z.modus === "rad" && z.phase !== "ende") return viewQuizRad();
+  return viewQuizEnde();
+}
+
+function viewQuizLobby(){
+  quizKopf(quizLaedt ? "Fragen werden erdacht" : "Bereit?",
+    quizLaedt ? "Das dauert ein paar Sekunden." :
+    (S.hostet ? "Thema w\u00e4hlen oder eigenes eintippen, dann geht es los."
+              : "Der Gastgeber sucht gerade ein Thema aus."));
+  app.appendChild(el('<p class="hintline" style="text-align:center">Du spielst als <b>' + esc(meinName()) + '</b>' +
+    ' \u00b7 ' + (sock && sock.readyState === 1 ? liveAnzahl + ' Ger\u00e4te verbunden' : 'nicht verbunden') + '</p>'));
+
+  if (quizFehler) app.appendChild(el('<p class="note warn">' + esc(quizFehler) + '</p>'));
+  if (quizLaedt) return;
+
+  if (!S.hostet) {
+    app.appendChild(el('<div class="qrbox">' + (qrSVG(beitrittsLink(S.live), 170) || "") + '</div>'));
+    app.appendChild(tabs());
+    return;
+  }
+
+  var anzahl = S.quizAnzahl || 8;
+  var feld = el('<div class="codeeingabe"><input type="text" placeholder="eigenes Thema, etwa Weltraum" maxlength="80"></div>');
+  app.appendChild(feld);
+  var chips = el('<div class="themen"></div>');
+  THEMEN.forEach(function(t){
+    var b = el('<button type="button">' + t + '</button>');
+    b.onclick = function(){ feld.querySelector("input").value = t; };
+    chips.appendChild(b);
+  });
+  app.appendChild(chips);
+
+  var wahl = el('<div class="modes"></div>');
+  [5, 8, 12].forEach(function(n){
+    var b = el('<button type="button" aria-current="' + (n === anzahl) + '"><b>' + n + ' Fragen</b></button>');
+    b.onclick = function(){ S.quizAnzahl = n; save(); render(); };
+    wahl.appendChild(b);
+  });
+  app.appendChild(wahl);
+
+  var los = el('<button class="cta" type="button">Fragen holen und starten</button>');
+  los.onclick = function(){ quizFragenHolen(feld.querySelector("input").value.trim(), anzahl); };
+  app.appendChild(los);
+
+  var radStart = el('<button class="cta ghost" type="button">Stattdessen Buchstabenrad</button>');
+  radStart.onclick = function(){
+    quizSenden({ tat: "radneu", spieler: S.names, proRunde: anzahl });
+  };
+  app.appendChild(radStart);
+  app.appendChild(el('<p class="hintline" style="text-align:center">Beim Rad dreht jeder reihum, ' +
+    'w\u00e4hlt aus vier Themen zu seinem Buchstaben, und alle beantworten die Fragen dazu.</p>'));
+  app.appendChild(el('<div class="qrbox">' + (qrSVG(beitrittsLink(S.live), 170) || "") + '</div>'));
+  app.appendChild(tabs());
+}
+
+function viewQuizFrage(){
+  var z = QUIZ, f = z.frage;
+  var ichHabe = z.geantwortet.indexOf(meinName()) >= 0;
+  quizKopf(null, null);
+  app.appendChild(el('<p class="meta">Frage ' + (z.idx + 1) + ' von ' + z.gesamt +
+    ' \u00b7 ' + z.geantwortet.length + ' von ' + S.names.length + ' geantwortet</p>'));
+
+  var balken = el('<div class="uhr"><i></i><span></span></div>');
+  app.appendChild(balken);
+  app.appendChild(el('<h1 class="frage">' + esc(f.frage) + '</h1>'));
+
+  if (ichHabe) {
+    app.appendChild(el('<p class="note">Antwort ist raus. Warten auf die anderen.</p>'));
+  } else if (f.typ === "mc") {
+    f.optionen.forEach(function(o, i){
+      var b = el('<button class="antwort" type="button"><span class="buchstabe">' +
+        "ABCD".charAt(i) + '</span>' + esc(o) + '</button>');
+      bindTap(b, function(){ quizSenden({ tat: "antwort", spieler: meinName(), wert: i, anzahl: S.names.length }); });
+      app.appendChild(b);
+    });
+  } else {
+    var eingabe = el('<div class="codeeingabe"><input type="text" inputmode="decimal" placeholder="Zahl' +
+      (f.einheit ? " in " + esc(f.einheit) : "") + '"></div>');
+    app.appendChild(eingabe);
+    var ab = el('<button class="cta" type="button">Antwort abgeben</button>');
+    ab.onclick = function(){
+      var v = parseFloat(String(eingabe.querySelector("input").value).replace(",", "."));
+      if (!isFinite(v)) return;
+      quizSenden({ tat: "antwort", spieler: meinName(), wert: v, anzahl: S.names.length });
+    };
+    app.appendChild(ab);
+  }
+
+  if (S.hostet) {
+    var jetzt = el('<button class="cta ghost" type="button">Jetzt aufl\u00f6sen</button>');
+    jetzt.onclick = function(){ quizSenden({ tat: "aufloesen" }); };
+    app.appendChild(jetzt);
+    var weg = el('<button class="cta ghost" type="button">Frage \u00fcberspringen, ohne Punkte</button>');
+    weg.onclick = function(){ quizSenden({ tat: "ueberspringen" }); };
+    app.appendChild(weg);
+  }
+  app.appendChild(tabs());
+
+  var strich = balken.querySelector("i"), text = balken.querySelector("span");
+  function tick(){
+    var uebrig = Math.max(0, z.endeZeit - Date.now());
+    strich.style.width = Math.min(100, uebrig / 30000 * 100) + "%";
+    text.textContent = Math.ceil(uebrig / 1000) + " s";
+    if (uebrig <= 0) {
+      clearInterval(quizTakt); quizTakt = null;
+      if (S.hostet) quizSenden({ tat: "zeit" });
+    }
+  }
+  tick();
+  quizTakt = setInterval(tick, 200);
+}
+
+function viewQuizAuf(){
+  var z = QUIZ, a = z.aufloesung;
+  quizKopf(null, null);
+  app.appendChild(el('<p class="meta">Frage ' + (z.idx + 1) + ' von ' + z.gesamt + '</p>'));
+  app.appendChild(el('<div class="loesung">' +
+    (a.typ === "mc" ? esc("ABCD".charAt(a.loesung) + ": ") : "") +
+    esc(String(a.typ === "mc" ? "" : a.loesung) + (a.einheit ? " " + a.einheit : "")) +
+    '</div>'));
+  if (a.info) app.appendChild(el('<p class="hintline" style="text-align:center">' + esc(a.info) + '</p>'));
+
+  S.names.forEach(function(nm, i){
+    var wert = a.antworten[nm];
+    var punkte = a.rundenpunkte[nm] || 0;
+    var text = wert === undefined ? "keine Antwort"
+      : (a.typ === "mc" ? "ABCD".charAt(wert) : String(wert) + (a.einheit ? " " + a.einheit : ""));
+    app.appendChild(el('<div class="rank' + (punkte >= 100 ? ' first' : '') + '" style="--acc:' + hue(i) + '">' +
+      '<span class="nm">' + esc(nm) + '<span class="sub">' + esc(text) + '</span></span>' +
+      '<span class="pt num">' + (punkte ? "+" + punkte : "0") + '</span></div>'));
+  });
+
+  if (S.hostet) {
+    var w = el('<button class="cta" type="button">' +
+      (z.idx + 1 >= z.gesamt ? (z.modus === "rad" ? "Zwischenstand" : "Ergebnis zeigen") : "N\u00e4chste Frage") + '</button>');
+    w.onclick = function(){ quizSenden({ tat: "weiter" }); };
+    app.appendChild(w);
+  } else {
+    app.appendChild(el('<p class="note">Der Gastgeber schaltet weiter.</p>'));
+  }
+  app.appendChild(tabs());
+}
+
+function viewQuizEnde(){
+  var z = QUIZ;
+  var order = S.names.map(function(nm, i){ return { nm: nm, idx: i, pt: (z.punkte[nm] || 0) }; })
+                     .sort(function(a, b){ return b.pt - a.pt; });
+  quizKopf(esc(order[0].nm) + " gewinnt", z.gesamt + " Fragen" + (z.thema ? " zum Thema " + esc(z.thema) : ""));
+  order.forEach(function(p, i){
+    app.appendChild(el('<div class="rank' + (i === 0 ? ' first' : '') + '" style="--acc:' + hue(p.idx) + '">' +
+      '<span class="pos num">' + (i+1) + '</span><span class="nm">' + esc(p.nm) + '</span>' +
+      '<span class="pt num">' + p.pt + '</span></div>'));
+  });
+  app.appendChild(logButton(order));
+  if (S.hostet) {
+    var neu = el('<button class="cta" type="button">Neue Runde, neue Fragen</button>');
+    neu.onclick = function(){ QUIZ = null; quizFehler = null; S.logged = null; save(); render(); };
+    app.appendChild(neu);
+  }
+  app.appendChild(tabs());
+}
+
+
+/* ---------- Buchstabenrad ---------- */
+var ABC = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+var DREHDAUER = 4200;
+
+function radSVG(feld, laeuft, startzeit){
+  var n = 26, schritt = 360 / n, mitte = 100, radius = 92;
+  var teile = [];
+  for (var i = 0; i < n; i++) {
+    var a1 = (i * schritt - 90 - schritt / 2) * Math.PI / 180;
+    var a2 = ((i + 1) * schritt - 90 - schritt / 2) * Math.PI / 180;
+    var x1 = mitte + radius * Math.cos(a1), y1 = mitte + radius * Math.sin(a1);
+    var x2 = mitte + radius * Math.cos(a2), y2 = mitte + radius * Math.sin(a2);
+    teile.push('<path d="M' + mitte + ' ' + mitte + ' L' + x1.toFixed(1) + ' ' + y1.toFixed(1) +
+      ' A' + radius + ' ' + radius + ' 0 0 1 ' + x2.toFixed(1) + ' ' + y2.toFixed(1) + ' Z" class="feld' +
+      (i % 2 ? ' zwei' : '') + '"/>');
+    var am = (i * schritt - 90) * Math.PI / 180;
+    var tx = mitte + (radius - 16) * Math.cos(am), ty = mitte + (radius - 16) * Math.sin(am);
+    teile.push('<text x="' + tx.toFixed(1) + '" y="' + ty.toFixed(1) + '" transform="rotate(' +
+      (i * schritt) + ' ' + tx.toFixed(1) + ' ' + ty.toFixed(1) + ')">' + ABC.charAt(i) + '</text>');
+  }
+  // Das Rad dreht so, dass das Zielfeld oben unter dem Zeiger steht
+  var ziel = 360 * 5 - feld * schritt;
+  var vergangen = laeuft ? Date.now() - startzeit : DREHDAUER;
+  var stil;
+  if (laeuft && vergangen < DREHDAUER) {
+    stil = 'transform:rotate(0deg)';
+  } else {
+    stil = 'transform:rotate(' + ziel + 'deg); transition:none';
+  }
+  return '<div class="radbox"><div class="zeiger"></div>' +
+    '<svg class="rad" viewBox="0 0 200 200" style="' + stil + '" data-ziel="' + ziel + '">' +
+    teile.join("") + '<circle cx="100" cy="100" r="16" class="nabe"/></svg></div>';
+}
+
+function radAnimieren(){
+  var svg = app.querySelector(".rad");
+  if (!svg || !QUIZ || QUIZ.phase !== "dreht") return;
+  var rest = DREHDAUER - (Date.now() - QUIZ.startzeit);
+  if (rest <= 0) return;
+  var ziel = svg.getAttribute("data-ziel");
+  var los = function(){
+    svg.style.transition = "transform " + rest + "ms cubic-bezier(.16,.72,.18,1)";
+    svg.style.transform = "rotate(" + ziel + "deg)";
+  };
+  if (typeof requestAnimationFrame === "function") requestAnimationFrame(los);
+  else setTimeout(los, 20);
+}
+
+function viewQuizRad(){
+  var z = QUIZ;
+  try { return radAnsicht(z); } catch (e) {
+    app.appendChild(el('<p class="note warn">Anzeigefehler: ' + esc(String(e.message || e)) + '</p>'));
+  }
+}
+function radAnsicht(z){
+  var dranName = S.names[z.dran] || "";
+  var ichBinDran = z.dran === S.ich;
+
+  if (z.phase === "radwarten") {
+    quizKopf(esc(dranName) + " ist dran", "Rad drehen, dann ein Thema aus vier Vorschl\u00e4gen w\u00e4hlen. " +
+      "Danach " + z.proRunde + " Fragen f\u00fcr alle.");
+    if (z.fehler) app.appendChild(el('<p class="note warn">' + esc(z.fehler) + '</p>'));
+    app.appendChild(el(radSVG(0, false, 0)));
+    if (ichBinDran) {
+      var dreh = el('<button class="cta" type="button">Rad drehen</button>');
+      dreh.onclick = function(){ quizSenden({ tat: "drehen" }); };
+      app.appendChild(dreh);
+    } else {
+      app.appendChild(el('<p class="note">' + esc(dranName) + ' dreht gleich.</p>'));
+    }
+    return;
+  }
+
+  if (z.phase === "dreht") {
+    quizKopf(null, esc(dranName) + " dreht \u2026");
+    app.appendChild(el(radSVG(z.feld, true, z.startzeit)));
+    radAnimieren();
+    var rest = DREHDAUER - (Date.now() - z.startzeit);
+    quizTakt = setTimeout(function(){
+      var buchst = app.querySelector(".radergebnis");
+      if (!buchst) {
+        app.appendChild(el('<div class="loesung radergebnis">' + esc(z.buchstabe) + '</div>'));
+      }
+      if (S.hostet) radThemenHolen(z.buchstabe);
+    }, Math.max(200, rest + 300));
+    return;
+  }
+
+  if (z.phase === "wahl" || z.phase === "laedt") {
+    quizKopf("Buchstabe " + esc(z.buchstabe),
+      z.phase === "laedt" ? "Fragen werden erdacht \u2026"
+                          : (ichBinDran ? "Such dir ein Thema aus." : esc(dranName) + " w\u00e4hlt gerade."));
+    if (z.phase === "wahl") {
+      z.themen.forEach(function(t){
+        var b = el('<button class="antwort" type="button"><span class="buchstabe">' +
+          esc(z.buchstabe) + '</span>' + esc(t) + '</button>');
+        if (ichBinDran) bindTap(b, function(){ quizSenden({ tat: "thema", thema: t }); });
+        else b.disabled = true;
+        app.appendChild(b);
+      });
+      if (S.hostet && !z.themen.length) {
+        var nochmal = el('<button class="cta ghost" type="button">Themen erneut holen</button>');
+        nochmal.onclick = function(){ radThemenHolen(z.buchstabe); };
+        app.appendChild(nochmal);
+      }
+    }
+    if (z.phase === "laedt" && S.hostet) radFragenHolen(z.thema, z.proRunde);
+    return;
+  }
+
+  if (z.phase === "rundenende") {
+    var stand = S.names.map(function(nm, i){ return { nm: nm, idx: i, pt: (z.punkte[nm] || 0) }; })
+                       .sort(function(a, b){ return b.pt - a.pt; });
+    quizKopf("Runde vorbei", "Thema war " + esc(z.thema) + ". Zwischenstand:");
+    stand.forEach(function(p, i){
+      app.appendChild(el('<div class="rank' + (i === 0 ? ' first' : '') + '" style="--acc:' + hue(p.idx) + '">' +
+        '<span class="pos num">' + (i+1) + '</span><span class="nm">' + esc(p.nm) + '</span>' +
+        '<span class="pt num">' + p.pt + '</span></div>'));
+    });
+    if (S.hostet) {
+      var w = el('<button class="cta" type="button">' +
+        (z.dran + 1 >= S.names.length ? "Endergebnis zeigen" : S.names[z.dran + 1] + " ist dran") + '</button>');
+      w.onclick = function(){ quizSenden({ tat: "naechsterSpieler" }); };
+      app.appendChild(w);
+    } else {
+      app.appendChild(el('<p class="note">Der Gastgeber schaltet weiter.</p>'));
+    }
+    return;
+  }
+}
+
+var radHolt = false;
+function radThemenHolen(buchstabe){
+  if (radHolt) return;
+  radHolt = true;
+  fetch(API + "/themen", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ buchstabe: buchstabe }) })
+    .then(function(r){ return r.json().then(function(d){ if (!r.ok) throw new Error(d.message); return d; }); })
+    .then(function(d){ radHolt = false; quizSenden({ tat: "themen", themen: d.themen }); })
+    .catch(function(e){ radHolt = false; quizSenden({ tat: "fehler", text: "Themen: " + (e.message || "Fehler") }); });
+}
+function radFragenHolen(thema, anzahl){
+  if (radHolt) return;
+  radHolt = true;
+  fetch(API + "/fragen", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ thema: thema, anzahl: anzahl }) })
+    .then(function(r){ return r.json().then(function(d){ if (!r.ok) throw new Error(d.message); return d; }); })
+    .then(function(d){ radHolt = false; quizSenden({ tat: "fragen", fragen: d.fragen }); })
+    .catch(function(e){ radHolt = false; quizSenden({ tat: "fehler", text: "Fragen: " + (e.message || "Fehler") }); });
+}
+
 /* ---------- Bildschirm wachhalten ---------- */
 var lock = null;
 function keepAwake(on){
@@ -2680,6 +3098,7 @@ function tabs(){
   if (S.game === "kniffel") first = kniffelDone() ? "Ergebnis" : "Block";
   else if (S.game === "phase10") first = p10Done() ? "Ergebnis" : "Runde";
   else if (S.game === "skyjo") first = skyjoDone() ? "Ergebnis" : "Runde";
+  else if (S.game === "quiz") return el('<div></div>');
   else first = S.rounds.length >= totalRounds() ? "Ergebnis" : "Runde";
   var node = el('<nav class="tabs"><div class="inner">' +
     '<button type="button">' + first + '</button>' +
@@ -2710,6 +3129,7 @@ function render(){
   if (!S && ALL.pendingJoin) return viewJoining();
   if (!S) return ALL.view === "stats" ? viewStats() : viewHome();
   if (S.setup || !S.names.length) return viewSetup();
+  if (S.game === "quiz") return viewQuiz();
   if (S.game === "skyjo") {
     if (S.view === "table") return viewSkyjoTable();
     if (skyjoDone()) return viewSkyjoFinal();
