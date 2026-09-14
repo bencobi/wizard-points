@@ -442,7 +442,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-13.7";
+var VERSION = "2026-09-13.8";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -536,6 +536,32 @@ var app = document.getElementById("app");
 function el(html){ var t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstElementChild; }
 function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c]; }); }
 function signed(n){ return (n > 0 ? "+" : "") + n; }
+
+var ENTWURF = {};   // getippter Text, damit er ein Neuzeichnen ueberlebt
+var ENTWURF_FOKUS = null;
+
+function merkeEingabe(feld, schluessel){
+  var eingabe = feld.tagName === "INPUT" ? feld : feld.querySelector("input");
+  if (!eingabe) return feld;
+  if (ENTWURF[schluessel] !== undefined) eingabe.value = ENTWURF[schluessel];
+  eingabe.addEventListener("input", function(){ ENTWURF[schluessel] = eingabe.value; });
+  eingabe.addEventListener("focus", function(){ ENTWURF_FOKUS = schluessel; });
+  eingabe.addEventListener("blur", function(){ if (ENTWURF_FOKUS === schluessel) ENTWURF_FOKUS = null; });
+  if (ENTWURF_FOKUS === schluessel) {
+    setTimeout(function(){
+      try {
+        eingabe.focus({ preventScroll: true });
+        var n = eingabe.value.length;
+        if (eingabe.setSelectionRange) eingabe.setSelectionRange(n, n);
+      } catch (e) {}
+    }, 0);
+  }
+  return feld;
+}
+function entwurfWeg(schluessel){
+  delete ENTWURF[schluessel];
+  if (ENTWURF_FOKUS === schluessel) ENTWURF_FOKUS = null;
+}
 
 function bindTap(btn, fn){
   var sx = 0, sy = 0, moved = false, touched = false;
@@ -2683,7 +2709,7 @@ function viewQuizLobby(){
   }
 
   var anzahl = S.quizAnzahl || 8;
-  var feld = el('<div class="codeeingabe"><input type="text" placeholder="eigenes Thema, etwa Weltraum" maxlength="80"></div>');
+  var feld = merkeEingabe(el('<div class="codeeingabe"><input type="text" placeholder="eigenes Thema, etwa Weltraum" maxlength="80"></div>'), "thema");
   app.appendChild(feld);
   var chips = el('<div class="themen"></div>');
   THEMEN.forEach(function(t){
@@ -2754,14 +2780,15 @@ function viewQuizFrage(){
       '<span class="marke">eingeloggt</span></div>'));
     app.appendChild(el('<p class="note">Eingeloggt. Ge\u00e4ndert wird nichts mehr.</p>'));
   } else {
-    var eingabe = el('<div class="codeeingabe"><input type="text" inputmode="decimal" placeholder="Zahl' +
-      (f.einheit ? " in " + esc(f.einheit) : "") + '"></div>');
+    var eingabe = merkeEingabe(el('<div class="codeeingabe"><input type="text" inputmode="decimal" placeholder="Zahl' +
+      (f.einheit ? " in " + esc(f.einheit) : "") + '"></div>'), "schaetz" + z.idx);
     app.appendChild(eingabe);
     var ab = el('<button class="cta" type="button">Antwort einloggen</button>');
     ab.onclick = function(){
       var v = parseFloat(String(eingabe.querySelector("input").value).replace(",", "."));
       if (!isFinite(v)) return;
       meinTipp = { idx: z.idx, wert: v };
+      entwurfWeg("schaetz" + z.idx);
       quizSenden({ tat: "antwort", spieler: meinName(), wert: v, anzahl: S.names.length });
     };
     app.appendChild(ab);
