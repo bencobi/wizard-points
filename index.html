@@ -364,6 +364,7 @@
   .loesung{margin:8px 2px; padding:18px; border-radius:var(--r); text-align:center;
     background:var(--tint); border:1px solid var(--gold); font-size:26px; font-weight:800}
 
+  .rank .pt .sub{display:block; font-size:11px; font-weight:600; color:var(--dim); letter-spacing:0}
   .antwort{position:relative; transition:background .25s ease, border-color .25s ease, opacity .25s ease}
   .antwort .marke{position:absolute; right:12px; top:50%; transform:translateY(-50%);
     font-size:11px; letter-spacing:.06em; text-transform:uppercase; font-weight:700; opacity:.85}
@@ -404,6 +405,17 @@
   .mzeile.danger .mtext b{color:var(--warn)}
   .mzeile.danger .mzeichen{color:var(--warn)}
 
+  .countdown{position:relative; width:min(54vw,190px); margin:14px auto 10px; aspect-ratio:1/1}
+  .countdown svg{width:100%; height:100%; transform:rotate(-90deg)}
+  .countdown .bahn{fill:none; stroke:var(--glass-2); stroke-width:9}
+  .countdown .lauf{fill:none; stroke:var(--gold); stroke-width:9; stroke-linecap:round;
+    transition:stroke-dashoffset .08s linear}
+  .countdown .zahl{position:absolute; inset:0; display:grid; place-items:center;
+    font-size:64px; font-weight:800; letter-spacing:-.04em; color:var(--text)}
+  .countdown .zahl.puls{animation:zaehlen .5s cubic-bezier(.2,.9,.3,1)}
+  @keyframes zaehlen{0%{transform:scale(1.45); opacity:.15}45%{transform:scale(1); opacity:1}100%{transform:none}}
+  @media (prefers-reduced-motion:reduce){ .countdown .zahl.puls{animation:none} }
+
   .radbox{position:relative; width:min(78vw,300px); margin:6px auto 18px; aspect-ratio:1/1}
   .rad{width:100%; height:100%; display:block; transform-origin:50% 50%;
     filter:drop-shadow(0 8px 22px rgba(0,0,0,.28))}
@@ -442,7 +454,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-13.8";
+var VERSION = "2026-09-14.2";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -2333,8 +2345,10 @@ function liveVerbinden(){
     } else if (n.type === "bestaetigt") {
       liveVersion = n.version;
     } else if (n.type === "quiz") {
+      var vorher = QUIZ;
       QUIZ = n.zustand;
-      render();
+      if (nurFortschritt(vorher, QUIZ)) fortschrittAuffrischen();
+      else render();
     } else if (n.type === "anwesend") {
       render();
     } else if (n.type === "ende") {
@@ -2623,6 +2637,31 @@ var THEMEN = ["Allgemeinwissen", "Musik der 90er", "Filme und Serien", "Tiere un
               "Fu\u00dfball", "Weltgeschichte", "Essen und Trinken", "Technik und Erfindungen",
               "Deutschland", "Sch\u00e4tzfragen extrem"];
 
+function quizNeustart(){
+  quizSenden({ tat: "zuruecksetzen" });   // wirkt nur, wenn eine Freigabe laeuft
+  QUIZ = null; quizFehler = null; quizLaedt = false; S.logged = null; meinTipp = null;
+  Object.keys(ENTWURF).forEach(function(k){ if (k.indexOf("schaetz") === 0 || k === "thema") delete ENTWURF[k]; });
+  save(); render();
+}
+
+// Wenn sich nur die Zahl der Antworten geaendert hat, bleibt die Ansicht stehen.
+// Sonst zerstoert das Neuzeichnen das Eingabefeld und iOS klappt die Tastatur weg.
+function nurFortschritt(alt, neu){
+  if (!alt || !neu) return false;
+  if (alt.phase !== "frage" || neu.phase !== "frage") return false;
+  if (neu.zeigenAb && Date.now() < neu.zeigenAb) return false;
+  if (alt.idx !== neu.idx || alt.gesamt !== neu.gesamt) return false;
+  var ich = meinName();
+  if ((alt.geantwortet.indexOf(ich) >= 0) !== (neu.geantwortet.indexOf(ich) >= 0)) return false;
+  return true;
+}
+function fortschrittAuffrischen(){
+  var zeile = app.querySelector(".meta.fortschritt");
+  if (!zeile) { render(); return; }
+  zeile.textContent = "Frage " + (QUIZ.idx + 1) + " von " + QUIZ.gesamt +
+    " \u00b7 " + QUIZ.geantwortet.length + " von " + S.names.length + " geantwortet";
+}
+
 function quizSenden(obj){
   if (!sock || sock.readyState !== 1) return;
   obj.type = "quiz";
@@ -2688,6 +2727,7 @@ function viewQuiz(){
   if (z.phase === "frage") return viewQuizFrage();
   if (z.phase === "auf") return viewQuizAuf();
   if (z.modus === "rad" && z.phase !== "ende") return viewQuizRad();
+  if (z.phase === "rundenergebnis" || z.phase === "zwischenstand") return viewQuizRad();
   return viewQuizEnde();
 }
 
@@ -2745,13 +2785,48 @@ function viewQuizLobby(){
 var meinTipp = null;   // { idx, wert } - bleibt ueber Neuzeichnen hinweg stehen
 var letzteFrage = null;
 
+function viewCountdown(){
+  var z = QUIZ;
+  var rest = z.zeigenAb - Date.now();
+  var sek = Math.max(1, Math.min(3, Math.ceil(rest / 1000)));
+  quizKopf(null, null);
+  app.appendChild(el('<p class="meta">Frage ' + (z.idx + 1) + ' von ' + z.gesamt +
+    (z.thema ? ' \u00b7 ' + esc(z.thema) : '') + '</p>'));
+  app.appendChild(el(
+    '<div class="countdown"><svg viewBox="0 0 120 120">' +
+      '<circle class="bahn" cx="60" cy="60" r="52"/>' +
+      '<circle class="lauf" cx="60" cy="60" r="52"/></svg>' +
+      '<div class="zahl" key="' + sek + '">' + sek + '</div></div>'));
+  app.appendChild(el('<p class="note">Gleich geht es los. Finger bereit.</p>'));
+
+  var zahl = app.querySelector(".countdown .zahl");
+  var lauf = app.querySelector(".countdown .lauf");
+  var umfang = 2 * Math.PI * 52;
+  lauf.style.strokeDasharray = umfang;
+  function tick(){
+    var uebrig = z.zeigenAb - Date.now();
+    if (uebrig <= 0) { clearInterval(quizTakt); quizTakt = null; render(); return; }
+    var s = Math.max(1, Math.min(3, Math.ceil(uebrig / 1000)));
+    if (zahl.textContent !== String(s)) {
+      zahl.textContent = s;
+      zahl.classList.remove("puls");
+      void zahl.offsetWidth;
+      zahl.classList.add("puls");
+    }
+    lauf.style.strokeDashoffset = umfang * (1 - Math.min(1, uebrig / 3000));
+  }
+  tick();
+  quizTakt = setInterval(tick, 80);
+}
+
 function viewQuizFrage(){
   var z = QUIZ, f = z.frage;
   letzteFrage = f;
+  if (z.zeigenAb && Date.now() < z.zeigenAb) return viewCountdown();
   if (meinTipp && meinTipp.idx !== z.idx) meinTipp = null;
   var ichHabe = z.geantwortet.indexOf(meinName()) >= 0;
   quizKopf(null, null);
-  app.appendChild(el('<p class="meta">Frage ' + (z.idx + 1) + ' von ' + z.gesamt +
+  app.appendChild(el('<p class="meta fortschritt">Frage ' + (z.idx + 1) + ' von ' + z.gesamt +
     ' \u00b7 ' + z.geantwortet.length + ' von ' + S.names.length + ' geantwortet</p>'));
 
   var balken = el('<div class="uhr"><i></i><span></span></div>');
@@ -2840,14 +2915,21 @@ function viewQuizAuf(){
   }
   if (a.info) app.appendChild(el('<p class="hintline" style="text-align:center">' + esc(a.info) + '</p>'));
 
-  S.names.forEach(function(nm, i){
+  var reihe = S.names.map(function(nm, i){ return { nm: nm, i: i }; }).sort(function(x, y){
+    var d = (z.punkte[y.nm] || 0) - (z.punkte[x.nm] || 0);
+    return d !== 0 ? d : (a.rundenpunkte[y.nm] || 0) - (a.rundenpunkte[x.nm] || 0);
+  });
+  reihe.forEach(function(e){
+    var nm = e.nm, i = e.i;
     var wert = a.antworten[nm];
     var punkte = a.rundenpunkte[nm] || 0;
     var text = wert === undefined ? "keine Antwort"
       : (a.typ === "mc" ? "ABCD".charAt(wert) : String(wert) + (a.einheit ? " " + a.einheit : ""));
+    if (a.tempo && a.tempo[nm]) text += " \u00b7 " + a.tempo[nm] + " Tempo";
     app.appendChild(el('<div class="rank' + (punkte >= 100 ? ' first' : '') + '" style="--acc:' + hue(i) + '">' +
       '<span class="nm">' + esc(nm) + '<span class="sub">' + esc(text) + '</span></span>' +
-      '<span class="pt num">' + (punkte ? "+" + punkte : "0") + '</span></div>'));
+      '<span class="pt num">' + (z.punkte[nm] || 0) +
+      '<span class="sub">' + (punkte ? "+" + punkte : "\u00b10") + '</span></span></div>'));
   });
 
   if (S.hostet) {
@@ -2874,7 +2956,7 @@ function viewQuizEnde(){
   app.appendChild(logButton(order));
   if (S.hostet) {
     var neu = el('<button class="cta" type="button">Neue Runde, neue Fragen</button>');
-    neu.onclick = function(){ QUIZ = null; quizFehler = null; S.logged = null; save(); render(); };
+    neu.onclick = quizNeustart;
     app.appendChild(neu);
   }
   app.appendChild(tabs());
@@ -2991,22 +3073,51 @@ function radAnsicht(z){
     return;
   }
 
-  if (z.phase === "rundenende") {
-    var stand = S.names.map(function(nm, i){ return { nm: nm, idx: i, pt: (z.punkte[nm] || 0) }; })
-                       .sort(function(a, b){ return b.pt - a.pt; });
-    quizKopf("Runde vorbei", "Thema war " + esc(z.thema) + ". Zwischenstand:");
+  if (z.phase === "rundenergebnis") {
+    var vor0 = z.standVorRunde || {};
+    var runde = S.names.map(function(nm, i){
+      return { nm: nm, idx: i, zu: (z.punkte[nm] || 0) - (vor0[nm] || 0) };
+    }).sort(function(a, b){ return b.zu - a.zu; });
+    quizKopf("Ergebnis " + esc(z.thema), "Was in dieser Runde dazugekommen ist.");
+    runde.forEach(function(p, i){
+      app.appendChild(el('<div class="rank' + (i === 0 && p.zu > 0 ? ' first' : '') +
+        '" style="--acc:' + hue(p.idx) + '">' +
+        '<span class="pos num">' + (i + 1) + '</span><span class="nm">' + esc(p.nm) + '</span>' +
+        '<span class="pt num">' + (p.zu > 0 ? "+" + p.zu : "0") + '</span></div>'));
+    });
+    if (S.hostet) {
+      var g = el('<button class="cta" type="button">Gesamtstand zeigen</button>');
+      g.onclick = function(){ quizSenden({ tat: "gesamtstand" }); };
+      app.appendChild(g);
+    } else {
+      app.appendChild(el('<p class="note">Der Gastgeber zeigt gleich den Gesamtstand.</p>'));
+    }
+    return;
+  }
+
+  if (z.phase === "zwischenstand") {
+    var vor = z.standVorRunde || {};
+    var stand = S.names.map(function(nm, i){
+      return { nm: nm, idx: i, pt: (z.punkte[nm] || 0), zu: (z.punkte[nm] || 0) - (vor[nm] || 0) };
+    }).sort(function(a, b){ return b.pt - a.pt || b.zu - a.zu; });
+    var letzte = z.dran + 1 >= S.names.length;
+    quizKopf("Gesamtstand", letzte ? "Alle waren dran. Gleich das Endergebnis."
+      : "Noch " + (S.names.length - z.dran - 1) + " Spieler, dann ist Schluss.");
     stand.forEach(function(p, i){
       app.appendChild(el('<div class="rank' + (i === 0 ? ' first' : '') + '" style="--acc:' + hue(p.idx) + '">' +
-        '<span class="pos num">' + (i+1) + '</span><span class="nm">' + esc(p.nm) + '</span>' +
+        '<span class="pos num">' + (i + 1) + '</span>' +
+        '<span class="nm">' + esc(p.nm) + '<span class="sub">' +
+        (p.zu > 0 ? "diese Runde +" + p.zu : "diese Runde nichts") + '</span></span>' +
         '<span class="pt num">' + p.pt + '</span></div>'));
     });
     if (S.hostet) {
       var w = el('<button class="cta" type="button">' +
-        (z.dran + 1 >= S.names.length ? "Endergebnis zeigen" : S.names[z.dran + 1] + " ist dran") + '</button>');
+        (letzte ? "Endergebnis zeigen" : S.names[z.dran + 1] + " ans Rad") + '</button>');
       w.onclick = function(){ quizSenden({ tat: "naechsterSpieler" }); };
       app.appendChild(w);
     } else {
-      app.appendChild(el('<p class="note">Der Gastgeber schaltet weiter.</p>'));
+      app.appendChild(el('<p class="note">' + (letzte ? "Gleich das Endergebnis."
+        : "Als N\u00e4chstes dreht " + esc(S.names[z.dran + 1] || "") + ".") + '</p>'));
     }
     return;
   }
@@ -3191,7 +3302,7 @@ function openMenu(){
   neueGruppe();
   if (!gast && S.game === "quiz") {
     zeile("\u21bb", "Neue Quizrunde", "Punkte zur\u00fccksetzen", "danger", function(){
-      if (confirm("Quiz neu anfangen?")) { QUIZ = null; quizFehler = null; S.logged = null; save(); render(); }
+      if (confirm("Quiz f\u00fcr alle neu anfangen?")) quizNeustart();
     });
   } else if (!gast && S.game !== "kniffel") {
     zeile("\u21bb", "Neues Spiel, gleiche Spieler", "Alle Punkte verwerfen", "danger", function(){
