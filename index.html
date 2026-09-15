@@ -457,11 +457,16 @@
   .strahl.laeuft .linie{transform:scaleX(0); transform-origin:left center; transition:transform .5s ease}
   .strahl.laeuft.an .linie{transform:none}
   .strahl.laeuft .ziel{opacity:0; transform:translateY(-10px); transition:opacity .35s ease, transform .35s ease}
-  .strahl.laeuft.an .ziel{opacity:1; transform:none; transition-delay:.2s}
+  .strahl.laeuft .ziel.spaeter{opacity:0; transform:translateY(-14px) scaleY(.4)}
+  .strahl.laeuft.an .ziel{opacity:1; transform:none; transition:opacity .45s ease, transform .45s cubic-bezier(.2,.9,.3,1)}
+  .strahl .tipp.naechster i{box-shadow:0 0 0 4px rgba(46,158,91,.35)}
+  .strahl .tipp.naechster span{color:#2E9E5B; font-weight:800}
+  .loesung.verdeckt{opacity:0}
+  .loesung{transition:opacity .4s ease}
   .strahl.laeuft .tipp{transition:left .55s cubic-bezier(.2,.8,.25,1)}
   .strahl.laeuft .tipp span{opacity:0; transform:translateY(8px);
     transition:opacity .3s ease, transform .3s ease}
-  .strahl.laeuft.an .tipp span{opacity:1; transform:none; transition-delay:.7s}
+  .strahl.laeuft.an .tipp span{opacity:1; transform:none}
   @media (prefers-reduced-motion:reduce){ .strahl.laeuft .linie, .strahl.laeuft .ziel,
     .strahl.laeuft .tipp, .strahl.laeuft .tipp span{transition:none} }
   .strahl .ziel span{position:absolute; top:-21px; left:50%; transform:translateX(-50%); white-space:nowrap;
@@ -523,7 +528,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-14.7";
+var VERSION = "2026-09-14.8";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -2784,7 +2789,7 @@ function nurFortschritt(alt, neu){
   if ((alt.geantwortet.indexOf(ich) >= 0) !== (neu.geantwortet.indexOf(ich) >= 0)) return false;
   return true;
 }
-function zahlenstrahl(a){
+function zahlenstrahl(a, sofort, loesungsfeld){
   var werte = [], namen = [];
   S.names.forEach(function(nm, i){
     var w = Number(a.antworten[nm]);
@@ -2800,13 +2805,13 @@ function zahlenstrahl(a){
   var pos = function(w){ return ((w - min) / (max - min)) * 100; };
   var zahl = fmtKurz;
 
-  var laufen = true;   // im Zweifel animieren
+  var laufen = !sofort;
   try { if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) laufen = false; } catch (e) {}
   if (typeof requestAnimationFrame !== "function") laufen = false;
 
   var box = el('<div class="strahl' + (laufen ? " laeuft" : "") + '"></div>');
   box.appendChild(el('<div class="linie"></div>'));
-  var ziel = el('<div class="ziel" style="left:' + pos(loesung).toFixed(2) + '%">' +
+  var ziel = el('<div class="ziel' + (laufen ? " spaeter" : "") + '" style="left:' + pos(loesung).toFixed(2) + '%">' +
     '<span>' + esc(zahl(loesung)) + '</span></div>');
   box.appendChild(ziel);
 
@@ -2821,20 +2826,47 @@ function zahlenstrahl(a){
       '<i></i><span>' + esc(e.nm.charAt(0).toUpperCase()) + " " + esc(zahl(e.w)) + '</span></div>');
     t.style.left = laufen ? "0%" : p.toFixed(2) + "%";
     t.setAttribute("data-ziel", p.toFixed(2));
-    if (laufen) t.style.transitionDelay = (260 + k * 150) + "ms";
+    t.setAttribute("data-ab", String(Math.abs(e.w - loesung)));
+    if (laufen) {
+      t.style.transitionDelay = (500 + k * 900) + "ms";
+      t.querySelector("span").style.transitionDelay = (900 + k * 900) + "ms";
+    }
     box.appendChild(t);
     punkte.push(t);
   });
 
-  if (laufen) {
-    // Erst wächst die Achse, dann wandern die Tipps an ihren Platz, zuletzt fällt die Lösung ein.
-    requestAnimationFrame(function(){
-      requestAnimationFrame(function(){
-        box.classList.add("an");
-        punkte.forEach(function(t){ t.style.left = t.getAttribute("data-ziel") + "%"; });
-      });
-    });
+  var naechster = punkte.slice().sort(function(x, y){
+    return Number(x.getAttribute("data-ab")) - Number(y.getAttribute("data-ab"));
+  })[0];
+
+  function aufdecken(){
+    ziel.classList.remove("spaeter");
+    box.classList.add("aufgedeckt");
+    if (naechster) naechster.classList.add("naechster");
+    if (!loesungsfeld) return;
+    loesungsfeld.classList.remove("verdeckt");
+    if (!laufen) return;
+    // Die Zahl zaehlt hoch, damit die Aufloesung einen Moment bekommt
+    var einheit = a.einheit ? " " + a.einheit : "";
+    var start = Date.now(), dauer = 900;
+    (function hoch(){
+      var t = Math.min(1, (Date.now() - start) / dauer);
+      var weich = 1 - Math.pow(1 - t, 3);
+      loesungsfeld.textContent = fmtZahl(Math.round(loesung * weich)) + einheit;
+      if (t < 1) requestAnimationFrame(hoch);
+      else loesungsfeld.textContent = fmtZahl(loesung) + einheit;
+    })();
   }
+
+  if (!laufen) { aufdecken(); return box; }
+
+  requestAnimationFrame(function(){
+    requestAnimationFrame(function(){
+      box.classList.add("an");
+      punkte.forEach(function(t){ t.style.left = t.getAttribute("data-ziel") + "%"; });
+    });
+  });
+  setTimeout(aufdecken, 900 + punkte.length * 900);
   return box;
 }
 
@@ -3129,7 +3161,8 @@ function viewQuizAuf(){
   var wenigerBewegung = false;
   try { wenigerBewegung = window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) {}
   var sofort = aufGezeigt === z.idx || wenigerBewegung || typeof requestAnimationFrame !== "function";
-  var felder = [];
+  var felder = [], flieger = 0, tippZahl = 0;
+  S.names.forEach(function(nm){ if (a.antworten[nm] !== undefined) tippZahl++; });
 
   if (a.typ === "mc" && f && f.optionen) {
     f.optionen.forEach(function(o, i){
@@ -3147,7 +3180,6 @@ function viewQuizAuf(){
     });
 
     // Erst fliegen die Spieler auf ihre Antwort, danach wird aufgeloest.
-    var flieger = 0;
     S.names.forEach(function(nm, i){
       var wahl = a.antworten[nm];
       if (wahl === undefined || !felder[wahl]) return;
@@ -3159,9 +3191,10 @@ function viewQuizAuf(){
       flieger++;
     });
   } else {
-    app.appendChild(el('<div class="loesung">' +
-      esc(fmtZahl(a.loesung) + (a.einheit ? " " + a.einheit : "")) + '</div>'));
-    app.appendChild(zahlenstrahl(a));
+    var lo = el('<div class="loesung' + (sofort ? "" : " verdeckt") + '">' +
+      esc(fmtZahl(a.loesung) + (a.einheit ? " " + a.einheit : "")) + '</div>');
+    app.appendChild(lo);
+    app.appendChild(zahlenstrahl(a, sofort, lo));
   }
 
   var rest = el('<div class="nachher' + (sofort ? "" : " wartet") + '"></div>');
@@ -3202,7 +3235,8 @@ function viewQuizAuf(){
       rest.classList.remove("wartet");
       aufGezeigt = z.idx;
       rangAnimieren("stand");
-    }, 300 + Math.max(1, flieger) * 900 + 500);
+    }, a.typ === "mc" ? 300 + Math.max(1, flieger) * 900 + 500
+                      : 900 + Math.max(1, tippZahl) * 900 + 1400);
   } else {
     rangAnimieren("stand");
   }
