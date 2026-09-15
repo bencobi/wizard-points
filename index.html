@@ -566,7 +566,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-15.8";
+var VERSION = "2026-09-15.9";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -610,7 +610,7 @@ function grenzen(id){
 function minSpieler(id){ return grenzen(id).min; }
 
 function newGame(id, names){
-  return { game:id, names:names || [], mode:"up", strict:false,
+  return { game:id, names:names || [], mode:"up", strict:false, versatz:0,
            rounds:[], draft:null, sheet:[], at:0, view:"round", logged:null, setup:true };
 }
 function lastNames(){
@@ -811,6 +811,13 @@ function viewSetup(){
     '<span class="box">\u2713</span><span><b>Vorhand-Regel</b>' +
     '<span>Der Geber darf die Summe der Ansagen nicht genau aufgehen lassen.</span></span></button>');
   ruleBtn.onclick = function(){ strict = !strict; ruleBtn.setAttribute("aria-pressed", strict); };
+
+  var losen = !!ALL.zufallStart;
+  var losBtn = el('<button class="toggle" type="button" aria-pressed="' + losen + '">' +
+    '<span class="box">\u2713</span><span><b>Geber auslosen</b>' +
+    '<span>Wer gibt und wer anf\u00e4ngt, wird beim Start ausgew\u00fcrfelt. Die Sitzreihenfolge bleibt, ' +
+    'wie ihr sie eingetragen habt.</span></span></button>');
+  losBtn.onclick = function(){ losen = !losen; losBtn.setAttribute("aria-pressed", losen); };
   Array.prototype.forEach.call(modeBox.children, function(b){
     b.onclick = function(){ mode = b.dataset.m; paintMode(); };
   });
@@ -854,6 +861,10 @@ function viewSetup(){
 
   startBtn.onclick = function(){
     S.names = names.map(function(n, i){ return n.trim() || ("Spieler " + (i+1)); });
+    // Sitzreihenfolge bleibt, nur wer zuerst gibt wird ausgelost
+    ALL.zufallStart = losen;
+    // Die Sitzreihenfolge bleibt, nur wer zuerst gibt wird ausgelost
+    S.versatz = losen ? Math.floor(Math.random() * S.names.length) : 0;
     S.mode = mode;
     S.strict = strict;
     S.sheet = S.names.map(function(){ return {}; });
@@ -866,7 +877,8 @@ function viewSetup(){
     save(); render();
   };
 
-  if (id === "wizard") { app.appendChild(modeBox); app.appendChild(ruleBtn); }
+  if (id === "wizard") { app.appendChild(modeBox); app.appendChild(ruleBtn); app.appendChild(losBtn); }
+  else if (id === "phase10") { app.appendChild(losBtn); }
   app.appendChild(addBtn);
   app.appendChild(startBtn);
   var back = el('<button class="cta ghost" type="button">Zur\u00fcck zum Hauptmen\u00fc</button>');
@@ -899,7 +911,7 @@ function viewRound(){
   app.appendChild(strip(n));
 
   var count = S.names.length;
-  var dealer = (n - 1) % count;
+  var dealer = (n - 1 + (S.versatz || 0)) % count;
   var left = 60 - max*count;
   var offBy = have !== max;
 
@@ -1376,7 +1388,7 @@ function viewPhase(){
   app.appendChild(el('<div class="top"><div class="brand"><span class="hat">\u25B2</span> Phase 10</div></div>'));
   topBtns();
   var anzahl = S.names.length;
-  var geber = (n - 1) % anzahl;
+  var geber = (n - 1 + (S.versatz || 0)) % anzahl;
   app.appendChild(el('<h1 class="headline num">Runde ' + n + '</h1>'));
   app.appendChild(el('<p class="meta">' + esc(S.names[geber]) + ' gibt, ' +
     esc(S.names[(geber + 1) % anzahl]) + ' f\u00e4ngt an. Haken setzen, wer seine Phase geschafft hat.</p>'));
@@ -2416,7 +2428,7 @@ function beitrittsLink(code){
 /* ---------- Gemeinsam spielen ---------- */
 var sock = null, sockCode = null, liveVersion = 0, letzterStand = null, wendetAn = false, liveAnzahl = 1;
 var verbindet = false, neuTimer = null;
-var LIVE_KEYS = ["game", "names", "mode", "strict", "rounds", "draft", "sheet"];
+var LIVE_KEYS = ["game", "names", "mode", "strict", "versatz", "rounds", "draft", "sheet"];
 
 function standVon(st){
   var o = {};
@@ -4222,7 +4234,7 @@ document.addEventListener("visibilitychange", function(){
 var RULES_WIZARD = [
   ["Ziel", "Sage vor jeder Runde an, wie viele Stiche du machst. Nur die genaue Zahl bringt Punkte."],
   ["Punkte", "Ansage getroffen: 20 Punkte plus 10 je Stich. Daneben: 10 Punkte Abzug je Stich Differenz, egal ob zu viel oder zu wenig."],
-  ["Geben", "Die Rundennummer ist die Kartenzahl. Der Geber wechselt jede Runde, angesagt wird ab dem Spieler links von ihm, der Geber zuletzt."],
+  ["Geben", "Die Rundennummer ist die Kartenzahl. Der Geber wechselt jede Runde, angesagt wird ab dem Spieler links von ihm, der Geber zuletzt. Wer die erste Runde gibt, l\u00e4sst sich beim Start auslosen."],
   ["Trumpf", "Nach dem Geben wird die oberste Karte des Reststapels aufgedeckt, ihre Farbe ist Trumpf. Zauberer: der Geber w\u00e4hlt die Farbe. Narr oder kein Rest: ohne Trumpf."],
   ["Bedienen", "Die erste Farbkarte im Stich gibt die Farbe vor, die musst du bedienen, wenn du sie hast \u2013 auch wenn du Trumpf h\u00e4ttest. Zauberer und Narr darfst du immer legen."],
   ["Stich", "Der erste gespielte Zauberer gewinnt, sonst der h\u00f6chste Trumpf, sonst die h\u00f6chste Karte der angespielten Farbe. Nur Narren: der erste gewinnt."],
