@@ -408,6 +408,31 @@
   .mzeile.danger .mtext b{color:var(--warn)}
   .mzeile.danger .mzeichen{color:var(--warn)}
 
+  .brett{margin:6px 0 14px; --f-begriff:#8B6BD1; --f-kuriosum:#2D82C7; --f-wahrheit:#2E9E5B; --f-ziel:var(--gold)}
+  .brett svg{width:100%; height:auto; display:block; overflow:visible}
+  .brett .bahn{fill:none; stroke:var(--hair); stroke-width:26; stroke-linecap:round; stroke-linejoin:round}
+  .brett .bahnhell{fill:none; stroke:var(--glass-2); stroke-width:22; stroke-linecap:round; stroke-linejoin:round}
+  .brett .feld{stroke:var(--card); stroke-width:1.5}
+  .brett .feld.begriff{fill:var(--f-begriff)}
+  .brett .feld.kuriosum{fill:var(--f-kuriosum)}
+  .brett .feld.wahrheit{fill:var(--f-wahrheit)}
+  .brett .feld.ziel{fill:var(--f-ziel); stroke:var(--f-ziel)}
+  .brett .feld.blinkt{animation:aufholblink 1.4s ease-in-out}
+  @keyframes aufholblink{0%,100%{r:10}25%{r:15}50%{r:10}75%{r:15}}
+  .brett .aufholzahl{font-size:10px; font-weight:800; fill:#fff; text-anchor:middle}
+  .brett .zielmarke{font-size:12px; font-weight:800; fill:var(--gold); text-anchor:middle}
+  .brett .figur circle{fill:var(--acc); stroke:var(--card); stroke-width:2.5;
+    filter:drop-shadow(0 2px 4px rgba(0,0,0,.2))}
+  .brett .figur text{fill:#fff; font-size:13px; font-weight:800; text-anchor:middle}
+  .brett .figur.springt circle{filter:drop-shadow(0 8px 10px rgba(0,0,0,.22))}
+  .aufholzeile{color:var(--gold); font-weight:700}
+  .legende{display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin:0 0 10px;
+    font-size:12.5px; color:var(--dim)}
+  .lp{display:inline-flex; align-items:center; gap:5px}
+  .lp i{width:11px; height:11px; border-radius:50%; display:inline-block}
+  .lp i.begriff{background:#8B6BD1} .lp i.kuriosum{background:#2D82C7} .lp i.wahrheit{background:#2E9E5B}
+  .lp i.aufhol{background:var(--dim); color:#fff; font-size:9px; font-weight:800; text-align:center; line-height:11px}
+
   .marke.verdeckt{opacity:0}
   .marke{transition:opacity .3s ease}
   .themakarte{display:flex; align-items:center; gap:14px; margin:10px 4px 18px;
@@ -531,7 +556,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-15.2";
+var VERSION = "2026-09-15.3";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -3297,6 +3322,7 @@ function viewQuizAuf(){
 
 function viewQuizEnde(){
   var z = QUIZ;
+  if (z.brett) return viewBluffEnde(z);
   var order = S.names.map(function(nm, i){ return { nm: nm, idx: i, pt: (z.punkte[nm] || 0) }; })
                      .sort(function(a, b){ return b.pt - a.pt; });
   quizKopf(esc(order[0].nm) + " gewinnt", z.gesamt + " Fragen" + (z.thema ? " zum Thema " + esc(z.thema) : ""));
@@ -3315,6 +3341,192 @@ function viewQuizEnde(){
 }
 
 
+
+
+function viewBluffEnde(z){
+  var ziel = z.brett.length - 1;
+  var order = S.names.map(function(nm, i){ return { nm: nm, idx: i, pt: (z.figuren[nm] || 0) }; })
+                     .sort(function(a, b){ return b.pt - a.pt; });
+  quizKopf(esc(z.sieger || order[0].nm) + " ist im Ziel",
+    (z.runde || 1) + " Runden gespielt" + (z.thema ? " \u00b7 " + esc(z.thema) : ""));
+  app.appendChild(brettZeichnen(z, z.figuren));
+  order.forEach(function(p, i){
+    app.appendChild(el('<div class="rank' + (i === 0 ? ' first' : '') + '" data-nm="' + esc(p.nm) +
+      '" style="--acc:' + hue(p.idx) + '"><span class="pos num">' + (i+1) + '</span>' +
+      '<span class="nm">' + esc(p.nm) + '<span class="sub">' +
+      (p.pt >= ziel ? "im Ziel" : (ziel - p.pt) + " Felder gefehlt") + '</span></span>' +
+      '<span class="pt num">' + p.pt + '</span></div>'));
+  });
+  app.appendChild(logButton(order));
+  if (S.hostet) {
+    var neu = el('<button class="cta" type="button">Neue Partie</button>');
+    neu.onclick = quizNeustart;
+    app.appendChild(neu);
+  }
+  app.appendChild(tabs());
+}
+
+/* ---------- Spielbrett fuer Bluff ---------- */
+var BRETT_MASS = { jeReihe: 5, links: 30, rechts: 30, oben: 34, abstand: 66, breite: 340 };
+var brettLaeuft = 0;
+
+function brettPunkt(i){
+  var m = BRETT_MASS;
+  var reihe = Math.floor(i / m.jeReihe), inReihe = i % m.jeReihe;
+  var spanne = m.breite - m.links - m.rechts;
+  var schritt = spanne / (m.jeReihe - 1);
+  var vonLinks = reihe % 2 === 0;
+  return { x: m.links + (vonLinks ? inReihe : (m.jeReihe - 1 - inReihe)) * schritt,
+           y: m.oben + reihe * m.abstand };
+}
+
+function brettPfad(felder){
+  var m = BRETT_MASS, reihen = Math.ceil(felder / m.jeReihe);
+  var spanne = m.breite - m.links - m.rechts, r = m.abstand / 2, d = "";
+  for (var reihe = 0; reihe < reihen; reihe++) {
+    var y = m.oben + reihe * m.abstand;
+    var vonLinks = reihe % 2 === 0;
+    var start = vonLinks ? m.links : m.links + spanne;
+    var ende = vonLinks ? m.links + spanne : m.links;
+    d += (reihe === 0 ? "M" : "L") + start + " " + y + "L" + ende + " " + y;
+    if (reihe < reihen - 1) d += "A" + r + " " + r + " 0 0 " + (vonLinks ? 1 : 0) + " " + ende + " " + (y + m.abstand);
+  }
+  return d;
+}
+
+function figurPunkt(stand, feld, name){
+  var p = brettPunkt(feld);
+  var gruppe = S.names.filter(function(nm){ return stand[nm] === feld; });
+  var platz = gruppe.indexOf(name);
+  if (platz < 0) { gruppe = gruppe.concat([name]); platz = gruppe.length - 1; }
+  if (gruppe.length <= 1) return { x: p.x, y: p.y };
+  var breite = Math.min(9, 26 / gruppe.length);
+  var versatz = (platz - (gruppe.length - 1) / 2) * breite;
+  return { x: p.x + versatz, y: p.y - Math.abs(versatz) * 0.45 };
+}
+
+function brettZeichnen(z, stand){
+  var m = BRETT_MASS, felder = z.brett.length;
+  var reihen = Math.ceil(felder / m.jeReihe);
+  var hoehe = m.oben * 2 + (reihen - 1) * m.abstand;
+  var teile = [];
+  for (var i = 0; i < felder; i++) {
+    var p = brettPunkt(i);
+    teile.push('<circle class="feld ' + z.brett[i] + '" cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="10"/>');
+    if (z.aufholen && z.aufholen[i]) {
+      teile.push('<text class="aufholzahl" x="' + p.x.toFixed(1) + '" y="' + (p.y + 3.6).toFixed(1) +
+        '">+' + z.aufholen[i] + '</text>');
+    }
+  }
+  var ziel = brettPunkt(felder - 1);
+  var box = el('<div class="brett"><svg viewBox="0 0 ' + m.breite + ' ' + hoehe + '">' +
+    '<path class="bahn" d="' + brettPfad(felder) + '"/>' +
+    '<path class="bahnhell" d="' + brettPfad(felder) + '"/>' + teile.join("") +
+    '<text class="zielmarke" x="' + ziel.x.toFixed(1) + '" y="' + (ziel.y - 20).toFixed(1) + '">Ziel</text>' +
+    '<g class="figuren"></g></svg></div>');
+  var g = box.querySelector(".figuren");
+  S.names.forEach(function(nm, i){
+    var knoten = svgEl('<g class="figur" data-nm="' + esc(nm) + '" style="--acc:' + hue(i) + '">' +
+      '<circle r="14"/><text dy="4.5">' + esc(nm.charAt(0).toUpperCase()) + '</text></g>');
+    var pos = figurPunkt(stand, stand[nm] || 0, nm);
+    knoten.setAttribute("transform", "translate(" + pos.x.toFixed(1) + " " + pos.y.toFixed(1) + ")");
+    g.appendChild(knoten);
+  });
+  return box;
+}
+
+function svgEl(html){
+  var huelle = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  huelle.innerHTML = html;
+  return huelle.firstElementChild;
+}
+
+// Die Zuege abspielen, einer nach dem anderen
+function brettAbspielen(z, fertig){
+  var stand = Object.assign({}, z.figurenVorher);
+  var reihenfolge = S.names.filter(function(nm){
+    var zg = z.zuege[nm];
+    return zg && zg.nach > zg.von;
+  });
+  if (!reihenfolge.length) { fertig && fertig(); return; }
+
+  var nr = 0;
+  function naechsteFigur(){
+    if (nr >= reihenfolge.length) { fertig && fertig(); return; }
+    var nm = reihenfolge[nr++];
+    var zg = z.zuege[nm];
+    laufen(nm, zg, function(){ quizTakt = setTimeout(naechsteFigur, 260); });
+  }
+
+  function laufen(nm, zg, danach){
+    var knoten = app.querySelector('.figur[data-nm="' + nm.replace(/"/g, "") + '"]');
+    if (!knoten) { danach(); return; }
+    knoten.classList.add("springt");
+    function schritt(){
+      if (stand[nm] >= zg.nach) {
+        knoten.classList.remove("springt");
+        ausrichten();
+        danach();
+        return;
+      }
+      var von = figurPunkt(stand, stand[nm], nm);
+      stand[nm]++;
+      var nach = figurPunkt(stand, stand[nm], nm);
+      if (zg.bonus && zg.bonus.indexOf(stand[nm]) >= 0) aufholHinweis(nm, z.aufholen[stand[nm]], stand[nm]);
+      ausrichten(nm);
+      var start = Date.now(), dauer = 230;
+      (function bewegen(){
+        var t = Math.min(1, (Date.now() - start) / dauer);
+        var weich = t * t * (3 - 2 * t);
+        knoten.setAttribute("transform", "translate(" +
+          (von.x + (nach.x - von.x) * weich).toFixed(1) + " " +
+          (von.y + (nach.y - von.y) * weich - Math.sin(Math.PI * t) * 13).toFixed(1) + ")");
+        if (t < 1) requestAnimationFrame(bewegen);
+        else schritt();
+      })();
+    }
+    schritt();
+  }
+
+  function ausrichten(ausser){
+    S.names.forEach(function(nm){
+      if (nm === ausser) return;
+      var knoten = app.querySelector('.figur[data-nm="' + nm.replace(/"/g, "") + '"]');
+      if (!knoten) return;
+      var ziel = figurPunkt(stand, stand[nm], nm);
+      var jetzt = /translate\(([-\d.]+) ([-\d.]+)\)/.exec(knoten.getAttribute("transform"));
+      if (!jetzt) return;
+      var vx = Number(jetzt[1]), vy = Number(jetzt[2]);
+      if (Math.abs(vx - ziel.x) < 0.3 && Math.abs(vy - ziel.y) < 0.3) return;
+      var start = Date.now();
+      (function rutschen(){
+        var t = Math.min(1, (Date.now() - start) / 260);
+        var weich = t * t * (3 - 2 * t);
+        knoten.setAttribute("transform", "translate(" +
+          (vx + (ziel.x - vx) * weich).toFixed(1) + " " + (vy + (ziel.y - vy) * weich).toFixed(1) + ")");
+        if (t < 1) requestAnimationFrame(rutschen);
+      })();
+    });
+  }
+
+  naechsteFigur();
+}
+
+function aufholHinweis(nm, mehr, feld){
+  var kreis = app.querySelectorAll(".brett .feld")[feld];
+  if (kreis) {
+    kreis.classList.add("blinkt");
+    setTimeout(function(){ kreis.classList.remove("blinkt"); }, 1400);
+  }
+  var alt = app.querySelector(".aufholzeile");
+  if (alt) alt.remove();
+  var brett = app.querySelector(".brett");
+  if (!brett) return;
+  var zeile = el('<p class="note aufholzeile">Aufholfeld \u00b7 ' + esc(nm) +
+    ' liegt hinten und r\u00fcckt ' + mehr + ' Felder weiter</p>');
+  brett.parentNode.insertBefore(zeile, brett.nextSibling);
+  setTimeout(function(){ zeile.remove(); }, 2600);
+}
 
 /* ---------- Bluff: erfinden, raten, auflachen ---------- */
 var bluffGezeigt = -1;   // fuer welche Runde die Aufloesung schon lief
@@ -3340,38 +3552,19 @@ function viewBluffLobby(){
     return;
   }
 
-  var arten = S.bluffArten || { begriff: true, kuriosum: true, wahrheit: true };
-  app.appendChild(el('<p class="lead-in">Welche Kartenarten sollen kommen?</p>'));
-  BLUFF_ARTEN.forEach(function(k){
-    var an = !!arten[k.id];
-    var b = el('<button class="antwort' + (an ? " gewaehlt" : " ruhig") + '" type="button">' +
-      '<span class="buchstabe">' + (an ? "\u2713" : "\u25CB") + '</span>' + esc(k.name) +
-      '<span class="marke">' + esc(k.sub) + '</span></button>');
-    bindTap(b, function(){
-      arten[k.id] = !arten[k.id];
-      if (!BLUFF_ARTEN.some(function(x){ return arten[x.id]; })) arten[k.id] = true;
-      S.bluffArten = arten; save(); render();
-    });
-    app.appendChild(b);
-  });
-
-  var anzahl = S.bluffAnzahl || 5;
-  var wahl = el('<div class="modes"></div>');
-  [3, 5, 8].forEach(function(n){
-    var b = el('<button type="button" aria-current="' + (n === anzahl) + '"><b>' + n + ' Runden</b></button>');
-    b.onclick = function(){ S.bluffAnzahl = n; save(); render(); };
-    wahl.appendChild(b);
-  });
-  app.appendChild(wahl);
+  app.appendChild(el('<p class="lead-in">Gespielt wird auf einem Spielbrett: Wer zuerst im Ziel ist, ' +
+    'gewinnt. Das Feld des Rundenf\u00fchrers bestimmt, welche Kartenart drankommt.</p>'));
+  app.appendChild(brettLegende({}));
+  app.appendChild(el('<p class="hintline" style="text-align:center">Zwei Felder f\u00fcrs Finden der ' +
+    'Wahrheit, drei f\u00fcr jeden, der auf deine Erfindung hereinf\u00e4llt.</p>'));
 
   var feld = merkeEingabe(el('<div class="codeeingabe"><input type="text" maxlength="80" ' +
     'placeholder="eigenes Thema, sonst bunt gemischt"></div>'), "bluffthema");
   app.appendChild(feld);
 
-  var los = el('<button class="cta" type="button">Fragen holen und starten</button>');
+  var los = el('<button class="cta" type="button">Karten holen und starten</button>');
   los.onclick = function(){
-    bluffHolen(feld.querySelector("input").value.trim(), anzahl,
-      BLUFF_ARTEN.filter(function(k){ return arten[k.id]; }).map(function(k){ return k.id; }));
+    bluffHolen(feld.querySelector("input").value.trim(), 9, ["begriff", "kuriosum", "wahrheit"]);
   };
   app.appendChild(los);
 }
@@ -3379,11 +3572,16 @@ function viewBluffLobby(){
 function viewBluff(){
   var z = QUIZ;
   quizKopf(null, null);
-  var artName = { begriff: "Fremdwort", kuriosum: "Kuriosit\u00e4t", wahrheit: "Richtig oder Falsch" };
-  app.appendChild(el('<p class="meta">Runde ' + (z.idx + 1) + ' von ' + z.gesamt + ' \u00b7 ' +
-    esc(artName[(z.frage && z.frage.art) || "kuriosum"]) + '</p>'));
+  var artName = { begriff: "Fremdwort", kuriosum: "Kuriosit\u00e4t", wahrheit: "Richtig oder Falsch",
+                  ziel: "Ziel" };
+  var fuehrer = S.names[(z.dran || 0) % S.names.length];
+  app.appendChild(el('<p class="meta">Runde ' + (z.runde || 1) + ' \u00b7 ' +
+    esc(artName[(z.frage && z.frage.art) || z.art || "kuriosum"]) +
+    ' \u00b7 Feld von ' + esc(fuehrer) + '</p>'));
   app.appendChild(el('<h1 class="frage">' + esc(z.frage ? z.frage.frage : "") + '</h1>'));
 
+  if (z.phase === "nachschub") return bluffNachschub(z);
+  if (z.phase === "zug") return bluffBrettzug(z);
   if (z.phase === "janein") return bluffJaNein(z);
   if (z.phase === "auf" && z.aufloesung && z.aufloesung.art === "wahrheit") return bluffJaNeinAuf(z);
   if (z.phase === "schreiben") return bluffSchreiben(z);
@@ -3501,9 +3699,11 @@ function bluffAuf(z){
   (a.wahrheitstreffer || []).forEach(function(nm){
     app.appendChild(el('<p class="note">' + esc(nm) + ' hatte die Wahrheit geschrieben.</p>'));
   });
+  var wert = function(nm){ return z.brett ? ((a.schritte && a.schritte[nm]) || 0) : (a.rundenpunkte[nm] || 0); };
   var reihe = S.names.map(function(nm, i){ return { nm: nm, i: i }; }).sort(function(x, y){
-    var d = (a.rundenpunkte[y.nm] || 0) - (a.rundenpunkte[x.nm] || 0);
-    return d !== 0 ? d : (z.punkte[y.nm] || 0) - (z.punkte[x.nm] || 0);
+    var d = wert(y.nm) - wert(x.nm);
+    return d !== 0 ? d : ((z.brett ? z.figuren[y.nm] : z.punkte[y.nm]) || 0) -
+                         ((z.brett ? z.figuren[x.nm] : z.punkte[x.nm]) || 0);
   });
   reihe.forEach(function(e){
     var punkte = a.rundenpunkte[e.nm] || 0;
@@ -3520,17 +3720,9 @@ function bluffAuf(z){
     app.appendChild(el('<div class="rank' + (punkte >= 100 ? ' first' : '') + '" data-nm="' + esc(e.nm) +
       '" style="--acc:' + hue(e.i) + '"><span class="nm">' + esc(e.nm) +
       '<span class="sub">' + esc(wie) + '</span></span>' +
-      '<span class="pt num">' + fmtZahl(z.punkte[e.nm] || 0) +
-      '<span class="sub">' + (punkte ? "+" + fmtZahl(punkte) : "\u00b10") + '</span></span></div>'));
+      bluffZahl(z, a, e.nm, punkte) + '</div>'));
   });
-  if (S.hostet) {
-    var w = el('<button class="cta" type="button">' +
-      (z.idx + 1 >= z.gesamt ? "Endergebnis zeigen" : "N\u00e4chste Runde") + '</button>');
-    w.onclick = function(){ bluffTipp = null; quizSenden({ tat: "weiter" }); };
-    app.appendChild(w);
-  } else {
-    app.appendChild(el('<p class="note">Der Gastgeber schaltet weiter.</p>'));
-  }
+  bluffWeiter(z);
   app = vorher;
 
   if (!sofort) {
@@ -3622,8 +3814,7 @@ function bluffJaNeinAuf(z){
     app.appendChild(el('<div class="rank' + (punkte ? ' first' : '') + '" data-nm="' + esc(e.nm) +
       '" style="--acc:' + hue(e.i) + '"><span class="nm">' + esc(e.nm) + '<span class="sub">' +
       (wert === undefined ? "nicht getippt" : (wert ? "hielt es f\u00fcr wahr" : "hielt es f\u00fcr erfunden")) +
-      '</span></span><span class="pt num">' + fmtZahl(z.punkte[e.nm] || 0) +
-      '<span class="sub">' + (punkte ? "+" + fmtZahl(punkte) : "\u00b10") + '</span></span></div>'));
+      '</span></span>' + bluffZahl(z, a, e.nm, punkte) + '</div>'));
   });
   bluffWeiter(z);
   app = vorher;
@@ -3645,15 +3836,71 @@ function bluffJaNeinAuf(z){
   app.appendChild(tabs());
 }
 
+function bluffZahl(z, a, name, punkte){
+  if (z.brett) {
+    var schritte = (a.schritte && a.schritte[name]) || 0;
+    return '<span class="pt num">' + (z.figuren[name] || 0) +
+      '<span class="sub">' + (schritte ? "+" + schritte + " Felder" : "keine Felder") + '</span></span>';
+  }
+  return '<span class="pt num">' + fmtZahl(z.punkte[name] || 0) +
+    '<span class="sub">' + (punkte ? "+" + fmtZahl(punkte) : "\u00b10") + '</span></span>';
+}
+
 function bluffWeiter(z){
   if (S.hostet) {
-    var w = el('<button class="cta" type="button">' +
-      (z.idx + 1 >= z.gesamt ? "Endergebnis zeigen" : "N\u00e4chste Runde") + '</button>');
-    w.onclick = function(){ bluffTipp = null; quizSenden({ tat: "weiter" }); };
+    var w = el('<button class="cta" type="button">Auf das Spielbrett</button>');
+    w.onclick = function(){ bluffTipp = null; quizSenden({ tat: "brett" }); };
     app.appendChild(w);
   } else {
-    app.appendChild(el('<p class="note">Der Gastgeber schaltet weiter.</p>'));
+    app.appendChild(el('<p class="note">Gleich geht es aufs Spielbrett.</p>'));
   }
+}
+
+function bluffNachschub(z){
+  app.appendChild(el('<p class="note denkt">Neue Karten werden ausgedacht<i>.</i><i>.</i><i>.</i></p>'));
+  if (S.hostet && !quizLaedt) {
+    quizLaedt = true;
+    fetch(API + "/bluff", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ thema: z.thema || "", anzahl: 9,
+        arten: ["begriff", "kuriosum", "wahrheit"], vermeiden: sperrliste() }) })
+      .then(function(r){ return r.json().then(function(d){ if (!r.ok) throw new Error(d.message); return d; }); })
+      .then(function(d){ quizLaedt = false; quizSenden({ tat: "nachschub", fragen: d.fragen }); })
+      .catch(function(e){
+        quizLaedt = false;
+        app.appendChild(el('<p class="note warn">' + esc(e.message || "Es hat nicht geklappt") + '</p>'));
+      });
+  }
+  app.appendChild(tabs());
+}
+
+function bluffBrettzug(z){
+  app.appendChild(brettZeichnen(z, z.figurenVorher || z.figuren));
+  app.appendChild(brettLegende(z));
+  var knopf = el('<button class="cta" type="button" disabled>Die Figuren ziehen \u2026</button>');
+  app.appendChild(knopf);
+  app.appendChild(tabs());
+
+  brettAbspielen(z, function(){
+    if (z.sieger) {
+      knopf.textContent = S.hostet ? "Endergebnis zeigen" : "Der Gastgeber schaltet weiter";
+    } else {
+      knopf.textContent = S.hostet ? "N\u00e4chste Runde" : "Der Gastgeber schaltet weiter";
+    }
+    if (S.hostet) {
+      knopf.disabled = false;
+      knopf.onclick = function(){ bluffTipp = null; quizSenden({ tat: "weiter" }); };
+    }
+  });
+}
+
+function brettLegende(z){
+  var legende = el('<div class="legende"></div>');
+  [["begriff", "Fremdw\u00f6rter"], ["kuriosum", "Kuriosit\u00e4ten"], ["wahrheit", "Richtig oder Falsch"]]
+    .forEach(function(e){
+      legende.appendChild(el('<span class="lp"><i class="' + e[0] + '"></i>' + e[1] + '</span>'));
+    });
+  legende.appendChild(el('<span class="lp"><i class="aufhol">+</i>hilft dem Letzten</span>'));
+  return legende;
 }
 
 function bluffPlaketten(fertigListe){
@@ -3925,8 +4172,10 @@ var RULES_QUIZ = [
 var RULES_BLUFF = [
   ["Wer besser spinnt, gewinnt", "Alle sehen dieselbe Frage und erfinden eine Antwort, die echt klingt. Danach stehen alle Erfindungen zusammen mit der Wahrheit gemischt da, und jeder tippt, welche die echte ist."],
   ["Jeder braucht sein eigenes Handy", "Der Gastgeber gibt die Partie frei, die anderen treten mit dem Code oder \u00fcber den QR-Code bei und w\u00e4hlen aus der Liste, wer sie sind. Ab drei Spielern, sonst lohnt das Bluffen nicht."],
-  ["Drei Kartenarten", "Fremdw\u00f6rter: was bedeutet das Wort? Kuriosit\u00e4ten: merkw\u00fcrdige Br\u00e4uche und Rekorde. Richtig oder Falsch: eine Behauptung steht da, alle stimmen nur mit Ja oder Nein ab. Der Gastgeber w\u00e4hlt vorher aus, was kommen soll."],
-  ["Punkte", "100 Punkte, wenn du die echte Antwort findest. 50 Punkte f\u00fcr jeden, der auf deine Erfindung hereinf\u00e4llt. Bei Richtig oder Falsch gibt es 100 f\u00fcrs richtige Tippen."],
+  ["Drei Kartenarten", "Fremdw\u00f6rter: was bedeutet das Wort? Kuriosit\u00e4ten: merkw\u00fcrdige Br\u00e4uche und Rekorde. Richtig oder Falsch: eine Behauptung steht da, alle stimmen nur mit Ja oder Nein ab."],
+  ["Gespielt wird auf einem Brett", "Jeder hat eine Figur. Zwei Felder f\u00fcrs Finden der echten Antwort, drei Felder f\u00fcr jeden Mitspieler, der auf deine Erfindung hereinf\u00e4llt. Bei Richtig oder Falsch gibt es zwei Felder f\u00fcrs richtige Tippen. Wer zuerst im Ziel ist, gewinnt."],
+  ["Das Feld bestimmt die Karte", "Reihum ist einer Rundenf\u00fchrer. Die Farbe des Feldes, auf dem seine Figur steht, entscheidet, welche Kartenart drankommt: violett Fremdw\u00f6rter, blau Kuriosit\u00e4ten, gr\u00fcn Richtig oder Falsch."],
+  ["Aufholfelder", "Einige Felder tragen eine Zahl. Wer als Letzter dar\u00fcber l\u00e4uft, r\u00fcckt um diese Zahl weiter. Wer vorne liegt, hat nichts davon."],
   ["Die eigene Erfindung", "Sie ist f\u00fcr dich gesperrt und mit einem Hinweis versehen. Wer zuf\u00e4llig die Wahrheit schreibt, bekommt 100 Punkte und schaut in der Runde zu."],
   ["Wenn es stockt", "Der Gastgeber kann jederzeit abstimmen lassen oder aufl\u00f6sen, falls jemand nicht tippt. Es laufen auch Uhren: 90 Sekunden zum Erfinden, 45 zum Raten."],
   ["Am Ende", "Nach der letzten Runde kommt das Endergebnis, und die Partie l\u00e4sst sich in die ewige Tabelle eintragen wie jedes andere Spiel."]
