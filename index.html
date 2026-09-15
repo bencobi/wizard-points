@@ -408,6 +408,7 @@
   .mzeile.danger .mtext b{color:var(--warn)}
   .mzeile.danger .mzeichen{color:var(--warn)}
 
+  body{--f-begriff:#8B6BD1; --f-kuriosum:#2D82C7; --f-wahrheit:#2E9E5B; --f-ziel:var(--gold)}
   .brett{margin:6px 0 14px; --f-begriff:#8B6BD1; --f-kuriosum:#2D82C7; --f-wahrheit:#2E9E5B; --f-ziel:var(--gold)}
   .brett svg{width:100%; height:auto; display:block; overflow:visible}
   .brett .bahn{fill:none; stroke:var(--hair); stroke-width:26; stroke-linecap:round; stroke-linejoin:round}
@@ -453,8 +454,12 @@
   @keyframes denkpunkt{0%,60%,100%{opacity:.2}30%{opacity:1}}
   @media (prefers-reduced-motion:reduce){ .themakarte{animation:none} .denkt i{animation:none} }
 
-  .antwort .tipper{position:absolute; right:10px; top:50%; transform:translateY(-50%); display:flex; gap:4px}
-  .antwort .marke{right:auto; left:auto; position:static; transform:none; margin-left:8px}
+  .antwort{display:flex; align-items:center; gap:10px; text-align:left}
+  .antwort > .buchstabe{flex:none}
+  .antwort .tipper{display:flex; gap:4px; margin-left:auto; flex:none}
+  .antwort .marke{position:static; transform:none; margin-left:auto; flex:none; text-align:right;
+    max-width:40%; line-height:1.25}
+  .antwort .marke + .tipper{margin-left:8px}
   .flieger{width:25px; height:25px; border-radius:50%; background:var(--acc); color:#fff;
     display:grid; place-items:center; font-size:12px; font-weight:800;
     box-shadow:0 2px 8px rgba(0,0,0,.18); animation:einflug .8s cubic-bezier(.18,.85,.28,1) both}
@@ -556,7 +561,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-15.5";
+var VERSION = "2026-09-15.6";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -2825,12 +2830,24 @@ function quizNeustart(){
 // Sonst zerstoert das Neuzeichnen das Eingabefeld und iOS klappt die Tastatur weg.
 function nurFortschritt(alt, neu){
   if (!alt || !neu) return false;
-  if (alt.phase !== "frage" || neu.phase !== "frage") return false;
+  if (alt.phase !== neu.phase) return false;
   if (neu.zeigenAb && Date.now() < neu.zeigenAb) return false;
-  if (alt.idx !== neu.idx || alt.gesamt !== neu.gesamt) return false;
   var ich = meinName();
-  if ((alt.geantwortet.indexOf(ich) >= 0) !== (neu.geantwortet.indexOf(ich) >= 0)) return false;
-  return true;
+  if (neu.phase === "frage") {
+    if (alt.idx !== neu.idx || alt.gesamt !== neu.gesamt) return false;
+    return (alt.geantwortet.indexOf(ich) >= 0) === (neu.geantwortet.indexOf(ich) >= 0);
+  }
+  // Beim Bluff dasselbe: solange nur andere abgeben, bleibt die Ansicht stehen
+  if (neu.phase === "schreiben") {
+    if ((alt.runde || 1) !== (neu.runde || 1)) return false;
+    return (alt.geschrieben.indexOf(ich) >= 0) === (neu.geschrieben.indexOf(ich) >= 0);
+  }
+  if (neu.phase === "raten" || neu.phase === "janein") {
+    if ((alt.runde || 1) !== (neu.runde || 1)) return false;
+    if ((alt.optionen || []).length !== (neu.optionen || []).length) return false;
+    return (alt.gestimmt.indexOf(ich) >= 0) === (neu.gestimmt.indexOf(ich) >= 0);
+  }
+  return false;
 }
 function zahlenstrahl(a, sofort, loesungsfeld){
   var werte = [], namen = [];
@@ -2960,9 +2977,11 @@ function spielerPunkte(z){
 }
 
 function fortschrittAuffrischen(){
-  var reihe = app.querySelector(".wersteht.fortschritt");
+  var reihe = app.querySelector(".wersteht");
   if (!reihe) { render(); return; }
-  var neu = spielerPunkte(QUIZ);
+  var fertig = QUIZ.phase === "frage" ? QUIZ.geantwortet
+             : (QUIZ.phase === "schreiben" ? QUIZ.geschrieben : QUIZ.gestimmt);
+  var neu = QUIZ.phase === "frage" ? spielerPunkte(QUIZ) : bluffPlaketten(fertig || []);
   reihe.innerHTML = neu.innerHTML;
 }
 
@@ -3580,13 +3599,17 @@ function viewBluffLobby(){
 function viewBluff(){
   var z = QUIZ;
   quizKopf(null, null);
+  // Vor der Runde nur die Ankuendigung, die Frage bleibt noch verdeckt
+  if (z.zeigenAb && Date.now() < z.zeigenAb && (z.phase === "schreiben" || z.phase === "janein"))
+    return bluffAnkuendigung(z);
+
   var artName = { begriff: "Fremdwort", kuriosum: "Kuriosit\u00e4t", wahrheit: "Richtig oder Falsch",
                   ziel: "Ziel" };
   var fuehrer = S.names[(z.dran || 0) % S.names.length];
   app.appendChild(el('<p class="meta">Runde ' + (z.runde || 1) + ' \u00b7 ' +
     esc(artName[(z.frage && z.frage.art) || z.art || "kuriosum"]) +
     ' \u00b7 Feld von ' + esc(fuehrer) + '</p>'));
-  app.appendChild(el('<h1 class="frage">' + esc(z.frage ? z.frage.frage : "") + '</h1>'));
+  if (z.phase !== "zug") app.appendChild(el('<h1 class="frage">' + esc(z.frage ? z.frage.frage : "") + '</h1>'));
 
   if (z.phase === "nachschub") return bluffNachschub(z);
   if (z.phase === "zug") return bluffBrettzug(z);
@@ -3605,11 +3628,11 @@ function bluffSchreiben(z){
 
   if (fertig) {
     app.appendChild(el('<div class="antwort gewaehlt"><span class="buchstabe">\u270e</span>' +
-      esc(ENTWURF["luege" + z.idx] || "abgegeben") + '<span class="marke">abgegeben</span></div>'));
+      esc(ENTWURF["luege" + bluffSchluessel(z)] || "abgegeben") + '<span class="marke">abgegeben</span></div>'));
     app.appendChild(el('<p class="note">Warten auf die anderen. Sobald alle fertig sind, wird geraten.</p>'));
   } else {
     var feld = merkeEingabe(el('<div class="codeeingabe"><input type="text" maxlength="120" ' +
-      'autocomplete="off" placeholder="deine erfundene Antwort"></div>'), "luege" + z.idx);
+      'autocomplete="off" placeholder="deine erfundene Antwort"></div>'), "luege" + bluffSchluessel(z));
     app.appendChild(feld);
     app.appendChild(el('<p class="hintline" style="text-align:center">Je glaubw\u00fcrdiger, desto besser. ' +
       'Wer darauf hereinf\u00e4llt, bringt dir 50 Punkte.</p>'));
@@ -3617,7 +3640,7 @@ function bluffSchreiben(z){
     ab.onclick = function(){
       var t = feld.querySelector("input").value.trim();
       if (t.length < 2) return;
-      ENTWURF["luege" + z.idx] = t;
+      ENTWURF["luege" + bluffSchluessel(z)] = t;
       quizSenden({ tat: "luege", spieler: ich, text: t, anzahl: S.names.length });
     };
     app.appendChild(ab);
@@ -3632,7 +3655,7 @@ function bluffSchreiben(z){
 
 function bluffRaten(z){
   var ich = meinName();
-  var meine = (ENTWURF["luege" + z.idx] || "").toLowerCase().replace(/[^a-z0-9\u00e4\u00f6\u00fc\u00df]+/g, " ").trim();
+  var meine = (ENTWURF["luege" + bluffSchluessel(z)] || "").toLowerCase().replace(/[^a-z0-9\u00e4\u00f6\u00fc\u00df]+/g, " ").trim();
   var wahrheit = z.wahrheitstreffer.indexOf(ich) >= 0;
   var fertig = z.gestimmt.indexOf(ich) >= 0;
   uhr(z.endeZeit, 45000);
@@ -3864,6 +3887,44 @@ function bluffWeiter(z){
   }
 }
 
+function bluffAnkuendigung(z){
+  var artName = { begriff: "Fremdwort", kuriosum: "Kuriosit\u00e4t", wahrheit: "Richtig oder Falsch" };
+  var art = (z.frage && z.frage.art) || z.art || "kuriosum";
+  var fuehrer = S.names[(z.dran || 0) % S.names.length];
+  var idx = S.names.indexOf(fuehrer);
+
+  app.appendChild(el('<p class="meta">Runde ' + (z.runde || 1) + '</p>'));
+  app.appendChild(el('<h1 class="headline">' + esc(fuehrer) + ' f\u00fchrt die Runde</h1>'));
+  app.appendChild(el('<div class="themakarte"><span class="buchstabe" style="background:var(--f-' + art + ')">' +
+    esc(fuehrer.charAt(0).toUpperCase()) + '</span><b>' + esc(artName[art] || "Karte") + '</b></div>'));
+  app.appendChild(el('<p class="hintline" style="text-align:center">Die Farbe seines Feldes bestimmt, ' +
+    'welche Karte kommt.</p>'));
+  app.appendChild(el('<div class="countdown"><svg viewBox="0 0 120 120">' +
+    '<circle class="bahn" cx="60" cy="60" r="52"/><circle class="lauf" cx="60" cy="60" r="52"/></svg>' +
+    '<div class="zahl">3</div></div>'));
+  app.appendChild(el('<p class="note">' + (art === "wahrheit"
+    ? "Gleich kommt eine Behauptung. Nur Ja oder Nein."
+    : "Gleich wird erfunden. Denk dir etwas Glaubw\u00fcrdiges aus.") + '</p>'));
+
+  var zahl = app.querySelector(".countdown .zahl"), lauf = app.querySelector(".countdown .lauf");
+  var umfang = 2 * Math.PI * 52;
+  lauf.style.strokeDasharray = umfang;
+  function tick(){
+    var uebrig = z.zeigenAb - Date.now();
+    if (uebrig <= 0) { clearInterval(quizTakt); quizTakt = null; render(); return; }
+    var sek = Math.max(1, Math.min(3, Math.ceil(uebrig / 1000)));
+    if (zahl.textContent !== String(sek)) {
+      zahl.textContent = sek;
+      zahl.classList.remove("puls"); void zahl.offsetWidth; zahl.classList.add("puls");
+    }
+    lauf.style.strokeDashoffset = umfang * (1 - Math.min(1, uebrig / 3000));
+  }
+  tick();
+  quizTakt = setInterval(tick, 80);
+  app.appendChild(tabs());
+}
+
+// Die Farben der Kartenarten auch ausserhalb des Bretts verfuegbar machen
 function bluffNachschub(z){
   app.appendChild(el('<p class="note denkt">Neue Karten werden ausgedacht<i>.</i><i>.</i><i>.</i></p>'));
   if (S.hostet && !quizLaedt) {
@@ -3910,6 +3971,8 @@ function brettLegende(z){
   legende.appendChild(el('<span class="lp"><i class="aufhol">+</i>hilft dem Letzten</span>'));
   return legende;
 }
+
+function bluffSchluessel(z){ return (z.runde || 1) + "-" + (z.idx || 0); }
 
 function bluffPlaketten(fertigListe){
   var reihe = el('<div class="wersteht"></div>');
