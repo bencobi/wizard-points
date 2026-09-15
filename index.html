@@ -556,7 +556,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-15.4";
+var VERSION = "2026-09-15.5";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -2921,10 +2921,12 @@ function rangAnimieren(schluessel){
   zeilen.forEach(function(zeile){
     var nm = zeile.getAttribute("data-nm");
     neu[nm] = zeile.offsetTop;
-    if (alt[nm] !== undefined && alt[nm] !== neu[nm]) {
+    var weg = alt[nm] === undefined ? 0 : alt[nm] - neu[nm];
+    // Mehr als eine Listenlaenge kann kein Platztausch sein, das waere ein Sprung aus einer anderen Ansicht
+    if (weg && Math.abs(weg) <= zeilen.length * 92) {
       zeile.style.transition = "none";
-      zeile.style.transform = "translateY(" + (alt[nm] - neu[nm]) + "px)";
-      zeile.setAttribute("data-weg", String(Math.abs(alt[nm] - neu[nm])));
+      zeile.style.transform = "translateY(" + weg + "px)";
+      zeile.setAttribute("data-weg", String(Math.abs(weg)));
       bewegt.push(zeile);
     }
   });
@@ -3306,11 +3308,11 @@ function viewQuizAuf(){
       });
       rest.classList.remove("wartet");
       aufGezeigt = z.idx;
-      rangAnimieren("stand");
+      rangAnimieren("frage");
     }, a.typ === "mc" ? 300 + Math.max(1, flieger) * 900 + 500
                       : 900 + Math.max(1, tippZahl) * 900 + 1400);
   } else {
-    rangAnimieren("stand");
+    rangAnimieren("frage");
   }
 
   app = rest;
@@ -3740,10 +3742,10 @@ function bluffAuf(z){
       });
       rest.classList.remove("wartet");
       bluffGezeigt = z.idx;
-      rangAnimieren("stand");
+      rangAnimieren("bluffauf");
     }, 300 + Math.max(1, flieger) * 900 + 500);
   } else {
-    rangAnimieren("stand");
+    rangAnimieren("bluffauf");
   }
   app.appendChild(tabs());
 }
@@ -3834,10 +3836,10 @@ function bluffJaNeinAuf(z){
       });
       rest.classList.remove("wartet");
       bluffGezeigt = z.idx;
-      rangAnimieren("stand");
+      rangAnimieren("bluffauf");
     }, 300 + Math.max(1, flieger) * 900 + 500);
   } else {
-    rangAnimieren("stand");
+    rangAnimieren("bluffauf");
   }
   app.appendChild(tabs());
 }
