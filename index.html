@@ -575,7 +575,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-16.3";
+var VERSION = "2026-09-16.4";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -3114,7 +3114,7 @@ function viewQuizLobby(){
   }
 
   var anzahl = S.quizAnzahl || 8;
-  var feld = merkeEingabe(el('<div class="codeeingabe"><input type="text" placeholder="eigenes Thema, etwa Weltraum" maxlength="80"></div>'), "thema");
+  var feld = merkeEingabe(el('<div class="codeeingabe"><input type="text" placeholder="eigener Wunsch, etwa Weltraum oder nur Bildfragen" maxlength="80"></div>'), "thema");
   app.appendChild(feld);
   var chips = el('<div class="themen"></div>');
   THEMEN.forEach(function(t){
@@ -4314,6 +4314,7 @@ var RULES_KNIFFEL = [
 var RULES_QUIZ = [
   ["Jeder braucht sein eigenes Handy", "Anders als bei den Kartenspielen tippt hier jeder selbst. Der Gastgeber gibt die Partie frei, alle anderen treten mit dem Code oder \u00fcber den QR-Code bei und w\u00e4hlen aus der Liste, wer sie sind."],
   ["Zwei Spielarten", "Klassisch: ein Thema f\u00fcr alle, dann die Fragen. Buchstabenrad: reihum dreht jeder ein Rad und w\u00e4hlt aus vier Themen zu seinem Buchstaben."],
+  ["Eigene W\u00fcnsche", "Das Feld in der Lobby nimmt nicht nur Themen. Du kannst auch schreiben, wie die Fragen sein sollen, etwa nur Bildfragen, lustige Fragen f\u00fcr Kinder oder richtig schwer. Beides zusammen geht auch: lustige Bildfragen zu Tieren."],
   ["Bildfragen", "In der Lobby zuschaltbar. Dann kommt ab und zu ein Foto aus Wikipedia dazu, etwa Was ist das oder Welches Tier ist das. Der Bildnachweis liegt hinter dem kleinen i in der Ecke, damit er nicht st\u00f6rt. Gibt es kein passendes Foto, kommt die Frage einfach ohne."],
   ["Auswahlfragen", "Vier M\u00f6glichkeiten, einmal tippen und die Antwort ist eingeloggt. Richtig gibt 100 Punkte, dazu bis zu 100 f\u00fcr Tempo. Wer sofort tippt, holt fast das Doppelte von jemandem, der lange \u00fcberlegt."],
   ["Sch\u00e4tzfragen", "Eine Zahl eintippen. Punkte nach N\u00e4he: 100, 60, 30, danach 10. Wer genau trifft, bekommt 25 dazu. Beim Aufl\u00f6sen wandern alle Tipps auf einen Zahlenstrahl."],
