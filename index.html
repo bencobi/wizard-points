@@ -350,6 +350,11 @@
   .themen{display:flex; flex-wrap:wrap; gap:6px; margin:0 2px 14px}
   .themen button{padding:8px 12px; border-radius:11px; background:var(--glass);
     border:1px solid var(--hair); font-size:13.5px; font-weight:600; color:var(--dim)}
+  .fragebild{margin:0 0 14px; border-radius:16px; overflow:hidden; background:var(--glass-2);
+    border:1px solid var(--hair)}
+  .fragebild img{display:block; width:100%; max-height:46vh; object-fit:cover}
+  .fragebild figcaption{padding:6px 10px; font-size:11px; color:var(--dim); text-align:right;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
   .frage{margin:6px 2px 16px; font-size:23px; font-weight:800; letter-spacing:-.02em; line-height:1.25}
   .antwort{display:flex; align-items:center; gap:12px; width:100%; text-align:left; margin-bottom:8px;
     padding:15px; border-radius:var(--r); background:var(--glass); border:1px solid var(--hair);
@@ -566,7 +571,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-15.9";
+var VERSION = "2026-09-16.2";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -3023,7 +3028,8 @@ function quizFragenHolen(thema, anzahl){
   fetch(API + "/fragen", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ thema: thema, anzahl: anzahl, vermeiden: sperrliste() })
+    body: JSON.stringify({ thema: thema, anzahl: anzahl, vermeiden: sperrliste(),
+                           bilder: !!(ALL && ALL.bildfragen) })
   }).then(function(r){
     return r.json().then(function(d){ if (!r.ok) throw new Error(d.message || ("Fehler " + r.status)); return d; });
   }).then(function(d){
@@ -3122,6 +3128,17 @@ function viewQuizLobby(){
   });
   app.appendChild(wahl);
 
+  var mitBildern = !!ALL.bildfragen;
+  var bildBtn = el('<button class="toggle" type="button" aria-pressed="' + mitBildern + '">' +
+    '<span class="box">\u2713</span><span><b>Auch Bildfragen</b>' +
+    '<span>Ab und zu kommt ein Foto von Wikipedia dazu: Was ist das, welches Tier, welches Bauwerk.</span>' +
+    '</span></button>');
+  bildBtn.onclick = function(){
+    mitBildern = !mitBildern; ALL.bildfragen = mitBildern;
+    bildBtn.setAttribute("aria-pressed", mitBildern); save();
+  };
+  app.appendChild(bildBtn);
+
   var los = el('<button class="cta" type="button">Fragen holen und starten</button>');
   los.onclick = function(){ quizFragenHolen(feld.querySelector("input").value.trim(), anzahl); };
   app.appendChild(los);
@@ -3159,6 +3176,15 @@ function uhr(endeZeit, spanne){
   tick();
   quizTakt = setInterval(tick, 200);
   return balken;
+}
+
+function fragenBild(f){
+  var box = el('<figure class="fragebild"><img alt="Bild zur Frage" loading="eager"></figure>');
+  var bild = box.querySelector("img");
+  bild.src = f.bildUrl;
+  bild.onerror = function(){ box.remove(); };   // lieber ohne Bild als mit kaputtem Rahmen
+  if (f.bildQuelle) box.appendChild(el('<figcaption>' + esc(f.bildQuelle) + '</figcaption>'));
+  return box;
 }
 
 function viewCountdown(){
@@ -3215,6 +3241,7 @@ function viewQuizFrage(){
 
   uhr(z.endeZeit, 30000);
   app.appendChild(el('<h1 class="frage">' + esc(f.frage) + '</h1>'));
+  if (f.bildUrl) app.appendChild(fragenBild(f));
 
   if (f.typ === "mc") {
     f.optionen.forEach(function(o, i){
@@ -3270,6 +3297,7 @@ function viewQuizAuf(){
   app.appendChild(el('<p class="meta">Frage ' + (z.idx + 1) + ' von ' + z.gesamt + '</p>'));
   var f = letzteFrage;
   if (f && f.frage) app.appendChild(el('<h1 class="frage">' + esc(f.frage) + '</h1>'));
+  if (f && f.bildUrl) app.appendChild(fragenBild(f));
 
   var wenigerBewegung = false;
   try { wenigerBewegung = window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) {}
@@ -4204,7 +4232,8 @@ function radFragenHolen(thema, anzahl){
   if (radHolt) return;
   radHolt = true;
   fetch(API + "/fragen", { method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ thema: thema, anzahl: anzahl, vermeiden: sperrliste() }) })
+    body: JSON.stringify({ thema: thema, anzahl: anzahl, vermeiden: sperrliste(),
+                           bilder: !!(ALL && ALL.bildfragen) }) })
     .then(function(r){ return r.json().then(function(d){ if (!r.ok) throw new Error(d.message); return d; }); })
     .then(function(d){ radHolt = false; quizSenden({ tat: "fragen", fragen: d.fragen }); })
     .catch(function(e){ radHolt = false; quizSenden({ tat: "fehler", text: "Fragen: " + (e.message || "Fehler") }); });
@@ -4271,6 +4300,7 @@ var RULES_KNIFFEL = [
 var RULES_QUIZ = [
   ["Jeder braucht sein eigenes Handy", "Anders als bei den Kartenspielen tippt hier jeder selbst. Der Gastgeber gibt die Partie frei, alle anderen treten mit dem Code oder \u00fcber den QR-Code bei und w\u00e4hlen aus der Liste, wer sie sind."],
   ["Zwei Spielarten", "Klassisch: ein Thema f\u00fcr alle, dann die Fragen. Buchstabenrad: reihum dreht jeder ein Rad und w\u00e4hlt aus vier Themen zu seinem Buchstaben."],
+  ["Bildfragen", "In der Lobby zuschaltbar. Dann kommt ab und zu ein Foto aus Wikipedia dazu, etwa Was ist das oder Welches Tier ist das. Die Herkunft steht klein unter dem Bild. Gibt es kein passendes Foto, kommt die Frage einfach ohne."],
   ["Auswahlfragen", "Vier M\u00f6glichkeiten, einmal tippen und die Antwort ist eingeloggt. Richtig gibt 100 Punkte, dazu bis zu 100 f\u00fcr Tempo. Wer sofort tippt, holt fast das Doppelte von jemandem, der lange \u00fcberlegt."],
   ["Sch\u00e4tzfragen", "Eine Zahl eintippen. Punkte nach N\u00e4he: 100, 60, 30, danach 10. Wer genau trifft, bekommt 25 dazu. Beim Aufl\u00f6sen wandern alle Tipps auf einen Zahlenstrahl."],
   ["Der Gastgeber steuert", "Er holt die Fragen, kann vorzeitig aufl\u00f6sen lassen und schaltet weiter. Niemand muss warten, wenn einer nicht tippt."],
@@ -4394,9 +4424,14 @@ function openMenu(){
       if (confirm((S.game === "bluff" ? "Bluff" : "Quiz") + " f\u00fcr alle neu anfangen?")) quizNeustart();
     });
   } else if (!gast && S.game !== "kniffel") {
-    zeile("\u21bb", "Neues Spiel, gleiche Spieler", "Alle Punkte verwerfen", "danger", function(){
+    var lost = ALL.zufallStart && (S.game === "wizard" || S.game === "phase10");
+    zeile("\u21bb", "Neues Spiel, gleiche Spieler",
+      lost ? "Punkte verwerfen, Geber neu auslosen" : "Alle Punkte verwerfen", "danger", function(){
       if (confirm("Alle Runden verwerfen und neu anfangen?")) {
-        S.rounds = []; S.draft = null; S.logged = null; S.view = "round"; save(); render();
+        S.rounds = []; S.draft = null; S.logged = null; S.view = "round";
+        // Mit eingeschaltetem Auslosen faengt auch ein anderer an
+        if (lost) S.versatz = Math.floor(Math.random() * S.names.length);
+        save(); render();
       }
     });
   }
