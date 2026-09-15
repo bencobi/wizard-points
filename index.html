@@ -566,7 +566,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-15.7";
+var VERSION = "2026-09-15.8";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -3592,7 +3592,7 @@ function viewBluffLobby(){
   }
 
   app.appendChild(el('<p class="lead-in">Gespielt wird auf einem Spielbrett: Wer zuerst im Ziel ist, ' +
-    'gewinnt. Das Feld des Rundenf\u00fchrers bestimmt, welche Kartenart drankommt.</p>'));
+    'gewinnt. Wer an der Reihe ist, bestimmt mit seinem Feld die Kartenart.</p>'));
   app.appendChild(brettLegende({}));
   app.appendChild(el('<p class="hintline" style="text-align:center">Zwei Felder f\u00fcrs Finden der ' +
     'Wahrheit, drei f\u00fcr jeden, der auf deine Erfindung hereinf\u00e4llt.</p>'));
@@ -3620,7 +3620,7 @@ function viewBluff(){
   var fuehrer = S.names[(z.dran || 0) % S.names.length];
   app.appendChild(el('<p class="meta">Runde ' + (z.runde || 1) + ' \u00b7 ' +
     esc(artName[(z.frage && z.frage.art) || z.art || "kuriosum"]) +
-    ' \u00b7 Feld von ' + esc(fuehrer) + '</p>'));
+    ' \u00b7 ' + esc(fuehrer) + ' ist dran</p>'));
   if (z.phase !== "zug") app.appendChild(el('<h1 class="frage">' + esc(z.frage ? z.frage.frage : "") + '</h1>'));
 
   if (z.fehlendeArt) bluffFehlendeArt(z);
@@ -3647,8 +3647,9 @@ function bluffSchreiben(z){
     var feld = merkeEingabe(el('<div class="codeeingabe"><input type="text" maxlength="120" ' +
       'autocomplete="off" placeholder="deine erfundene Antwort"></div>'), "luege" + bluffSchluessel(z));
     app.appendChild(feld);
-    app.appendChild(el('<p class="hintline" style="text-align:center">Je glaubw\u00fcrdiger, desto besser. ' +
-      'Wer darauf hereinf\u00e4llt, bringt dir 50 Punkte.</p>'));
+    app.appendChild(el('<p class="hintline" style="text-align:center">Kurz halten, h\u00f6chstens ein paar ' +
+      'W\u00f6rter. Gro\u00dfschreibung und Punkt am Ende gleicht die App f\u00fcr alle an, damit man die echte ' +
+      'Antwort nicht an der Form erkennt.</p>'));
     var ab = el('<button class="cta" type="button">Antwort abgeben</button>');
     ab.onclick = function(){
       var t = feld.querySelector("input").value.trim();
@@ -3907,7 +3908,7 @@ function bluffAnkuendigung(z){
   var idx = S.names.indexOf(fuehrer);
 
   app.appendChild(el('<p class="meta">Runde ' + (z.runde || 1) + '</p>'));
-  app.appendChild(el('<h1 class="headline">' + esc(fuehrer) + ' f\u00fchrt die Runde</h1>'));
+  app.appendChild(el('<h1 class="headline">' + esc(fuehrer) + ' ist an der Reihe</h1>'));
   app.appendChild(el('<div class="themakarte"><span class="buchstabe" style="background:var(--f-' + art + ')">' +
     esc(fuehrer.charAt(0).toUpperCase()) + '</span><b>' + esc(artName[art] || "Karte") + '</b></div>'));
   app.appendChild(el('<p class="hintline" style="text-align:center">Die Farbe seines Feldes bestimmt, ' +
@@ -4269,7 +4270,8 @@ var RULES_BLUFF = [
   ["Jeder braucht sein eigenes Handy", "Der Gastgeber gibt die Partie frei, die anderen treten mit dem Code oder \u00fcber den QR-Code bei und w\u00e4hlen aus der Liste, wer sie sind. Ab drei Spielern, sonst lohnt das Bluffen nicht."],
   ["Drei Kartenarten", "Fremdw\u00f6rter: was bedeutet das Wort? Kuriosit\u00e4ten: merkw\u00fcrdige Br\u00e4uche und Rekorde. Richtig oder Falsch: eine Behauptung steht da, alle stimmen nur mit Ja oder Nein ab."],
   ["Gespielt wird auf einem Brett", "Jeder hat eine Figur. Zwei Felder f\u00fcrs Finden der echten Antwort, drei Felder f\u00fcr jeden Mitspieler, der auf deine Erfindung hereinf\u00e4llt. Bei Richtig oder Falsch gibt es zwei Felder f\u00fcrs richtige Tippen. Wer zuerst im Ziel ist, gewinnt."],
-  ["Das Feld bestimmt die Karte", "Reihum ist einer Rundenf\u00fchrer. Die Farbe des Feldes, auf dem seine Figur steht, entscheidet, welche Kartenart drankommt: violett Fremdw\u00f6rter, blau Kuriosit\u00e4ten, gr\u00fcn Richtig oder Falsch."],
+  ["Das Feld bestimmt die Karte", "Reihum ist einer an der Reihe. Die Farbe des Feldes, auf dem seine Figur steht, entscheidet, welche Kartenart drankommt: violett Fremdw\u00f6rter, blau Kuriosit\u00e4ten, gr\u00fcn Richtig oder Falsch."],
+  ["Alle Antworten sehen gleich aus", "Gro\u00dfschreibung am Anfang und ein Punkt am Ende werden f\u00fcr alle angeglichen, auch f\u00fcr die echte L\u00f6sung. Sonst w\u00e4re sie an der Form zu erkennen. Halte deine Erfindung trotzdem kurz."],
   ["Aufholfelder", "Einige Felder tragen eine Zahl. Wer als Letzter dar\u00fcber l\u00e4uft, r\u00fcckt um diese Zahl weiter. Wer vorne liegt, hat nichts davon."],
   ["Die eigene Erfindung", "Sie ist f\u00fcr dich gesperrt und mit einem Hinweis versehen. Wer zuf\u00e4llig die Wahrheit schreibt, bekommt 100 Punkte und schaut in der Runde zu."],
   ["Wenn es stockt", "Der Gastgeber kann jederzeit abstimmen lassen oder aufl\u00f6sen, falls jemand nicht tippt. Es laufen auch Uhren: 90 Sekunden zum Erfinden, 45 zum Raten."],
