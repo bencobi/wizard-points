@@ -426,6 +426,11 @@
     filter:drop-shadow(0 2px 4px rgba(0,0,0,.2))}
   .brett .figur text{fill:#fff; font-size:13px; font-weight:800; text-anchor:middle}
   .brett .figur.springt circle{filter:drop-shadow(0 8px 10px rgba(0,0,0,.22))}
+  .brett .figur .reif{fill:none; stroke:var(--acc); stroke-width:2.5; opacity:.55;
+    animation:reifpuls 2.4s ease-in-out infinite}
+  .brett .figur .duhier{fill:var(--acc); font-size:10px; font-weight:800; letter-spacing:.04em}
+  @keyframes reifpuls{0%,100%{r:19; opacity:.55}50%{r:21; opacity:.28}}
+  @media (prefers-reduced-motion:reduce){ .brett .figur .reif{animation:none} }
   .aufholzeile{color:var(--gold); font-weight:700}
   .legende{display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin:0 0 10px;
     font-size:12.5px; color:var(--dim)}
@@ -561,7 +566,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-15.6";
+var VERSION = "2026-09-15.7";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -2497,6 +2502,7 @@ function liveVerbinden(){
       liveVersion = n.version;
     } else if (n.type === "quiz") {
       if (n.gestellt) { GESTELLT = n.gestellt; merkeGestellt(n.gestellt); }
+      if (n.zustand && n.zustand.jetzt) ZEITVERSATZ = n.zustand.jetzt - Date.now();
       var vorher = QUIZ;
       QUIZ = n.zustand;
       if (nurFortschritt(vorher, QUIZ)) fortschrittAuffrischen();
@@ -2785,6 +2791,8 @@ function liveSheet(){
 
 /* ---------- Quiz ---------- */
 var GESTELLT = [];
+var ZEITVERSATZ = 0;   // Unterschied zwischen Serveruhr und Handyuhr
+function serverJetzt(){ return Date.now() + ZEITVERSATZ; }
 function merkeGestellt(liste){
   if (!ALL || !liste || !liste.length) return;
   ALL.gestellt = (ALL.gestellt || []).concat(liste).filter(function(t, i, arr){ return arr.indexOf(t) === i; }).slice(-150);
@@ -2831,7 +2839,7 @@ function quizNeustart(){
 function nurFortschritt(alt, neu){
   if (!alt || !neu) return false;
   if (alt.phase !== neu.phase) return false;
-  if (neu.zeigenAb && Date.now() < neu.zeigenAb) return false;
+  if (neu.zeigenAb && serverJetzt() < neu.zeigenAb) return false;
   var ich = meinName();
   if (neu.phase === "frage") {
     if (alt.idx !== neu.idx || alt.gesamt !== neu.gesamt) return false;
@@ -3127,7 +3135,7 @@ function uhr(endeZeit, spanne){
   app.appendChild(balken);
   var strich = balken.querySelector("i"), text = balken.querySelector("span");
   function tick(){
-    var uebrig = Math.max(0, endeZeit - Date.now());
+    var uebrig = Math.max(0, endeZeit - serverJetzt());
     strich.style.width = Math.min(100, uebrig / spanne * 100) + "%";
     text.textContent = Math.ceil(uebrig / 1000) + " s";
     balken.classList.toggle("knapp", uebrig > 0 && uebrig <= 5000);
@@ -3143,7 +3151,7 @@ function uhr(endeZeit, spanne){
 
 function viewCountdown(){
   var z = QUIZ;
-  var rest = z.zeigenAb - Date.now();
+  var rest = z.zeigenAb - serverJetzt();
   var sek = Math.max(1, Math.min(3, Math.ceil(rest / 1000)));
   quizKopf(null, null);
   var rundenstart = z.modus === "rad" && z.idx === 0;
@@ -3166,7 +3174,7 @@ function viewCountdown(){
   var umfang = 2 * Math.PI * 52;
   lauf.style.strokeDasharray = umfang;
   function tick(){
-    var uebrig = z.zeigenAb - Date.now();
+    var uebrig = z.zeigenAb - serverJetzt();
     if (uebrig <= 0) { clearInterval(quizTakt); quizTakt = null; render(); return; }
     var s = Math.max(1, Math.min(3, Math.ceil(uebrig / 1000)));
     if (zahl.textContent !== String(s)) {
@@ -3184,7 +3192,7 @@ function viewCountdown(){
 function viewQuizFrage(){
   var z = QUIZ, f = z.frage;
   letzteFrage = f;
-  if (z.zeigenAb && Date.now() < z.zeigenAb) return viewCountdown();
+  if (z.zeigenAb && serverJetzt() < z.zeigenAb) return viewCountdown();
   if (meinTipp && meinTipp.idx !== z.idx) meinTipp = null;
   if (aufGezeigt !== z.idx) aufGezeigt = -1;
   var ichHabe = z.geantwortet.indexOf(meinName()) >= 0;
@@ -3453,8 +3461,12 @@ function brettZeichnen(z, stand){
     '<g class="figuren"></g></svg></div>');
   var g = box.querySelector(".figuren");
   S.names.forEach(function(nm, i){
-    var knoten = svgEl('<g class="figur" data-nm="' + esc(nm) + '" style="--acc:' + hue(i) + '">' +
-      '<circle r="14"/><text dy="4.5">' + esc(nm.charAt(0).toUpperCase()) + '</text></g>');
+    var ichSelbst = nm === meinName();
+    var knoten = svgEl('<g class="figur' + (ichSelbst ? " ich" : "") + '" data-nm="' + esc(nm) +
+      '" style="--acc:' + hue(i) + '">' +
+      (ichSelbst ? '<circle class="reif" r="19"/>' : '') +
+      '<circle r="14"/><text dy="4.5">' + esc(nm.charAt(0).toUpperCase()) + '</text>' +
+      (ichSelbst ? '<text class="duhier" dy="-22">du</text>' : '') + '</g>');
     var pos = figurPunkt(stand, stand[nm] || 0, nm);
     knoten.setAttribute("transform", "translate(" + pos.x.toFixed(1) + " " + pos.y.toFixed(1) + ")");
     g.appendChild(knoten);
@@ -3600,7 +3612,7 @@ function viewBluff(){
   var z = QUIZ;
   quizKopf(null, null);
   // Vor der Runde nur die Ankuendigung, die Frage bleibt noch verdeckt
-  if (z.zeigenAb && Date.now() < z.zeigenAb && (z.phase === "schreiben" || z.phase === "janein"))
+  if (z.zeigenAb && serverJetzt() < z.zeigenAb && (z.phase === "schreiben" || z.phase === "janein"))
     return bluffAnkuendigung(z);
 
   var artName = { begriff: "Fremdwort", kuriosum: "Kuriosit\u00e4t", wahrheit: "Richtig oder Falsch",
@@ -3611,6 +3623,7 @@ function viewBluff(){
     ' \u00b7 Feld von ' + esc(fuehrer) + '</p>'));
   if (z.phase !== "zug") app.appendChild(el('<h1 class="frage">' + esc(z.frage ? z.frage.frage : "") + '</h1>'));
 
+  if (z.fehlendeArt) bluffFehlendeArt(z);
   if (z.phase === "nachschub") return bluffNachschub(z);
   if (z.phase === "zug") return bluffBrettzug(z);
   if (z.phase === "janein") return bluffJaNein(z);
@@ -3910,7 +3923,7 @@ function bluffAnkuendigung(z){
   var umfang = 2 * Math.PI * 52;
   lauf.style.strokeDasharray = umfang;
   function tick(){
-    var uebrig = z.zeigenAb - Date.now();
+    var uebrig = z.zeigenAb - serverJetzt();
     if (uebrig <= 0) { clearInterval(quizTakt); quizTakt = null; render(); return; }
     var sek = Math.max(1, Math.min(3, Math.ceil(uebrig / 1000)));
     if (zahl.textContent !== String(sek)) {
@@ -3925,6 +3938,17 @@ function bluffAnkuendigung(z){
 }
 
 // Die Farben der Kartenarten auch ausserhalb des Bretts verfuegbar machen
+function bluffFehlendeArt(z){
+  if (!S.hostet || !z.fehlendeArt || quizLaedt) return;
+  quizLaedt = true;
+  fetch(API + "/bluff", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ thema: z.thema || "", anzahl: 4, arten: [z.fehlendeArt],
+      vermeiden: sperrliste() }) })
+    .then(function(r){ return r.json().then(function(d){ if (!r.ok) throw new Error(d.message); return d; }); })
+    .then(function(d){ quizLaedt = false; quizSenden({ tat: "vorrat", fragen: d.fragen }); })
+    .catch(function(){ quizLaedt = false; });
+}
+
 function bluffNachschub(z){
   app.appendChild(el('<p class="note denkt">Neue Karten werden ausgedacht<i>.</i><i>.</i><i>.</i></p>'));
   if (S.hostet && !quizLaedt) {
