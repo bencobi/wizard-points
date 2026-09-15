@@ -556,7 +556,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-15.3";
+var VERSION = "2026-09-15.4";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -2971,6 +2971,12 @@ function quizSenden(obj){
 }
 function meinName(){ return (S && typeof S.ich === "number") ? S.names[S.ich] : null; }
 
+// Bindet die Spielerwahl an Beitrittscode und Namensliste. Aendert sich eines, wird neu gefragt.
+function ichSchluessel(){
+  if (!S) return "";
+  return (S.live || "-") + "|" + (S.names || []).join("\u0001");
+}
+
 function quizFragenHolen(thema, anzahl){
   quizLaedt = true; quizFehler = null; render();
   fetch(API + "/fragen", {
@@ -3015,13 +3021,13 @@ function viewQuiz(){
     return;
   }
 
-  // Wer sitzt an diesem Handy?
-  if (typeof S.ich !== "number" || !S.names[S.ich]) {
+  // Wer sitzt an diesem Handy? Die Zuordnung gilt nur fuer diese Partie und diese Namensliste.
+  if (typeof S.ich !== "number" || !S.names[S.ich] || S.ichFuer !== ichSchluessel()) {
     quizKopf("Wer bist du?", "W\u00e4hl deinen Namen, damit die Antworten zugeordnet werden.");
     S.names.forEach(function(nm, i){
       var b = el('<button class="rank tap" type="button" style="--acc:' + hue(i) + '">' +
         '<span class="pos num">' + (i+1) + '</span><span class="nm">' + esc(nm) + '</span></button>');
-      bindTap(b, function(){ S.ich = i; save(); render(); });
+      bindTap(b, function(){ S.ich = i; S.ichFuer = ichSchluessel(); save(); render(); });
       app.appendChild(b);
     });
     app.appendChild(tabs());
