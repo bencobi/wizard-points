@@ -358,6 +358,8 @@
   .antwort .buchstabe{flex:none; width:28px; height:28px; border-radius:9px; background:var(--glass-2);
     display:grid; place-items:center; font-weight:800; font-size:14px; color:var(--gold)}
   .uhr{position:relative; height:8px; border-radius:6px; background:var(--glass-2); margin:0 2px 16px}
+  .uhr.knapp i{background:var(--warn)}
+  .uhr.knapp span{color:var(--warn); font-weight:800}
   .uhr i{position:absolute; left:0; top:0; bottom:0; border-radius:6px;
     background:linear-gradient(90deg, var(--gold), var(--gold-2)); transition:width .2s linear}
   .uhr span{position:absolute; right:2px; top:12px; font-size:12px; font-weight:700; color:var(--dim)}
@@ -529,7 +531,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-14.9";
+var VERSION = "2026-09-15.2";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -558,13 +560,15 @@ var GAMES = [
   { id:"kniffel", name:"Kniffel",  sub:"Dreizehn Felder, ein Block je Spieler", low:false },
   { id:"phase10", name:"Phase 10", sub:"Zehn Phasen, Restpunkte je Runde", low:true },
   { id:"skyjo",   name:"Skyjo",    sub:"Punkte sammeln bis 100, wenigste gewinnen", low:true },
-  { id:"quiz",    name:"Quiz",     sub:"Sch\u00e4tz- und Wissensfragen, jeder am eigenen Handy", low:false }
+  { id:"quiz",    name:"Quiz",     sub:"Sch\u00e4tz- und Wissensfragen, jeder am eigenen Handy", low:false },
+  { id:"bluff",   name:"Bluff",    sub:"Antworten erfinden und andere hereinlegen", low:false }
 ];
 function fresh(){ return { theme:"light", cur:null, games:{}, history:[] }; }
 function grenzen(id){
   if (id === "kniffel") return { min: 1, max: 8 };   // allein spielbar
   if (id === "skyjo")   return { min: 2, max: 8 };
   if (id === "quiz")    return { min: 2, max: 8 };
+  if (id === "bluff")   return { min: 3, max: 8 };   // unter drei lohnt das Bluffen nicht
   if (id === "phase10") return { min: 2, max: 6 };
   return { min: 2, max: 6 };                          // Wizard, offiziell ab 3
 }
@@ -2772,6 +2776,19 @@ var THEMEN = ["Allgemeinwissen", "Musik der 90er", "Filme und Serien", "Tiere un
               "Fu\u00dfball", "Weltgeschichte", "Essen und Trinken", "Technik und Erfindungen",
               "Deutschland", "Sch\u00e4tzfragen extrem"];
 
+function bluffHolen(thema, anzahl, arten){
+  if (quizLaedt) return;
+  quizLaedt = true; quizFehler = null; render();
+  fetch(API + "/bluff", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ thema: thema, anzahl: anzahl, arten: arten, vermeiden: sperrliste() }) })
+    .then(function(r){ return r.json().then(function(d){ if (!r.ok) throw new Error(d.message); return d; }); })
+    .then(function(d){
+      quizLaedt = false;
+      quizSenden({ tat: "bluffneu", fragen: d.fragen, spieler: S.names, thema: thema });
+    })
+    .catch(function(e){ quizLaedt = false; quizFehler = e.message || "Es hat nicht geklappt"; render(); });
+}
+
 function quizNeustart(){
   quizSenden({ tat: "zuruecksetzen" });   // wirkt nur, wenn eine Freigabe laeuft
   QUIZ = null; quizFehler = null; quizLaedt = false; S.logged = null; meinTipp = null;
@@ -2946,9 +2963,12 @@ function quizFragenHolen(thema, anzahl){
   });
 }
 
+function istBluff(){ return S && S.game === "bluff"; }
+
 function quizKopf(titel, unter){
   app.innerHTML = "";
-  app.appendChild(el('<div class="top"><div class="brand"><span class="hat">\u25B2</span> Quiz</div></div>'));
+  app.appendChild(el('<div class="top"><div class="brand"><span class="hat">\u25B2</span> ' +
+    (istBluff() ? "Bluff" : "Quiz") + '</div></div>'));
   topBtns();
   if (titel) app.appendChild(el('<h1 class="headline">' + titel + '</h1>'));
   if (unter) app.appendChild(el('<p class="meta">' + unter + '</p>'));
@@ -2959,7 +2979,8 @@ function viewQuiz(){
 
   // Ohne Freigabe geht Quiz nicht
   if (!S.live) {
-    quizKopf("Quiz zu mehreren", "Beim Quiz spielt jeder auf dem eigenen Handy. Gib die Partie frei, damit die anderen beitreten k\u00f6nnen.");
+    quizKopf(S.game === "bluff" ? "Bluff zu mehreren" : "Quiz zu mehreren",
+      "Hier spielt jeder auf dem eigenen Handy. Gib die Partie frei, damit die anderen beitreten k\u00f6nnen.");
     var frei = el('<button class="cta" type="button">Partie freigeben</button>');
     frei.onclick = function(){
       S.live = liveCode(); S.hostet = true; letzterStand = null; liveVersion = 0;
@@ -2983,7 +3004,9 @@ function viewQuiz(){
   }
 
   var z = QUIZ;
+  if (istBluff() && (!z || z.phase === "lobby")) return viewBluffLobby();
   if (!z || z.phase === "lobby") return viewQuizLobby();
+  if (z.modus === "bluff") return z.phase === "ende" ? viewQuizEnde() : viewBluff();
   if (z.phase === "frage") return viewQuizFrage();
   if (z.phase === "auf") return viewQuizAuf();
   if (z.modus === "rad" && z.phase !== "ende") return viewQuizRad();
@@ -3042,9 +3065,29 @@ function viewQuizLobby(){
   app.appendChild(tabs());
 }
 
+var bluffTipp = null;
 var meinTipp = null;   // { idx, wert } - bleibt ueber Neuzeichnen hinweg stehen
 var aufGezeigt = -1;   // fuer welche Frage die Aufloesung schon gelaufen ist
 var letzteFrage = null;
+
+function uhr(endeZeit, spanne){
+  var balken = el('<div class="uhr"><i></i><span></span></div>');
+  app.appendChild(balken);
+  var strich = balken.querySelector("i"), text = balken.querySelector("span");
+  function tick(){
+    var uebrig = Math.max(0, endeZeit - Date.now());
+    strich.style.width = Math.min(100, uebrig / spanne * 100) + "%";
+    text.textContent = Math.ceil(uebrig / 1000) + " s";
+    balken.classList.toggle("knapp", uebrig > 0 && uebrig <= 5000);
+    if (uebrig <= 0) {
+      clearInterval(quizTakt); quizTakt = null;
+      if (S.hostet) quizSenden({ tat: "zeit" });
+    }
+  }
+  tick();
+  quizTakt = setInterval(tick, 200);
+  return balken;
+}
 
 function viewCountdown(){
   var z = QUIZ;
@@ -3098,8 +3141,7 @@ function viewQuizFrage(){
     (z.thema ? ' \u00b7 ' + esc(z.thema) : '') + '</p>'));
   app.appendChild(spielerPunkte(z));
 
-  var balken = el('<div class="uhr"><i></i><span></span></div>');
-  app.appendChild(balken);
+  uhr(z.endeZeit, 30000);
   app.appendChild(el('<h1 class="frage">' + esc(f.frage) + '</h1>'));
 
   if (f.typ === "mc") {
@@ -3148,18 +3190,6 @@ function viewQuizFrage(){
   }
   app.appendChild(tabs());
 
-  var strich = balken.querySelector("i"), text = balken.querySelector("span");
-  function tick(){
-    var uebrig = Math.max(0, z.endeZeit - Date.now());
-    strich.style.width = Math.min(100, uebrig / 30000 * 100) + "%";
-    text.textContent = Math.ceil(uebrig / 1000) + " s";
-    if (uebrig <= 0) {
-      clearInterval(quizTakt); quizTakt = null;
-      if (S.hostet) quizSenden({ tat: "zeit" });
-    }
-  }
-  tick();
-  quizTakt = setInterval(tick, 200);
 }
 
 function viewQuizAuf(){
@@ -3284,6 +3314,357 @@ function viewQuizEnde(){
   app.appendChild(tabs());
 }
 
+
+
+/* ---------- Bluff: erfinden, raten, auflachen ---------- */
+var bluffGezeigt = -1;   // fuer welche Runde die Aufloesung schon lief
+var BLUFF_ARTEN = [
+  { id: "begriff",  name: "Fremdw\u00f6rter", sub: "Was bedeutet das Wort?" },
+  { id: "kuriosum", name: "Kuriosit\u00e4ten", sub: "Merkw\u00fcrdige Br\u00e4uche und Rekorde" },
+  { id: "wahrheit", name: "Richtig oder Falsch", sub: "Nur Ja oder Nein, ohne Erfinden" }
+];
+
+function viewBluffLobby(){
+  quizKopf(quizLaedt ? "Fragen werden erdacht" : "Bluff",
+    quizLaedt ? "Das dauert ein paar Sekunden." :
+    (S.hostet ? "Wer besser spinnt, gewinnt. Kartenarten w\u00e4hlen und los."
+              : "Der Gastgeber sucht die Kartenarten aus."));
+  app.appendChild(el('<p class="hintline" style="text-align:center">Du spielst als <b>' + esc(meinName()) + '</b>' +
+    ' \u00b7 ' + (sock && sock.readyState === 1 ? liveAnzahl + ' Ger\u00e4te verbunden' : 'nicht verbunden') + '</p>'));
+  if (quizFehler) app.appendChild(el('<p class="note warn">' + esc(quizFehler) + '</p>'));
+  if (quizLaedt) return;
+
+  if (!S.hostet) {
+    app.appendChild(el('<div class="qrbox">' + (qrSVG(beitrittsLink(S.live), 170) || "") + '</div>'));
+    app.appendChild(tabs());
+    return;
+  }
+
+  var arten = S.bluffArten || { begriff: true, kuriosum: true, wahrheit: true };
+  app.appendChild(el('<p class="lead-in">Welche Kartenarten sollen kommen?</p>'));
+  BLUFF_ARTEN.forEach(function(k){
+    var an = !!arten[k.id];
+    var b = el('<button class="antwort' + (an ? " gewaehlt" : " ruhig") + '" type="button">' +
+      '<span class="buchstabe">' + (an ? "\u2713" : "\u25CB") + '</span>' + esc(k.name) +
+      '<span class="marke">' + esc(k.sub) + '</span></button>');
+    bindTap(b, function(){
+      arten[k.id] = !arten[k.id];
+      if (!BLUFF_ARTEN.some(function(x){ return arten[x.id]; })) arten[k.id] = true;
+      S.bluffArten = arten; save(); render();
+    });
+    app.appendChild(b);
+  });
+
+  var anzahl = S.bluffAnzahl || 5;
+  var wahl = el('<div class="modes"></div>');
+  [3, 5, 8].forEach(function(n){
+    var b = el('<button type="button" aria-current="' + (n === anzahl) + '"><b>' + n + ' Runden</b></button>');
+    b.onclick = function(){ S.bluffAnzahl = n; save(); render(); };
+    wahl.appendChild(b);
+  });
+  app.appendChild(wahl);
+
+  var feld = merkeEingabe(el('<div class="codeeingabe"><input type="text" maxlength="80" ' +
+    'placeholder="eigenes Thema, sonst bunt gemischt"></div>'), "bluffthema");
+  app.appendChild(feld);
+
+  var los = el('<button class="cta" type="button">Fragen holen und starten</button>');
+  los.onclick = function(){
+    bluffHolen(feld.querySelector("input").value.trim(), anzahl,
+      BLUFF_ARTEN.filter(function(k){ return arten[k.id]; }).map(function(k){ return k.id; }));
+  };
+  app.appendChild(los);
+}
+
+function viewBluff(){
+  var z = QUIZ;
+  quizKopf(null, null);
+  var artName = { begriff: "Fremdwort", kuriosum: "Kuriosit\u00e4t", wahrheit: "Richtig oder Falsch" };
+  app.appendChild(el('<p class="meta">Runde ' + (z.idx + 1) + ' von ' + z.gesamt + ' \u00b7 ' +
+    esc(artName[(z.frage && z.frage.art) || "kuriosum"]) + '</p>'));
+  app.appendChild(el('<h1 class="frage">' + esc(z.frage ? z.frage.frage : "") + '</h1>'));
+
+  if (z.phase === "janein") return bluffJaNein(z);
+  if (z.phase === "auf" && z.aufloesung && z.aufloesung.art === "wahrheit") return bluffJaNeinAuf(z);
+  if (z.phase === "schreiben") return bluffSchreiben(z);
+  if (z.phase === "raten") return bluffRaten(z);
+  if (z.phase === "auf") return bluffAuf(z);
+}
+
+function bluffSchreiben(z){
+  var ich = meinName();
+  var fertig = z.geschrieben.indexOf(ich) >= 0;
+  uhr(z.endeZeit, 90000);
+  app.appendChild(bluffPlaketten(z.geschrieben));
+
+  if (fertig) {
+    app.appendChild(el('<div class="antwort gewaehlt"><span class="buchstabe">\u270e</span>' +
+      esc(ENTWURF["luege" + z.idx] || "abgegeben") + '<span class="marke">abgegeben</span></div>'));
+    app.appendChild(el('<p class="note">Warten auf die anderen. Sobald alle fertig sind, wird geraten.</p>'));
+  } else {
+    var feld = merkeEingabe(el('<div class="codeeingabe"><input type="text" maxlength="120" ' +
+      'autocomplete="off" placeholder="deine erfundene Antwort"></div>'), "luege" + z.idx);
+    app.appendChild(feld);
+    app.appendChild(el('<p class="hintline" style="text-align:center">Je glaubw\u00fcrdiger, desto besser. ' +
+      'Wer darauf hereinf\u00e4llt, bringt dir 50 Punkte.</p>'));
+    var ab = el('<button class="cta" type="button">Antwort abgeben</button>');
+    ab.onclick = function(){
+      var t = feld.querySelector("input").value.trim();
+      if (t.length < 2) return;
+      ENTWURF["luege" + z.idx] = t;
+      quizSenden({ tat: "luege", spieler: ich, text: t, anzahl: S.names.length });
+    };
+    app.appendChild(ab);
+  }
+  if (S.hostet) {
+    var los = el('<button class="cta ghost" type="button">Jetzt abstimmen lassen</button>');
+    los.onclick = function(){ quizSenden({ tat: "abstimmen" }); };
+    app.appendChild(los);
+  }
+  app.appendChild(tabs());
+}
+
+function bluffRaten(z){
+  var ich = meinName();
+  var meine = (ENTWURF["luege" + z.idx] || "").toLowerCase().replace(/[^a-z0-9\u00e4\u00f6\u00fc\u00df]+/g, " ").trim();
+  var wahrheit = z.wahrheitstreffer.indexOf(ich) >= 0;
+  var fertig = z.gestimmt.indexOf(ich) >= 0;
+  uhr(z.endeZeit, 45000);
+  app.appendChild(bluffPlaketten(z.gestimmt));
+
+  if (wahrheit) {
+    app.appendChild(el('<p class="note warn">Deine Erfindung war zuf\u00e4llig die Wahrheit. ' +
+      'Du bekommst die Punkte und schaust zu.</p>'));
+  }
+  z.optionen.forEach(function(o, i){
+    var eigen = meine && o.text.toLowerCase().replace(/[^a-z0-9\u00e4\u00f6\u00fc\u00df]+/g, " ").trim() === meine;
+    var gewaehlt = bluffTipp && bluffTipp.idx === z.idx && bluffTipp.wert === i;
+    var b = el('<div class="antwort' + (gewaehlt ? " gewaehlt" : (fertig || eigen ? " ruhig" : "")) + '">' +
+      '<span class="buchstabe">' + (i + 1) + '</span>' + esc(o.text) +
+      (gewaehlt ? '<span class="marke">dein Tipp</span>' : (eigen ? '<span class="marke">von dir</span>' : '')) +
+      '</div>');
+    if (!fertig && !eigen && !wahrheit) {
+      b.setAttribute("role", "button");
+      bindTap(b, function(){
+        bluffTipp = { idx: z.idx, wert: i };
+        quizSenden({ tat: "stimme", spieler: ich, wert: i });
+      });
+    }
+    app.appendChild(b);
+  });
+  app.appendChild(el('<p class="note">' + (fertig ? "Getippt. Jetzt wird es spannend."
+    : (wahrheit ? "" : "Welche davon ist die echte Antwort?")) + '</p>'));
+  if (S.hostet) {
+    var auf = el('<button class="cta ghost" type="button">Jetzt aufl\u00f6sen</button>');
+    auf.onclick = function(){ quizSenden({ tat: "aufloesen" }); };
+    app.appendChild(auf);
+  }
+  app.appendChild(tabs());
+}
+
+function bluffAuf(z){
+  var a = z.aufloesung;
+  var wenigerBewegung = false;
+  try { wenigerBewegung = window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) {}
+  var sofort = bluffGezeigt === z.idx || wenigerBewegung || typeof requestAnimationFrame !== "function";
+
+  var felder = [];
+  a.optionen.forEach(function(o, i){
+    var wahr = i === a.wahr;
+    var quelle = wahr ? "die Wahrheit" : "von " + [o.von].concat(o.mit || []).filter(Boolean).join(" und ");
+    var feld = el('<div class="antwort' + (sofort ? (wahr ? " richtig" : " ruhig") : "") + '">' +
+      '<span class="buchstabe">' + (i + 1) + '</span>' + esc(o.text) +
+      '<span class="marke' + (sofort ? "" : " verdeckt") + '">' + esc(quelle) + '</span>' +
+      '<span class="tipper"></span></div>');
+    feld.setAttribute("data-ende", wahr ? "richtig" : "ruhig");
+    felder.push(feld);
+    app.appendChild(feld);
+  });
+
+  var flieger = 0;
+  S.names.forEach(function(nm, i){
+    var idx = a.stimmen[nm];
+    if (idx === undefined || !felder[idx]) return;
+    var marke = el('<span class="flieger" style="--acc:' + hue(i) + '">' +
+      esc(nm.charAt(0).toUpperCase()) + '</span>');
+    if (!sofort) marke.style.animationDelay = (300 + flieger * 900) + "ms";
+    else marke.classList.add("still");
+    felder[idx].querySelector(".tipper").appendChild(marke);
+    flieger++;
+  });
+
+  var rest = el('<div class="nachher' + (sofort ? "" : " wartet") + '"></div>');
+  app.appendChild(rest);
+  var vorher = app;
+  app = rest;
+  if (a.info) app.appendChild(el('<p class="hintline" style="text-align:center">' + esc(a.info) + '</p>'));
+  (a.wahrheitstreffer || []).forEach(function(nm){
+    app.appendChild(el('<p class="note">' + esc(nm) + ' hatte die Wahrheit geschrieben.</p>'));
+  });
+  var reihe = S.names.map(function(nm, i){ return { nm: nm, i: i }; }).sort(function(x, y){
+    var d = (a.rundenpunkte[y.nm] || 0) - (a.rundenpunkte[x.nm] || 0);
+    return d !== 0 ? d : (z.punkte[y.nm] || 0) - (z.punkte[x.nm] || 0);
+  });
+  reihe.forEach(function(e){
+    var punkte = a.rundenpunkte[e.nm] || 0;
+    var idx = a.stimmen[e.nm];
+    var wie = idx === undefined ? "nicht getippt"
+      : (idx === a.wahr ? "hat die Wahrheit gefunden" : "ist auf " + (idx + 1) + " hereingefallen");
+    var opfer = 0;
+    a.optionen.forEach(function(o, k){
+      if (o.von === e.nm || (o.mit || []).indexOf(e.nm) >= 0) {
+        S.names.forEach(function(x){ if (a.stimmen[x] === k) opfer++; });
+      }
+    });
+    if (opfer) wie += " \u00b7 " + opfer + (opfer === 1 ? " Opfer" : " Opfer");
+    app.appendChild(el('<div class="rank' + (punkte >= 100 ? ' first' : '') + '" data-nm="' + esc(e.nm) +
+      '" style="--acc:' + hue(e.i) + '"><span class="nm">' + esc(e.nm) +
+      '<span class="sub">' + esc(wie) + '</span></span>' +
+      '<span class="pt num">' + fmtZahl(z.punkte[e.nm] || 0) +
+      '<span class="sub">' + (punkte ? "+" + fmtZahl(punkte) : "\u00b10") + '</span></span></div>'));
+  });
+  if (S.hostet) {
+    var w = el('<button class="cta" type="button">' +
+      (z.idx + 1 >= z.gesamt ? "Endergebnis zeigen" : "N\u00e4chste Runde") + '</button>');
+    w.onclick = function(){ bluffTipp = null; quizSenden({ tat: "weiter" }); };
+    app.appendChild(w);
+  } else {
+    app.appendChild(el('<p class="note">Der Gastgeber schaltet weiter.</p>'));
+  }
+  app = vorher;
+
+  if (!sofort) {
+    quizTakt = setTimeout(function(){
+      felder.forEach(function(feld){
+        feld.classList.add(feld.getAttribute("data-ende"));
+        var m = feld.querySelector(".marke.verdeckt");
+        if (m) m.classList.remove("verdeckt");
+      });
+      rest.classList.remove("wartet");
+      bluffGezeigt = z.idx;
+      rangAnimieren("stand");
+    }, 300 + Math.max(1, flieger) * 900 + 500);
+  } else {
+    rangAnimieren("stand");
+  }
+  app.appendChild(tabs());
+}
+
+function bluffJaNein(z){
+  var ich = meinName();
+  var fertig = z.gestimmt.indexOf(ich) >= 0;
+  uhr(z.endeZeit, 30000);
+  app.appendChild(bluffPlaketten(z.gestimmt));
+  app.appendChild(el('<p class="hintline" style="text-align:center">Stimmt diese Behauptung? ' +
+    'Richtig geraten gibt 100 Punkte.</p>'));
+
+  [["Stimmt", true], ["Erfunden", false]].forEach(function(paar, i){
+    var meins = bluffTipp && bluffTipp.idx === z.idx && bluffTipp.wert === paar[1];
+    var b = el('<div class="antwort' + (meins ? " gewaehlt" : (fertig ? " ruhig" : "")) + '">' +
+      '<span class="buchstabe">' + (paar[1] ? "\u2713" : "\u2715") + '</span>' + paar[0] +
+      (meins ? '<span class="marke">eingeloggt</span>' : '') + '</div>');
+    if (!fertig) bindTap(b, function(){
+      bluffTipp = { idx: z.idx, wert: paar[1] };
+      quizSenden({ tat: "janein", spieler: ich, wert: paar[1], anzahl: S.names.length });
+    });
+    app.appendChild(b);
+  });
+  if (S.hostet) {
+    var auf = el('<button class="cta ghost" type="button">Jetzt aufl\u00f6sen</button>');
+    auf.onclick = function(){ quizSenden({ tat: "aufloesen" }); };
+    app.appendChild(auf);
+  }
+  app.appendChild(tabs());
+}
+
+function bluffJaNeinAuf(z){
+  var a = z.aufloesung;
+  var wenigerBewegung = false;
+  try { wenigerBewegung = window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) {}
+  var sofort = bluffGezeigt === z.idx || wenigerBewegung || typeof requestAnimationFrame !== "function";
+
+  var felder = [];
+  [["Stimmt", true], ["Erfunden", false]].forEach(function(paar){
+    var richtig = paar[1] === a.stimmt;
+    var feld = el('<div class="antwort' + (sofort ? (richtig ? " richtig" : " falsch") : "") + '">' +
+      '<span class="buchstabe">' + (paar[1] ? "\u2713" : "\u2715") + '</span>' + paar[0] +
+      '<span class="marke' + (sofort ? "" : " verdeckt") + '">' + (richtig ? "richtig" : "daneben") + '</span>' +
+      '<span class="tipper"></span></div>');
+    feld.setAttribute("data-ende", richtig ? "richtig" : "falsch");
+    felder.push(feld);
+    app.appendChild(feld);
+  });
+
+  var flieger = 0;
+  S.names.forEach(function(nm, i){
+    var wert = a.stimmen[nm];
+    if (wert === undefined) return;
+    var marke = el('<span class="flieger" style="--acc:' + hue(i) + '">' +
+      esc(nm.charAt(0).toUpperCase()) + '</span>');
+    if (!sofort) marke.style.animationDelay = (300 + flieger * 900) + "ms";
+    else marke.classList.add("still");
+    felder[wert ? 0 : 1].querySelector(".tipper").appendChild(marke);
+    flieger++;
+  });
+
+  var rest = el('<div class="nachher' + (sofort ? "" : " wartet") + '"></div>');
+  app.appendChild(rest);
+  var vorher = app;
+  app = rest;
+  if (a.info) app.appendChild(el('<p class="hintline" style="text-align:center">' + esc(a.info) + '</p>'));
+  var reihe = S.names.map(function(nm, i){ return { nm: nm, i: i }; }).sort(function(x, y){
+    var d = (a.rundenpunkte[y.nm] || 0) - (a.rundenpunkte[x.nm] || 0);
+    return d !== 0 ? d : (z.punkte[y.nm] || 0) - (z.punkte[x.nm] || 0);
+  });
+  reihe.forEach(function(e){
+    var punkte = a.rundenpunkte[e.nm] || 0;
+    var wert = a.stimmen[e.nm];
+    app.appendChild(el('<div class="rank' + (punkte ? ' first' : '') + '" data-nm="' + esc(e.nm) +
+      '" style="--acc:' + hue(e.i) + '"><span class="nm">' + esc(e.nm) + '<span class="sub">' +
+      (wert === undefined ? "nicht getippt" : (wert ? "hielt es f\u00fcr wahr" : "hielt es f\u00fcr erfunden")) +
+      '</span></span><span class="pt num">' + fmtZahl(z.punkte[e.nm] || 0) +
+      '<span class="sub">' + (punkte ? "+" + fmtZahl(punkte) : "\u00b10") + '</span></span></div>'));
+  });
+  bluffWeiter(z);
+  app = vorher;
+
+  if (!sofort) {
+    quizTakt = setTimeout(function(){
+      felder.forEach(function(feld){
+        feld.classList.add(feld.getAttribute("data-ende"));
+        var m = feld.querySelector(".marke.verdeckt");
+        if (m) m.classList.remove("verdeckt");
+      });
+      rest.classList.remove("wartet");
+      bluffGezeigt = z.idx;
+      rangAnimieren("stand");
+    }, 300 + Math.max(1, flieger) * 900 + 500);
+  } else {
+    rangAnimieren("stand");
+  }
+  app.appendChild(tabs());
+}
+
+function bluffWeiter(z){
+  if (S.hostet) {
+    var w = el('<button class="cta" type="button">' +
+      (z.idx + 1 >= z.gesamt ? "Endergebnis zeigen" : "N\u00e4chste Runde") + '</button>');
+    w.onclick = function(){ bluffTipp = null; quizSenden({ tat: "weiter" }); };
+    app.appendChild(w);
+  } else {
+    app.appendChild(el('<p class="note">Der Gastgeber schaltet weiter.</p>'));
+  }
+}
+
+function bluffPlaketten(fertigListe){
+  var reihe = el('<div class="wersteht"></div>');
+  S.names.forEach(function(nm, i){
+    var da = fertigListe.indexOf(nm) >= 0;
+    reihe.appendChild(el('<span class="wp' + (da ? " fertig" : "") + '" style="--acc:' + hue(i) + '">' +
+      '<b>' + esc(nm.charAt(0).toUpperCase()) + '</b><i>' + esc(nm) + '</i></span>'));
+  });
+  return reihe;
+}
 
 /* ---------- Buchstabenrad ---------- */
 var ABC = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -3532,11 +3913,30 @@ var RULES_KNIFFEL = [
   ["Chance", "Beliebige Kombination, es z\u00e4hlt die Summe aller f\u00fcnf W\u00fcrfel. Der \u00fcbliche Notausgang."],
   ["Streichen", "Passt nichts, muss ein freies Feld mit null gef\u00fcllt werden. In der App w\u00e4hlst du daf\u00fcr einfach die Null."]
 ];
+var RULES_QUIZ = [
+  ["Jeder braucht sein eigenes Handy", "Anders als bei den Kartenspielen tippt hier jeder selbst. Der Gastgeber gibt die Partie frei, alle anderen treten mit dem Code oder \u00fcber den QR-Code bei und w\u00e4hlen aus der Liste, wer sie sind."],
+  ["Zwei Spielarten", "Klassisch: ein Thema f\u00fcr alle, dann die Fragen. Buchstabenrad: reihum dreht jeder ein Rad und w\u00e4hlt aus vier Themen zu seinem Buchstaben."],
+  ["Auswahlfragen", "Vier M\u00f6glichkeiten, einmal tippen und die Antwort ist eingeloggt. Richtig gibt 100 Punkte, dazu bis zu 100 f\u00fcr Tempo. Wer sofort tippt, holt fast das Doppelte von jemandem, der lange \u00fcberlegt."],
+  ["Sch\u00e4tzfragen", "Eine Zahl eintippen. Punkte nach N\u00e4he: 100, 60, 30, danach 10. Wer genau trifft, bekommt 25 dazu. Beim Aufl\u00f6sen wandern alle Tipps auf einen Zahlenstrahl."],
+  ["Der Gastgeber steuert", "Er holt die Fragen, kann vorzeitig aufl\u00f6sen lassen und schaltet weiter. Niemand muss warten, wenn einer nicht tippt."],
+  ["Am Ende", "Nach der letzten Runde kommt das Endergebnis, und die Partie l\u00e4sst sich in die ewige Tabelle eintragen wie jedes andere Spiel."]
+];
+
+var RULES_BLUFF = [
+  ["Wer besser spinnt, gewinnt", "Alle sehen dieselbe Frage und erfinden eine Antwort, die echt klingt. Danach stehen alle Erfindungen zusammen mit der Wahrheit gemischt da, und jeder tippt, welche die echte ist."],
+  ["Jeder braucht sein eigenes Handy", "Der Gastgeber gibt die Partie frei, die anderen treten mit dem Code oder \u00fcber den QR-Code bei und w\u00e4hlen aus der Liste, wer sie sind. Ab drei Spielern, sonst lohnt das Bluffen nicht."],
+  ["Drei Kartenarten", "Fremdw\u00f6rter: was bedeutet das Wort? Kuriosit\u00e4ten: merkw\u00fcrdige Br\u00e4uche und Rekorde. Richtig oder Falsch: eine Behauptung steht da, alle stimmen nur mit Ja oder Nein ab. Der Gastgeber w\u00e4hlt vorher aus, was kommen soll."],
+  ["Punkte", "100 Punkte, wenn du die echte Antwort findest. 50 Punkte f\u00fcr jeden, der auf deine Erfindung hereinf\u00e4llt. Bei Richtig oder Falsch gibt es 100 f\u00fcrs richtige Tippen."],
+  ["Die eigene Erfindung", "Sie ist f\u00fcr dich gesperrt und mit einem Hinweis versehen. Wer zuf\u00e4llig die Wahrheit schreibt, bekommt 100 Punkte und schaut in der Runde zu."],
+  ["Wenn es stockt", "Der Gastgeber kann jederzeit abstimmen lassen oder aufl\u00f6sen, falls jemand nicht tippt. Es laufen auch Uhren: 90 Sekunden zum Erfinden, 45 zum Raten."],
+  ["Am Ende", "Nach der letzten Runde kommt das Endergebnis, und die Partie l\u00e4sst sich in die ewige Tabelle eintragen wie jedes andere Spiel."]
+];
+
 function helpButton(){
   var b = el('<button class="menubtn" type="button" aria-label="Spielanleitung">?</button>');
   b.onclick = function(){
-    var sheet = el('<div class="sheet"><div class="panel scrollable"><div class="head">' + (S.game === "kniffel" ? "Kniffel" : S.game === "phase10" ? "Phase 10" : S.game === "skyjo" ? "Skyjo" : "Wizard") + ' in Kurzform</div>' +
-      '<div class="rules-body">' + (S.game === "kniffel" ? RULES_KNIFFEL : S.game === "phase10" ? RULES_PHASE : S.game === "skyjo" ? RULES_SKYJO : RULES_WIZARD).map(function(r){
+    var sheet = el('<div class="sheet"><div class="panel scrollable"><div class="head">' + (S.game === "kniffel" ? "Kniffel" : S.game === "phase10" ? "Phase 10" : S.game === "skyjo" ? "Skyjo" : S.game === "quiz" ? "Quiz" : S.game === "bluff" ? "Bluff" : "Wizard") + ' in Kurzform</div>' +
+      '<div class="rules-body">' + (S.game === "kniffel" ? RULES_KNIFFEL : S.game === "phase10" ? RULES_PHASE : S.game === "skyjo" ? RULES_SKYJO : S.game === "quiz" ? RULES_QUIZ : S.game === "bluff" ? RULES_BLUFF : RULES_WIZARD).map(function(r){
         return '<section><h3>' + r[0] + '</h3><p>' + r[1] + '</p></section>'; }).join("") + '</div></div></div>');
     var close = el('<button type="button">Schlie\u00dfen</button>');
     close.onclick = function(){ sheet.remove(); };
@@ -3596,7 +3996,7 @@ function openMenu(){
           S.sheet = S.names.map(function(){ return {}; }); S.at = 0; S.logged = null; S.view = "round"; save(); render();
         }
       }); }
-    } else if (S.game !== "quiz") {
+    } else if (S.game !== "quiz" && S.game !== "bluff") {
       var nr = S.game === "wizard" ? roundNo() : S.rounds.length + 1;
       if (S.draft) { korrektur = true; zeile("\u21ba", "Eingaben zur\u00fccksetzen", "Runde " + nr + " noch einmal beginnen", "", function(){
         S.draft = null; S.view = "round"; save(); render();
@@ -3631,9 +4031,9 @@ function openMenu(){
 
   // --- Neu anfangen und zurueck ---
   neueGruppe();
-  if (!gast && S.game === "quiz") {
-    zeile("\u21bb", "Neue Quizrunde", "Punkte zur\u00fccksetzen", "danger", function(){
-      if (confirm("Quiz f\u00fcr alle neu anfangen?")) quizNeustart();
+  if (!gast && (S.game === "quiz" || S.game === "bluff")) {
+    zeile("\u21bb", S.game === "bluff" ? "Neue Bluffrunde" : "Neue Quizrunde", "Punkte zur\u00fccksetzen", "danger", function(){
+      if (confirm((S.game === "bluff" ? "Bluff" : "Quiz") + " f\u00fcr alle neu anfangen?")) quizNeustart();
     });
   } else if (!gast && S.game !== "kniffel") {
     zeile("\u21bb", "Neues Spiel, gleiche Spieler", "Alle Punkte verwerfen", "danger", function(){
@@ -3655,7 +4055,7 @@ function tabs(){
   if (S.game === "kniffel") first = kniffelDone() ? "Ergebnis" : "Block";
   else if (S.game === "phase10") first = p10Done() ? "Ergebnis" : "Runde";
   else if (S.game === "skyjo") first = skyjoDone() ? "Ergebnis" : "Runde";
-  else if (S.game === "quiz") return el('<div></div>');
+  else if (S.game === "quiz" || S.game === "bluff") return el('<div></div>');
   else first = S.rounds.length >= totalRounds() ? "Ergebnis" : "Runde";
   var node = el('<nav class="tabs"><div class="inner">' +
     '<button type="button">' + first + '</button>' +
@@ -3686,7 +4086,7 @@ function render(){
   if (!S && ALL.pendingJoin) return viewJoining();
   if (!S) return ALL.view === "stats" ? viewStats() : viewHome();
   if (S.setup || !S.names.length) return viewSetup();
-  if (S.game === "quiz") return viewQuiz();
+  if (S.game === "quiz" || S.game === "bluff") return viewQuiz();
   if (S.game === "skyjo") {
     if (S.view === "table") return viewSkyjoTable();
     if (skyjoDone()) return viewSkyjoFinal();
