@@ -407,13 +407,15 @@
 
   .marke.verdeckt{opacity:0}
   .marke{transition:opacity .3s ease}
-  .themakarte{display:flex; align-items:center; gap:14px; justify-content:center; margin:10px 4px 18px;
-    padding:20px 18px; border-radius:20px; background:var(--glass-2); border:1px solid var(--hair);
+  .themakarte{display:flex; align-items:center; gap:14px; margin:10px 4px 18px;
+    padding:18px; border-radius:20px; background:var(--glass-2); border:1px solid var(--hair);
     animation:themaauf .55s cubic-bezier(.2,.9,.3,1) both}
-  .themakarte .buchstabe{width:46px; height:46px; font-size:22px; flex:none}
-  .themakarte b{font-size:22px; font-weight:800; letter-spacing:-.02em; line-height:1.15}
-  .themakarte.klein{margin:4px 4px 6px; padding:13px 14px}
-  .themakarte.klein .buchstabe{width:34px; height:34px; font-size:17px}
+  .themakarte .buchstabe{flex:none; width:46px; height:46px; border-radius:14px; background:var(--gold);
+    color:#fff; display:grid; place-items:center; font-weight:800; font-size:23px; line-height:1}
+  .themakarte b{flex:1; min-width:0; font-size:22px; font-weight:800; letter-spacing:-.02em; line-height:1.2;
+    overflow-wrap:anywhere}
+  .themakarte.klein{margin:4px 4px 10px; padding:13px 14px; gap:11px}
+  .themakarte.klein .buchstabe{width:34px; height:34px; border-radius:11px; font-size:17px}
   .themakarte.klein b{font-size:18px}
   @keyframes themaauf{0%{opacity:0; transform:scale(.86) translateY(10px)}
     60%{opacity:1; transform:scale(1.03)}100%{opacity:1; transform:none}}
@@ -427,11 +429,12 @@
   .antwort .marke{right:auto; left:auto; position:static; transform:none; margin-left:8px}
   .flieger{width:25px; height:25px; border-radius:50%; background:var(--acc); color:#fff;
     display:grid; place-items:center; font-size:12px; font-weight:800;
-    box-shadow:0 2px 8px rgba(0,0,0,.18); animation:einflug .5s cubic-bezier(.2,.9,.3,1) both}
+    box-shadow:0 2px 8px rgba(0,0,0,.18); animation:einflug .8s cubic-bezier(.18,.85,.28,1) both}
   .flieger.still{animation:none}
   @keyframes einflug{
-    0%{opacity:0; transform:translateY(-26px) scale(.4)}
-    60%{opacity:1; transform:translateY(3px) scale(1.12)}
+    0%{opacity:0; transform:translateY(-44px) scale(.25)}
+    55%{opacity:1; transform:translateY(5px) scale(1.18)}
+    75%{transform:translateY(-2px) scale(.97)}
     100%{opacity:1; transform:none}}
   .nachher{transition:opacity .35s ease}
   .nachher.wartet{opacity:0; pointer-events:none}
@@ -520,7 +523,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-14.6";
+var VERSION = "2026-09-14.7";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -3150,7 +3153,7 @@ function viewQuizAuf(){
       if (wahl === undefined || !felder[wahl]) return;
       var marke = el('<span class="flieger" style="--acc:' + hue(i) + '" title="' + esc(nm) + '">' +
         esc(nm.charAt(0).toUpperCase()) + '</span>');
-      if (!sofort) marke.style.animationDelay = (flieger * 130) + "ms";
+      if (!sofort) marke.style.animationDelay = (300 + flieger * 900) + "ms";
       else marke.classList.add("still");
       felder[wahl].querySelector(".tipper").appendChild(marke);
       flieger++;
@@ -3167,9 +3170,10 @@ function viewQuizAuf(){
   app = rest;
   if (a.info) app.appendChild(el('<p class="hintline" style="text-align:center">' + esc(a.info) + '</p>'));
 
+  // Diese Liste zeigt die Ausbeute der gerade gespielten Frage, also danach sortieren.
   var reihe = S.names.map(function(nm, i){ return { nm: nm, i: i }; }).sort(function(x, y){
-    var d = (z.punkte[y.nm] || 0) - (z.punkte[x.nm] || 0);
-    return d !== 0 ? d : (a.rundenpunkte[y.nm] || 0) - (a.rundenpunkte[x.nm] || 0);
+    var d = (a.rundenpunkte[y.nm] || 0) - (a.rundenpunkte[x.nm] || 0);
+    return d !== 0 ? d : (z.punkte[y.nm] || 0) - (z.punkte[x.nm] || 0);
   });
   reihe.forEach(function(e){
     var nm = e.nm, i = e.i;
@@ -3198,7 +3202,7 @@ function viewQuizAuf(){
       rest.classList.remove("wartet");
       aufGezeigt = z.idx;
       rangAnimieren("stand");
-    }, Math.max(900, 380 + 130 * S.names.length));
+    }, 300 + Math.max(1, flieger) * 900 + 500);
   } else {
     rangAnimieren("stand");
   }
