@@ -364,6 +364,7 @@
   .loesung{margin:8px 2px; padding:18px; border-radius:var(--r); text-align:center;
     background:var(--tint); border:1px solid var(--gold); font-size:26px; font-weight:800}
 
+  .rank.zieht{position:relative; z-index:2; box-shadow:0 10px 26px rgba(0,0,0,.14)}
   .rank .pt .sub{display:block; font-size:11px; font-weight:600; color:var(--dim); letter-spacing:0}
   .antwort{position:relative; transition:background .25s ease, border-color .25s ease, opacity .25s ease}
   .antwort .marke{position:absolute; right:12px; top:50%; transform:translateY(-50%);
@@ -528,7 +529,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-14.8";
+var VERSION = "2026-09-14.9";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -2881,16 +2882,26 @@ function rangAnimieren(schluessel){
     if (alt[nm] !== undefined && alt[nm] !== neu[nm]) {
       zeile.style.transition = "none";
       zeile.style.transform = "translateY(" + (alt[nm] - neu[nm]) + "px)";
+      zeile.setAttribute("data-weg", String(Math.abs(alt[nm] - neu[nm])));
       bewegt.push(zeile);
     }
   });
   RANG_POS[schluessel] = neu;
   if (!bewegt.length || typeof requestAnimationFrame !== "function") return;
+
+  // Kurz in der alten Reihenfolge stehen bleiben, dann gemaechlich umsortieren.
+  bewegt.sort(function(x, y){ return Number(y.getAttribute("data-weg")) - Number(x.getAttribute("data-weg")); });
   requestAnimationFrame(function(){
-    bewegt.forEach(function(zeile){
-      zeile.style.transition = "transform .5s cubic-bezier(.2,.8,.25,1)";
+    bewegt.forEach(function(zeile, i){
+      zeile.classList.add("zieht");
+      zeile.style.transition = "transform 1.15s cubic-bezier(.32,.72,.2,1) " + (500 + i * 110) + "ms," +
+        " box-shadow .3s ease " + (500 + i * 110) + "ms";
       zeile.style.transform = "none";
     });
+    var letzte = 500 + (bewegt.length - 1) * 110 + 1150;
+    setTimeout(function(){
+      bewegt.forEach(function(zeile){ zeile.classList.remove("zieht"); zeile.style.transition = ""; });
+    }, letzte);
   });
 }
 
