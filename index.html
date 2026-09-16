@@ -374,7 +374,16 @@
     background:var(--glass-2); color:var(--dim); font-size:17px; line-height:1; margin-left:6px}
   .sheet .tableau{margin:6px 0 10px}
 
-  .tableau{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:6px 2px 14px}
+  .tableau{display:grid; grid-template-columns:repeat(3,1fr) 26px; gap:8px; margin:6px 2px 14px;
+    align-items:center}
+  .bonus{display:grid; place-items:center; width:26px; height:26px; border-radius:9px;
+    background:var(--glass-2); border:1px solid var(--hair); color:var(--dim);
+    font-size:12px; font-weight:800; justify-self:center;
+    transition:background .35s ease, color .35s ease, border-color .35s ease, transform .35s ease}
+  .bonus.erreicht{background:var(--gold); border-color:var(--gold); color:#fff;
+    animation:bonuspuls .7s cubic-bezier(.2,.9,.3,1)}
+  @keyframes bonuspuls{0%{transform:scale(1)}40%{transform:scale(1.35)}100%{transform:scale(1)}}
+  .bonusecke{width:26px; height:26px}
   .tfeld{position:relative; aspect-ratio:1/.82; border-radius:14px; background:var(--glass-2);
     border:1px solid var(--hair); display:grid; place-items:center; padding:6px; overflow:hidden;
     transition:transform .2s ease, border-color .2s ease, background .2s ease}
@@ -426,7 +435,7 @@
   .ministand b{font-weight:700; color:var(--text)}
   @media (prefers-reduced-motion:reduce){
     .ansage b, .ansage span, .ansage i, .tkreis ellipse, .tkreuz path, .tstern,
-    .vorgelesen, .trefferkarte{animation:none}}
+    .vorgelesen, .trefferkarte, .bonus.erreicht{animation:none}}
 
   .lader{display:flex; flex-direction:column; align-items:center; gap:14px; padding:26px 0 10px}
   .lader .karten{position:relative; width:118px; height:74px}
@@ -674,7 +683,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-17.3";
+var VERSION = "2026-09-17.4";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -3786,7 +3795,8 @@ function ditoRasterZeigen(){
   var panel = sheet.querySelector(".panel");
   panel.appendChild(ditoTableau(z.felder[meinName()] || [], {}));
   var stand = el('<p class="hintline" style="text-align:center">Kreis: hatte jemand auch. ' +
-    'Stern: genau einer. Kreuz: niemand.</p>');
+    'Stern: genau einer. Kreuz: niemand. Die Zahlen am Rand sind der Bonus f\u00fcr eine ' +
+    'volle Reihe oder Spalte.</p>');
   panel.appendChild(stand);
   var zu = el('<button class="cta ghost" type="button">Schlie\u00dfen</button>');
   zu.onclick = function(){ sheet.remove(); };
@@ -3807,8 +3817,13 @@ function ditoAnsage(titel, unter, art){
 }
 
 /* --- Tableau --- */
+var DITO_ZEILEN = [3, 2, 1];     // Bonus je Reihe, von oben nach unten
+var DITO_SPALTEN = [1, 2, 3];    // Bonus je Spalte, von links nach rechts
+
 function ditoTableau(felder, optionen){
   var o = optionen || {};
+  var f = felder || [];
+  var voll = function(i){ return f[i] && f[i].zustand === "kreis"; };
   var raster = el('<div class="tableau"></div>');
   (felder || []).forEach(function(f, i){
     var klasse = "tfeld " + (f.zustand || "leer");
@@ -3822,7 +3837,21 @@ function ditoTableau(felder, optionen){
       '</div>');
     if (o.waehlbar && f.zustand === o.waehlbar && o.tippen) bindTap(zelle, function(){ o.tippen(i); });
     raster.appendChild(zelle);
+    // Am Ende jeder Reihe der Bonus dieser Reihe
+    if (i % 3 === 2) {
+      var r = (i - 2) / 3;
+      var reiheVoll = voll(r*3) && voll(r*3+1) && voll(r*3+2);
+      raster.appendChild(el('<span class="bonus' + (reiheVoll ? " erreicht" : "") + '">+' +
+        DITO_ZEILEN[r] + '</span>'));
+    }
   });
+  // Unter jeder Spalte deren Bonus
+  for (var c = 0; c < 3; c++) {
+    var spalteVoll = voll(c) && voll(c+3) && voll(c+6);
+    raster.appendChild(el('<span class="bonus' + (spalteVoll ? " erreicht" : "") + '">+' +
+      DITO_SPALTEN[c] + '</span>'));
+  }
+  raster.appendChild(el('<span class="bonusecke"></span>'));
   return raster;
 }
 
