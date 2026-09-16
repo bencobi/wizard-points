@@ -350,6 +350,73 @@
   .themen{display:flex; flex-wrap:wrap; gap:6px; margin:0 2px 14px}
   .themen button{padding:8px 12px; border-radius:11px; background:var(--glass);
     border:1px solid var(--hair); font-size:13.5px; font-weight:600; color:var(--dim)}
+  /* Dito */
+  .ansage{position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:8px; min-height:44vh; text-align:center}
+  .ansage b{font-size:40px; font-weight:800; letter-spacing:-.03em; line-height:1.05;
+    animation:ansageauf .6s cubic-bezier(.2,.9,.3,1) both}
+  .ansage span{font-size:15px; color:var(--dim); animation:ansageauf .6s .12s cubic-bezier(.2,.9,.3,1) both}
+  .ansage i{display:block; width:54px; height:4px; border-radius:2px; background:var(--gold); margin-top:6px;
+    transform-origin:left center; animation:ansagebalken 2.6s linear both}
+  .ansage.auf b{color:var(--gold)}
+  .ansage.wert b{color:#2E9E5B}
+  @keyframes ansageauf{0%{opacity:0; transform:translateY(14px) scale(.94)}100%{opacity:1; transform:none}}
+  @keyframes ansagebalken{0%{transform:scaleX(0)}100%{transform:scaleX(1)}}
+
+  .tableau{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:6px 2px 14px}
+  .tfeld{position:relative; aspect-ratio:1/.82; border-radius:14px; background:var(--glass-2);
+    border:1px solid var(--hair); display:grid; place-items:center; padding:6px; overflow:hidden;
+    transition:transform .2s ease, border-color .2s ease, background .2s ease}
+  .tfeld .tt{font-size:13px; font-weight:700; text-align:center; line-height:1.2; overflow-wrap:anywhere}
+  .tfeld.leer{border-style:dashed}
+  .tfeld.waehlbar{cursor:pointer; border-color:var(--gold)}
+  .tfeld.gewaehlt{background:var(--tint); border-color:var(--gold); transform:scale(1.03)}
+  .tfeld.kreis{background:rgba(46,158,91,.10); border-color:rgba(46,158,91,.5)}
+  .tfeld.kreuz .tt{opacity:.45}
+  .tkreis, .tkreuz{position:absolute; inset:8% 4%; pointer-events:none}
+  .tkreis ellipse{fill:none; stroke:#2E9E5B; stroke-width:3; stroke-linecap:round;
+    stroke-dasharray:220; animation:kreisziehen .6s ease both}
+  .tkreuz path{fill:none; stroke:var(--warn); stroke-width:4; stroke-linecap:round;
+    stroke-dasharray:90; animation:kreisziehen .45s ease both}
+  .tkreuz path:nth-child(2){animation-delay:.16s}
+  @keyframes kreisziehen{0%{stroke-dashoffset:220; opacity:.2}100%{stroke-dashoffset:0; opacity:1}}
+  .tstern{position:absolute; top:4px; right:6px; color:var(--gold); font-size:15px;
+    animation:sternauf .5s .35s cubic-bezier(.2,.9,.3,1) both}
+  @keyframes sternauf{0%{opacity:0; transform:scale(.3) rotate(-40deg)}100%{opacity:1; transform:none}}
+
+  .kategorie{display:flex; align-items:center; gap:12px; padding:16px 14px; margin-bottom:10px;
+    border-radius:16px; background:var(--glass-2); border:1px solid var(--hair);
+    font-size:16.5px; font-weight:600; line-height:1.3}
+  .kategorie.waehlbar{border-color:var(--gold); cursor:pointer}
+  .kategorie.waehlbar:active{background:var(--tint)}
+  .knr{flex:none; width:26px; height:26px; border-radius:9px; background:var(--tint); color:var(--gold);
+    display:grid; place-items:center; font-weight:800; font-size:13px}
+
+  .vorgelesen{text-align:center; padding:18px 14px; margin:4px 2px 14px; border-radius:18px;
+    background:var(--glass-2); border:1px solid var(--hair); animation:ansageauf .5s both}
+  .vorgelesen span{display:block; font-size:12.5px; color:var(--dim); margin-bottom:4px}
+  .vorgelesen b{font-size:26px; font-weight:800; letter-spacing:-.02em; overflow-wrap:anywhere}
+
+  .trefferkarte{text-align:center; padding:20px 14px; margin:4px 2px 12px; border-radius:18px;
+    border:1px solid var(--hair); background:var(--glass-2); animation:ansageauf .5s both}
+  .trefferkarte b{display:block; font-size:24px; font-weight:800; overflow-wrap:anywhere}
+  .trefferkarte span{display:block; margin-top:6px; font-size:13.5px; font-weight:700}
+  .trefferkarte.gut{border-color:rgba(46,158,91,.5); background:rgba(46,158,91,.10)}
+  .trefferkarte.gut span{color:#2E9E5B}
+  .trefferkarte.stern{border-color:var(--gold); background:var(--tint)}
+  .trefferkarte.stern span{color:var(--gold)}
+  .trefferkarte.leer{border-color:var(--warn); background:rgba(200,60,60,.10)}
+  .trefferkarte.leer span{color:var(--warn)}
+
+  .ministand{display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:10px 0 4px;
+    font-size:12.5px; color:var(--dim)}
+  .ministand span{padding:4px 10px; border-radius:999px; background:var(--glass-2);
+    border-left:3px solid var(--acc)}
+  .ministand b{font-weight:700; color:var(--text)}
+  @media (prefers-reduced-motion:reduce){
+    .ansage b, .ansage span, .ansage i, .tkreis ellipse, .tkreuz path, .tstern,
+    .vorgelesen, .trefferkarte{animation:none}}
+
   .lader{display:flex; flex-direction:column; align-items:center; gap:14px; padding:26px 0 10px}
   .lader .karten{position:relative; width:118px; height:74px}
   .lader .karten i{position:absolute; left:50%; top:0; width:50px; height:70px; margin-left:-25px;
@@ -596,7 +663,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-16.7";
+var VERSION = "2026-09-16.9";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -626,7 +693,8 @@ var GAMES = [
   { id:"phase10", name:"Phase 10", sub:"Zehn Phasen, Restpunkte je Runde", low:true },
   { id:"skyjo",   name:"Skyjo",    sub:"Punkte sammeln bis 100, wenigste gewinnen", low:true },
   { id:"quiz",    name:"Quiz",     sub:"Sch\u00e4tz- und Wissensfragen, jeder am eigenen Handy", low:false },
-  { id:"bluff",   name:"Bluff",    sub:"Antworten erfinden und andere hereinlegen", low:false }
+  { id:"bluff",   name:"Bluff",    sub:"Antworten erfinden und andere hereinlegen", low:false },
+  { id:"dito",    name:"Dito",     sub:"Dasselbe denken wie die anderen", low:false }
 ];
 function fresh(){ return { theme:"light", cur:null, games:{}, history:[] }; }
 function grenzen(id){
@@ -634,6 +702,7 @@ function grenzen(id){
   if (id === "skyjo")   return { min: 2, max: 8 };
   if (id === "quiz")    return { min: 2, max: 8 };
   if (id === "bluff")   return { min: 3, max: 8 };   // unter drei lohnt das Bluffen nicht
+  if (id === "dito")    return { min: 3, max: 7 };
   if (id === "phase10") return { min: 2, max: 6 };
   return { min: 2, max: 6 };                          // Wizard, offiziell ab 3
 }
@@ -3067,11 +3136,12 @@ function quizFragenHolen(thema, anzahl){
 }
 
 function istBluff(){ return S && S.game === "bluff"; }
+function istDito(){ return S && S.game === "dito"; }
 
 function quizKopf(titel, unter){
   app.innerHTML = "";
   app.appendChild(el('<div class="top"><div class="brand"><span class="hat">\u25B2</span> ' +
-    (istBluff() ? "Bluff" : "Quiz") + '</div></div>'));
+    (istBluff() ? "Bluff" : istDito() ? "Dito" : "Quiz") + '</div></div>'));
   topBtns();
   if (titel) app.appendChild(el('<h1 class="headline">' + titel + '</h1>'));
   if (unter) app.appendChild(el('<p class="meta">' + unter + '</p>'));
@@ -3082,7 +3152,7 @@ function viewQuiz(){
 
   // Ohne Freigabe geht Quiz nicht
   if (!S.live) {
-    quizKopf(S.game === "bluff" ? "Bluff zu mehreren" : "Quiz zu mehreren",
+    quizKopf(S.game === "bluff" ? "Bluff zu mehreren" : S.game === "dito" ? "Dito zu mehreren" : "Quiz zu mehreren",
       "Hier spielt jeder auf dem eigenen Handy. Gib die Partie frei, damit die anderen beitreten k\u00f6nnen.");
     var frei = el('<button class="cta" type="button">Partie freigeben</button>');
     frei.onclick = function(){
@@ -3107,6 +3177,7 @@ function viewQuiz(){
   }
 
   var z = QUIZ;
+  if (istDito()) return viewDito();
   if (istBluff() && (!z || z.phase === "lobby")) return viewBluffLobby();
   if (!z || z.phase === "lobby") return viewQuizLobby();
   if (z.modus === "bluff") return z.phase === "ende" ? viewQuizEnde() : viewBluff();
@@ -3640,6 +3711,375 @@ function aufholHinweis(nm, mehr, feld){
     ' liegt hinten und r\u00fcckt ' + mehr + ' Felder weiter</p>');
   brett.parentNode.insertBefore(zeile, brett.nextSibling);
   setTimeout(function(){ zeile.remove(); }, 2600);
+}
+
+
+/* ---------- Dito: dasselbe denken wie die anderen ---------- */
+var ditoEntwurf = {};      // getippter Text je Feld, ueberlebt das Neuzeichnen
+var ditoFeldWahl = null;   // welches Feld beim Schreiben gemeint ist
+
+function viewDito(){
+  var z = QUIZ;
+  if (quizTakt) { clearInterval(quizTakt); clearTimeout(quizTakt); quizTakt = null; }
+
+  if (!z || !z.modus) return viewDitoLobby();
+
+  // Ansagen laufen ueber die Serveruhr, damit alle dasselbe sehen
+  if (z.zeigenAb && serverJetzt() < z.zeigenAb) {
+    if (z.phase === "schreiben") return ditoAnsage("Schreibt jetzt", esc(z.kategorie), "schreib");
+    if (z.phase === "aufloesungStart") return ditoAnsage("Aufl\u00f6sung", "Reihum wird vorgelesen", "auf");
+    if (z.phase === "wertung") return ditoAnsage("Wertung", "Runde " + z.runde, "wert");
+  }
+  // Nie waehrend des Zeichnens senden: die Antwort kaeme mitten in den Aufbau
+  if (z.phase === "aufloesungStart" && S.hostet) {
+    setTimeout(function(){ if (QUIZ && QUIZ.phase === "aufloesungStart") quizSenden({ tat: "ansageVorbei" }); }, 0);
+  }
+
+  if (z.phase === "nachschub") return viewDitoNachschub(z);
+  if (z.phase === "kategorie") return viewDitoKategorie(z);
+  if (z.phase === "schreiben") return viewDitoSchreiben(z);
+  if (z.phase === "vorlesen") return viewDitoVorlesen(z);
+  if (z.phase === "melden") return viewDitoMelden(z);
+  if (z.phase === "treffer") return viewDitoTreffer(z);
+  if (z.phase === "wertung") return viewDitoWertung(z);
+  if (z.phase === "ende") return viewDitoEnde(z);
+  return viewDitoKategorie(z);
+}
+
+function ditoKopf(z, unter){
+  quizKopf(null, null);
+  app.appendChild(el('<p class="meta">Runde ' + (z.runde || 1) + ' von 3' +
+    (unter ? ' \u00b7 ' + unter : '') + '</p>'));
+}
+
+// Grosse Ansage zwischen den Abschnitten, damit niemand ueberrumpelt wird
+function ditoAnsage(titel, unter, art){
+  quizKopf(null, null);
+  var box = el('<div class="ansage ' + art + '"><b>' + titel + '</b>' +
+    (unter ? '<span>' + unter + '</span>' : '') + '<i></i></div>');
+  app.appendChild(box);
+  quizTakt = setTimeout(render, Math.max(120, QUIZ.zeigenAb - serverJetzt() + 60));
+  app.appendChild(tabs());
+}
+
+/* --- Tableau --- */
+function ditoTableau(felder, optionen){
+  var o = optionen || {};
+  var raster = el('<div class="tableau"></div>');
+  (felder || []).forEach(function(f, i){
+    var klasse = "tfeld " + (f.zustand || "leer");
+    if (o.waehlbar && f.zustand === o.waehlbar) klasse += " waehlbar";
+    if (o.gewaehlt === i) klasse += " gewaehlt";
+    var zelle = el('<div class="' + klasse + '">' +
+      '<span class="tt">' + esc(f.text || "") + '</span>' +
+      (f.stern ? '<span class="tstern">\u2605</span>' : '') +
+      (f.zustand === "kreis" ? '<svg class="tkreis" viewBox="0 0 100 60"><ellipse cx="50" cy="30" rx="44" ry="25"/></svg>' : '') +
+      (f.zustand === "kreuz" ? '<svg class="tkreuz" viewBox="0 0 100 60"><path d="M14 10 L86 50"/><path d="M86 10 L14 50"/></svg>' : '') +
+      '</div>');
+    if (o.waehlbar && f.zustand === o.waehlbar && o.tippen) bindTap(zelle, function(){ o.tippen(i); });
+    raster.appendChild(zelle);
+  });
+  return raster;
+}
+
+function ditoPlaketten(fertig){
+  var reihe = el('<div class="wersteht"></div>');
+  S.names.forEach(function(nm, i){
+    var da = (fertig || []).indexOf(nm) >= 0;
+    reihe.appendChild(el('<span class="wp' + (da ? " fertig" : "") + '" style="--acc:' + hue(i) + '">' +
+      '<b>' + esc(nm.charAt(0).toUpperCase()) + '</b><i>' + esc(nm) + '</i></span>'));
+  });
+  return reihe;
+}
+
+/* --- Kategorie waehlen --- */
+function viewDitoKategorie(z){
+  var dranName = S.names[(z.dran || 0) % S.names.length];
+  var ichWaehle = dranName === meinName();
+  ditoKopf(z, "Kategorie " + Math.min(3, (z.schritt || 0) + 1) + " von 3");
+  app.appendChild(el('<h1 class="headline">' + (ichWaehle ? "Du suchst aus" : esc(dranName) + " sucht aus") + '</h1>'));
+
+  if (!z.wahl) { app.appendChild(kartenLader("Neue Kategorien werden ausgedacht")); return; }
+
+  [z.wahl.a, z.wahl.b].forEach(function(k, i){
+    var b = el('<div class="kategorie' + (ichWaehle ? " waehlbar" : "") + '">' +
+      '<span class="knr">' + (i + 1) + '</span>' + esc(k) + '</div>');
+    if (ichWaehle) bindTap(b, function(){ quizSenden({ tat: "kategorie", wert: k }); });
+    app.appendChild(b);
+  });
+  app.appendChild(el('<p class="note">' + (ichWaehle
+    ? "W\u00e4hl eine aus, danach schreiben alle gleichzeitig."
+    : "Gleich schreibt ihr alle eine Antwort dazu.") + '</p>'));
+  app.appendChild(tabs());
+}
+
+function viewDitoNachschub(z){
+  ditoKopf(z, null);
+  app.appendChild(kartenLader("Neue Kategorien werden ausgedacht"));
+  if (S.hostet && !quizLaedt) {
+    quizLaedt = true;
+    fetch(API + "/kategorien", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ wunsch: z.wunsch || "", anzahl: 5, vermeiden: ditoGespielte() }) })
+      .then(function(r){ return r.json().then(function(d){ if (!r.ok) throw new Error(d.message); return d; }); })
+      .then(function(d){ quizLaedt = false; ditoMerken(d.karten); quizSenden({ tat: "nachschub", karten: d.karten }); })
+      .catch(function(e){ quizLaedt = false; quizFehler = e.message; render(); });
+  }
+  if (quizFehler) app.appendChild(el('<p class="note warn">' + esc(quizFehler) + '</p>'));
+  app.appendChild(tabs());
+}
+
+/* --- Schreiben --- */
+function viewDitoSchreiben(z){
+  var ich = meinName();
+  var meine = z.felder[ich] || [];
+  var fertig = (z.geschrieben || []).indexOf(ich) >= 0;
+  ditoKopf(z, "Kategorie " + (z.schritt || 1) + " von 3");
+  app.appendChild(el('<h1 class="frage">' + esc(z.kategorie) + '</h1>'));
+  uhr(z.endeZeit, 90000);
+  app.appendChild(ditoPlaketten(z.geschrieben));
+
+  if (fertig) {
+    app.appendChild(ditoTableau(meine, {}));
+    app.appendChild(el('<p class="note">Steht. Warten auf die anderen.</p>'));
+  } else {
+    if (ditoFeldWahl === null || (meine[ditoFeldWahl] && meine[ditoFeldWahl].zustand !== "leer")) {
+      ditoFeldWahl = meine.findIndex(function(f){ return f.zustand === "leer"; });
+    }
+    app.appendChild(el('<p class="hintline" style="text-align:center">Tipp ein freies Feld an, ' +
+      'schreib deine Antwort hinein. H\u00f6chstens zwei W\u00f6rter.</p>'));
+    app.appendChild(ditoTableau(meine, { waehlbar: "leer", gewaehlt: ditoFeldWahl,
+      tippen: function(i){ ditoFeldWahl = i; render(); } }));
+
+    var feld = merkeEingabe(el('<div class="codeeingabe"><input type="text" maxlength="60" ' +
+      'autocomplete="off" placeholder="deine Antwort"></div>'), "dito" + z.runde + "-" + z.schritt);
+    app.appendChild(feld);
+    var ab = el('<button class="cta" type="button">Antwort eintragen</button>');
+    ab.onclick = function(){
+      var t = feld.querySelector("input").value.trim();
+      if (t.length < 1 || ditoFeldWahl < 0) return;
+      if (ditoSchonDa(meine, t)) {
+        var warn = app.querySelector(".dopwarn");
+        if (!warn) { warn = el('<p class="note warn dopwarn"></p>'); ab.parentNode.insertBefore(warn, ab); }
+        warn.textContent = "Das steht schon in dieser Runde. Nimm etwas anderes.";
+        return;
+      }
+      entwurfWeg("dito" + z.runde + "-" + z.schritt);
+      quizSenden({ tat: "schreiben", spieler: ich, feld: ditoFeldWahl, text: t });
+      ditoFeldWahl = null;
+    };
+    app.appendChild(ab);
+  }
+  if (S.hostet) {
+    var los = el('<button class="cta ghost" type="button">Weiter, auch ohne die anderen</button>');
+    los.onclick = function(){ quizSenden({ tat: "weiterSchreiben" }); };
+    app.appendChild(los);
+  }
+  app.appendChild(tabs());
+}
+
+function ditoSchonDa(felder, text){
+  var k = String(text).toLowerCase().replace(/[^a-z0-9\u00e4\u00f6\u00fc\u00df]+/g, "");
+  return (felder || []).some(function(f){
+    return f.text && f.text.toLowerCase().replace(/[^a-z0-9\u00e4\u00f6\u00fc\u00df]+/g, "") === k;
+  });
+}
+
+
+/* --- Vorlesen --- */
+function viewDitoVorlesen(z){
+  var aktivName = S.names[(z.aktiv || 0) % S.names.length];
+  var ichLese = aktivName === meinName();
+  var meine = z.felder[meinName()] || [];
+  ditoKopf(z, "Aufl\u00f6sung");
+  app.appendChild(el('<h1 class="headline">' + (ichLese ? "Du liest vor" : esc(aktivName) + " liest vor") + '</h1>'));
+
+  if (ichLese) {
+    app.appendChild(el('<p class="hintline" style="text-align:center">Tipp eine deiner offenen Antworten an. ' +
+      'Die anderen sehen sie dann und melden sich, wenn sie dasselbe haben.</p>'));
+    app.appendChild(ditoTableau(meine, { waehlbar: "voll",
+      tippen: function(i){ quizSenden({ tat: "vorlesen", feld: i }); } }));
+  } else {
+    app.appendChild(el('<p class="note">Gleich siehst du, was ' + esc(aktivName) + ' vorliest.</p>'));
+    app.appendChild(ditoTableau(meine, {}));
+  }
+  app.appendChild(ditoStand(z));
+  app.appendChild(tabs());
+}
+
+/* --- Melden --- */
+function viewDitoMelden(z){
+  var ich = meinName();
+  var v = z.vorgelesen || {};
+  var binVorleser = v.spieler === ich;
+  var meine = z.felder[ich] || [];
+  var fertig = (z.gemeldet || []).indexOf(ich) >= 0;
+  ditoKopf(z, esc(v.spieler) + " liest vor");
+  app.appendChild(el('<div class="vorgelesen"><span>' + esc(v.spieler) + ' sagt</span><b>' +
+    esc(v.text) + '</b></div>'));
+  if (!binVorleser) uhr(z.endeZeit, 45000);
+  app.appendChild(ditoPlaketten((z.gemeldet || []).concat([v.spieler])));
+
+  if (binVorleser) {
+    app.appendChild(el('<p class="note">Die anderen pr\u00fcfen gerade ihre Felder.</p>'));
+    app.appendChild(ditoTableau(meine, {}));
+  } else if (fertig) {
+    app.appendChild(el('<p class="note">Gemeldet. Warten auf die anderen.</p>'));
+    app.appendChild(ditoTableau(meine, {}));
+  } else {
+    app.appendChild(el('<p class="hintline" style="text-align:center">Hast du dasselbe gemeint? ' +
+      'Dann tipp dein Feld an. Synonyme z\u00e4hlen, unterschiedlich genaue Antworten nicht.</p>'));
+    app.appendChild(ditoTableau(meine, { waehlbar: "voll",
+      tippen: function(i){ quizSenden({ tat: "melden", spieler: ich, feld: i }); } }));
+    var nix = el('<button class="cta ghost" type="button">Hab ich nicht</button>');
+    nix.onclick = function(){ quizSenden({ tat: "melden", spieler: ich, feld: -1 }); };
+    app.appendChild(nix);
+  }
+  if (S.hostet) {
+    var auf = el('<button class="cta ghost" type="button">Jetzt aufl\u00f6sen</button>');
+    auf.onclick = function(){ quizSenden({ tat: "aufloesen" }); };
+    app.appendChild(auf);
+  }
+  app.appendChild(tabs());
+}
+
+/* --- Ergebnis eines Vorlesens --- */
+function viewDitoTreffer(z){
+  var t = z.letzterTreffer || {};
+  ditoKopf(z, "Aufl\u00f6sung");
+  var titel = t.ohne ? "Niemand hatte das" : (t.stern ? "Nur ihr zwei!" : "Mehrere hatten das");
+  app.appendChild(el('<div class="trefferkarte ' + (t.ohne ? "leer" : (t.stern ? "stern" : "gut")) + '">' +
+    '<b>' + esc(t.text || "") + '</b><span>' + titel + '</span></div>'));
+
+  var dabei = [t.spieler].concat(t.mit || []);
+  var reihe = el('<div class="wersteht"></div>');
+  S.names.forEach(function(nm, i){
+    var da = dabei.indexOf(nm) >= 0;
+    reihe.appendChild(el('<span class="wp' + (da ? " fertig" : "") + '" style="--acc:' + hue(i) + '">' +
+      '<b>' + esc(nm.charAt(0).toUpperCase()) + '</b><i>' + esc(nm) + '</i></span>'));
+  });
+  app.appendChild(reihe);
+  app.appendChild(el('<p class="note">' + (t.ohne
+    ? "Das Feld wird durchgestrichen, daf\u00fcr gibt es nichts."
+    : (t.stern ? "Ein Kreis und ein Stern f\u00fcr beide. Zwei Punkte extra."
+               : "Ein Kreis f\u00fcr alle, die das hatten.")) + '</p>'));
+  app.appendChild(ditoTableau(z.felder[meinName()] || [], {}));
+
+  if (S.hostet) {
+    var w = el('<button class="cta" type="button">Weiter</button>');
+    w.onclick = function(){ quizSenden({ tat: "weiter" }); };
+    app.appendChild(w);
+  } else {
+    app.appendChild(el('<p class="note">Der Gastgeber schaltet weiter.</p>'));
+  }
+  app.appendChild(tabs());
+}
+
+/* --- Rundenwertung --- */
+function viewDitoWertung(z){
+  var rp = z.rundenpunkte || {};
+  var reihe = S.names.map(function(nm, i){
+    return { nm: nm, i: i, r: rp[nm] || { kreise: 0, sterne: 0, bonus: 0, summe: 0 }, pt: z.punkte[nm] || 0 };
+  }).sort(function(a, b){ return b.pt - a.pt || b.r.summe - a.r.summe; });
+  quizKopf("Runde " + z.runde, "Das hat die Runde gebracht");
+  reihe.forEach(function(p, i){
+    app.appendChild(el('<div class="rank' + (i === 0 ? ' first' : '') + '" data-nm="' + esc(p.nm) +
+      '" style="--acc:' + hue(p.i) + '"><span class="pos num">' + (i + 1) + '</span>' +
+      '<span class="nm">' + esc(p.nm) + '<span class="sub">' + p.r.kreise + ' Kreise' +
+      (p.r.sterne ? ' \u00b7 ' + p.r.sterne + ' Stern' + (p.r.sterne > 1 ? 'e' : '') : '') +
+      (p.r.bonus ? ' \u00b7 ' + p.r.bonus + ' Bonus' : '') + '</span></span>' +
+      '<span class="pt num">' + p.pt + '<span class="sub">+' + p.r.summe + '</span></span></div>'));
+  });
+  rangAnimieren("dito");
+  app.appendChild(ditoTableau(z.felder[meinName()] || [], {}));
+  if (S.hostet) {
+    var w = el('<button class="cta" type="button">' +
+      (z.runde >= 3 ? "Endergebnis zeigen" : "Runde " + (z.runde + 1) + " starten") + '</button>');
+    w.onclick = function(){ quizSenden({ tat: "weiter" }); };
+    app.appendChild(w);
+  } else {
+    app.appendChild(el('<p class="note">Der Gastgeber schaltet weiter.</p>'));
+  }
+  app.appendChild(tabs());
+}
+
+/* --- Endergebnis --- */
+function viewDitoEnde(z){
+  var reihe = S.names.map(function(nm, i){ return { nm: nm, i: i, pt: z.punkte[nm] || 0 }; })
+                     .sort(function(a, b){ return b.pt - a.pt; });
+  quizKopf(esc(reihe[0].nm) + " gewinnt", "Drei Runden Dito");
+  reihe.forEach(function(p, i){
+    var beste = 0;
+    (z.verlauf || []).forEach(function(r){ if ((r[p.nm] || 0) > beste) beste = r[p.nm] || 0; });
+    app.appendChild(el('<div class="rank' + (i === 0 ? ' first' : '') + '" data-nm="' + esc(p.nm) +
+      '" style="--acc:' + hue(p.i) + '"><span class="pos num">' + (i + 1) + '</span>' +
+      '<span class="nm">' + esc(p.nm) + '<span class="sub">beste Runde ' + beste + '</span></span>' +
+      '<span class="pt num">' + p.pt + '</span></div>'));
+  });
+  app.appendChild(logButton(reihe));
+  if (S.hostet) {
+    var neu = el('<button class="cta" type="button">Neue Partie</button>');
+    neu.onclick = quizNeustart;
+    app.appendChild(neu);
+  }
+  app.appendChild(tabs());
+}
+
+function ditoStand(z){
+  var reihe = S.names.map(function(nm, i){ return { nm: nm, i: i, pt: z.punkte[nm] || 0 }; })
+                     .sort(function(a, b){ return b.pt - a.pt; });
+  var box = el('<div class="ministand"></div>');
+  reihe.forEach(function(p){
+    box.appendChild(el('<span style="--acc:' + hue(p.i) + '"><b>' + esc(p.nm) + '</b> ' + p.pt + '</span>'));
+  });
+  return box;
+}
+
+/* --- Lobby --- */
+function viewDitoLobby(){
+  quizKopf(quizLaedt ? "Kategorien werden ausgedacht" : "Dito",
+    quizLaedt ? "Gleich geht es los." :
+    (S.hostet ? "Dasselbe denken wie die anderen. Drei Runden, neun Antworten je Runde."
+              : "Der Gastgeber startet gleich."));
+  app.appendChild(el('<p class="hintline" style="text-align:center">Du spielst als <b>' +
+    esc(meinName()) + '</b> \u00b7 ' + (sock && sock.readyState === 1 ? liveAnzahl + ' Ger\u00e4te verbunden'
+      : 'nicht verbunden') + '</p>'));
+  if (quizFehler) app.appendChild(el('<p class="note warn">' + esc(quizFehler) + '</p>'));
+  if (quizLaedt) { app.appendChild(kartenLader("Kategorien werden ausgedacht")); return; }
+  if (!S.hostet) {
+    app.appendChild(el('<div class="qrbox">' + (qrSVG(beitrittsLink(S.live), 170) || "") + '</div>'));
+    app.appendChild(tabs());
+    return;
+  }
+
+  app.appendChild(el('<p class="lead-in">Je Runde w\u00e4hlt reihum einer eine Kategorie, ' +
+    'alle schreiben gleichzeitig eine Antwort. Wer dasselbe hat wie andere, bekommt Punkte.</p>'));
+  var feld = merkeEingabe(el('<div class="codeeingabe"><input type="text" maxlength="80" ' +
+    'placeholder="eigener Wunsch, etwa lustig oder f\u00fcr Kinder"></div>'), "ditowunsch");
+  app.appendChild(feld);
+  var los = el('<button class="cta" type="button">Kategorien holen und starten</button>');
+  los.onclick = function(){
+    var wunsch = feld.querySelector("input").value.trim();
+    quizLaedt = true; quizFehler = null; render();
+    fetch(API + "/kategorien", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ wunsch: wunsch, anzahl: 8, vermeiden: ditoGespielte() }) })
+      .then(function(r){ return r.json().then(function(d){ if (!r.ok) throw new Error(d.message); return d; }); })
+      .then(function(d){
+        quizLaedt = false; ditoMerken(d.karten);
+        quizSenden({ tat: "ditoneu", spieler: S.names, karten: d.karten, wunsch: wunsch });
+      })
+      .catch(function(e){ quizLaedt = false; quizFehler = e.message || "Es hat nicht geklappt"; render(); });
+  };
+  app.appendChild(los);
+}
+
+// Gespielte Kategorien merkt sich das Geraet, damit sie nicht wiederkommen
+function ditoGespielte(){ return (ALL && ALL.kategorien) || []; }
+function ditoMerken(karten){
+  if (!ALL || !karten) return;
+  var liste = (ALL.kategorien || []).concat(karten.map(function(k){ return k.a; }))
+                                    .concat(karten.map(function(k){ return k.b; }));
+  ALL.kategorien = liste.filter(function(t, i, arr){ return t && arr.indexOf(t) === i; }).slice(-120);
+  save();
 }
 
 /* ---------- Bluff: erfinden, raten, auflachen ---------- */
@@ -4366,11 +4806,22 @@ var RULES_BLUFF = [
   ["Am Ende", "Nach der letzten Runde kommt das Endergebnis, und die Partie l\u00e4sst sich in die ewige Tabelle eintragen wie jedes andere Spiel."]
 ];
 
+var RULES_DITO = [
+  ["Dasselbe denken, das ist alles", "Jede Runde kommt eine Kategorie, etwa Dinge, die in Paaren auftreten. Alle schreiben gleichzeitig eine Antwort. Punkte gibt es nicht f\u00fcr richtig oder falsch, sondern daf\u00fcr, dass jemand anderes dasselbe geschrieben hat."],
+  ["Jeder braucht sein eigenes Handy", "Der Gastgeber gibt die Partie frei, die anderen treten mit Code oder QR-Code bei und w\u00e4hlen ihren Namen. Drei bis sieben Spieler."],
+  ["Eine Runde", "Reihum w\u00e4hlt einer aus zwei Kategorien. Danach schreiben alle gleichzeitig eine Antwort in ein freies Feld ihres Rasters. Das dreimal, dann sind neun Felder voll."],
+  ["Antworten", "H\u00f6chstens zwei W\u00f6rter, Ausnahmen sind feste Begriffe und Eigennamen. Dieselbe Antwort darf in einer Runde nicht zweimal vorkommen, die App passt auf."],
+  ["Aufl\u00f6sung", "Reihum liest einer eine seiner Antworten vor. Wer dasselbe gemeint hat, tippt sein Feld an. Synonyme z\u00e4hlen, unterschiedlich genaue Antworten nicht: Violine und Geige ja, Instrument und Geige nein. Bei Streit entscheidet die Gruppe."],
+  ["Punkte", "Ein Punkt je umkreiste Antwort. Hat genau einer dasselbe, gibt es zus\u00e4tzlich einen Stern: zwei Punkte, zu dritt einen. Hat niemand dasselbe, wird die Antwort gestrichen und bringt nichts."],
+  ["Bonus", "Volle Reihen und Spalten bringen extra: die Reihen von oben nach unten 3, 2 und 1, die Spalten von links nach rechts 1, 2 und 3."],
+  ["Ende", "Nach drei Runden gewinnt, wer die meisten Punkte hat. Bei Gleichstand z\u00e4hlt die beste einzelne Runde."]
+];
+
 function helpButton(){
   var b = el('<button class="menubtn" type="button" aria-label="Spielanleitung">?</button>');
   b.onclick = function(){
-    var sheet = el('<div class="sheet"><div class="panel scrollable"><div class="head">' + (S.game === "kniffel" ? "Kniffel" : S.game === "phase10" ? "Phase 10" : S.game === "skyjo" ? "Skyjo" : S.game === "quiz" ? "Quiz" : S.game === "bluff" ? "Bluff" : "Wizard") + ' in Kurzform</div>' +
-      '<div class="rules-body">' + (S.game === "kniffel" ? RULES_KNIFFEL : S.game === "phase10" ? RULES_PHASE : S.game === "skyjo" ? RULES_SKYJO : S.game === "quiz" ? RULES_QUIZ : S.game === "bluff" ? RULES_BLUFF : RULES_WIZARD).map(function(r){
+    var sheet = el('<div class="sheet"><div class="panel scrollable"><div class="head">' + (S.game === "kniffel" ? "Kniffel" : S.game === "phase10" ? "Phase 10" : S.game === "skyjo" ? "Skyjo" : S.game === "quiz" ? "Quiz" : S.game === "bluff" ? "Bluff" : S.game === "dito" ? "Dito" : "Wizard") + ' in Kurzform</div>' +
+      '<div class="rules-body">' + (S.game === "kniffel" ? RULES_KNIFFEL : S.game === "phase10" ? RULES_PHASE : S.game === "skyjo" ? RULES_SKYJO : S.game === "quiz" ? RULES_QUIZ : S.game === "bluff" ? RULES_BLUFF : S.game === "dito" ? RULES_DITO : RULES_WIZARD).map(function(r){
         return '<section><h3>' + r[0] + '</h3><p>' + r[1] + '</p></section>'; }).join("") + '</div></div></div>');
     var close = el('<button type="button">Schlie\u00dfen</button>');
     close.onclick = function(){ sheet.remove(); };
@@ -4430,7 +4881,7 @@ function openMenu(){
           S.sheet = S.names.map(function(){ return {}; }); S.at = 0; S.logged = null; S.view = "round"; save(); render();
         }
       }); }
-    } else if (S.game !== "quiz" && S.game !== "bluff") {
+    } else if (S.game !== "quiz" && S.game !== "bluff" && S.game !== "dito") {
       var nr = S.game === "wizard" ? roundNo() : S.rounds.length + 1;
       if (S.draft) { korrektur = true; zeile("\u21ba", "Eingaben zur\u00fccksetzen", "Runde " + nr + " noch einmal beginnen", "", function(){
         S.draft = null; S.view = "round"; save(); render();
@@ -4465,9 +4916,11 @@ function openMenu(){
 
   // --- Neu anfangen und zurueck ---
   neueGruppe();
-  if (!gast && (S.game === "quiz" || S.game === "bluff")) {
-    zeile("\u21bb", S.game === "bluff" ? "Neue Bluffrunde" : "Neue Quizrunde", "Punkte zur\u00fccksetzen", "danger", function(){
-      if (confirm((S.game === "bluff" ? "Bluff" : "Quiz") + " f\u00fcr alle neu anfangen?")) quizNeustart();
+  if (!gast && (S.game === "quiz" || S.game === "bluff" || S.game === "dito")) {
+    zeile("\u21bb", S.game === "bluff" ? "Neue Bluffrunde" : S.game === "dito" ? "Neue Dito-Partie" : "Neue Quizrunde",
+      "Punkte zur\u00fccksetzen", "danger", function(){
+      if (confirm((S.game === "bluff" ? "Bluff" : S.game === "dito" ? "Dito" : "Quiz") +
+        " f\u00fcr alle neu anfangen?")) quizNeustart();
     });
   } else if (!gast && S.game !== "kniffel") {
     var lost = ALL.zufallStart && (S.game === "wizard" || S.game === "phase10");
@@ -4494,7 +4947,7 @@ function tabs(){
   if (S.game === "kniffel") first = kniffelDone() ? "Ergebnis" : "Block";
   else if (S.game === "phase10") first = p10Done() ? "Ergebnis" : "Runde";
   else if (S.game === "skyjo") first = skyjoDone() ? "Ergebnis" : "Runde";
-  else if (S.game === "quiz" || S.game === "bluff") return el('<div></div>');
+  else if (S.game === "quiz" || S.game === "bluff" || S.game === "dito") return el('<div></div>');
   else first = S.rounds.length >= totalRounds() ? "Ergebnis" : "Runde";
   var node = el('<nav class="tabs"><div class="inner">' +
     '<button type="button">' + first + '</button>' +
@@ -4525,7 +4978,7 @@ function render(){
   if (!S && ALL.pendingJoin) return viewJoining();
   if (!S) return ALL.view === "stats" ? viewStats() : viewHome();
   if (S.setup || !S.names.length) return viewSetup();
-  if (S.game === "quiz" || S.game === "bluff") return viewQuiz();
+  if (S.game === "quiz" || S.game === "bluff" || S.game === "dito") return viewQuiz();
   if (S.game === "skyjo") {
     if (S.view === "table") return viewSkyjoTable();
     if (skyjoDone()) return viewSkyjoFinal();
