@@ -685,7 +685,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-17.8";
+var VERSION = "2026-09-18.1";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -786,6 +786,20 @@ function signed(n){ return (n > 0 ? "+" : "") + n; }
 
 var ENTWURF = {};   // getippter Text, damit er ein Neuzeichnen ueberlebt
 var ENTWURF_FOKUS = null;
+
+// Auf dem Handy schliesst der erste Tipp die Tastatur und das Layout springt.
+// Ein Knopf, der erst auf "click" hoert, verliert diesen Tipp. Darum touchend.
+function absenden(text, feld, fn){
+  var b = el('<button class="cta" type="button">' + text + '</button>');
+  bindTap(b, fn);
+  var eingabe = feld && (feld.tagName === "INPUT" ? feld : feld.querySelector("input"));
+  if (eingabe) {
+    eingabe.addEventListener("keydown", function(e){
+      if (e.key === "Enter" || e.keyCode === 13) { e.preventDefault(); fn(); }
+    });
+  }
+  return b;
+}
 
 function merkeEingabe(feld, schluessel){
   var eingabe = feld.tagName === "INPUT" ? feld : feld.querySelector("input");
@@ -3399,15 +3413,13 @@ function viewQuizFrage(){
     var eingabe = tausenderFeld(merkeEingabe(el('<div class="codeeingabe"><input type="text" inputmode="decimal" placeholder="Zahl' +
       (f.einheit ? " in " + esc(f.einheit) : "") + '"></div>'), "schaetz" + z.idx));
     app.appendChild(eingabe);
-    var ab = el('<button class="cta" type="button">Antwort einloggen</button>');
-    ab.onclick = function(){
+    app.appendChild(absenden("Antwort einloggen", eingabe, function(){
       var v = parseZahl(eingabe.querySelector("input").value);
       if (!isFinite(v)) return;
       meinTipp = { idx: z.idx, wert: v };
       entwurfWeg("schaetz" + z.idx);
       quizSenden({ tat: "antwort", spieler: meinName(), wert: v, anzahl: S.names.length });
-    };
-    app.appendChild(ab);
+    }));
   }
 
   if (S.hostet) {
@@ -3933,21 +3945,27 @@ function viewDitoSchreiben(z){
       'autocomplete="off" placeholder="Antwort ' + (gesetzt + 1) + ' von 3"></div>'),
       "dito" + z.runde + "-" + z.schritt + "-" + gesetzt);
     app.appendChild(feld);
-    var ab = el('<button class="cta" type="button">Antwort ' + (gesetzt + 1) + ' eintragen</button>');
-    ab.onclick = function(){
+    var eintragen = function(){
       var t = feld.querySelector("input").value.trim();
-      if (t.length < 1 || ditoFeldWahl < 0) return;
+      if (t.length < 1) return;
+      // Das Ziel im Moment des Absendens bestimmen: die Merkung kann auf ein
+      // inzwischen belegtes Feld zeigen, dann landet die Antwort nirgends.
+      var ziel = (typeof ditoFeldWahl === "number" && meine[ditoFeldWahl] &&
+                  meine[ditoFeldWahl].zustand === "leer")
+        ? ditoFeldWahl
+        : meine.findIndex(function(f){ return f.zustand === "leer"; });
+      if (ziel < 0) return;
       if (ditoSchonDa(meine, t)) {
         var warn = app.querySelector(".dopwarn");
-        if (!warn) { warn = el('<p class="note warn dopwarn"></p>'); ab.parentNode.insertBefore(warn, ab); }
+        if (!warn) { warn = el('<p class="note warn dopwarn"></p>'); app.appendChild(warn); }
         warn.textContent = "Das steht schon in dieser Runde. Nimm etwas anderes.";
         return;
       }
       entwurfWeg("dito" + z.runde + "-" + z.schritt + "-" + gesetzt);
-      quizSenden({ tat: "schreiben", spieler: ich, feld: ditoFeldWahl, text: t });
+      quizSenden({ tat: "schreiben", spieler: ich, feld: ziel, text: t });
       ditoFeldWahl = null;
     };
-    app.appendChild(ab);
+    app.appendChild(absenden("Antwort " + (gesetzt + 1) + " eintragen", feld, eintragen));
   }
   if (S.hostet) {
     var los = el('<button class="cta ghost" type="button">Weiter, auch ohne die anderen</button>');
@@ -4250,14 +4268,12 @@ function bluffSchreiben(z){
     app.appendChild(el('<p class="hintline" style="text-align:center">Kurz halten, h\u00f6chstens ein paar ' +
       'W\u00f6rter. Gro\u00dfschreibung und Punkt am Ende gleicht die App f\u00fcr alle an, damit man die echte ' +
       'Antwort nicht an der Form erkennt.</p>'));
-    var ab = el('<button class="cta" type="button">Antwort abgeben</button>');
-    ab.onclick = function(){
+    app.appendChild(absenden("Antwort abgeben", feld, function(){
       var t = feld.querySelector("input").value.trim();
       if (t.length < 2) return;
       ENTWURF["luege" + bluffSchluessel(z)] = t;
       quizSenden({ tat: "luege", spieler: ich, text: t, anzahl: S.names.length });
-    };
-    app.appendChild(ab);
+    }));
   }
   if (S.hostet) {
     var los = el('<button class="cta ghost" type="button">Jetzt abstimmen lassen</button>');
