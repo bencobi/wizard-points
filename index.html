@@ -361,6 +361,7 @@
   .ansage.auf b{color:var(--gold)}
   .ansage.wert b{color:#2E9E5B}
   .ansage.start b{font-size:46px}
+  .ansage.uebergang b{font-size:32px; color:#2E9E5B}
   @keyframes ansageauf{0%{opacity:0; transform:translateY(14px) scale(.94)}100%{opacity:1; transform:none}}
   @keyframes ansagebalken{0%{transform:scaleX(0)}100%{transform:scaleX(1)}}
 
@@ -688,7 +689,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-18.6";
+var VERSION = "2026-09-18.7";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -3805,14 +3806,21 @@ function viewDito(){
     }
     if (z.phase === "rundenstart")
       return ditoAnsage("Runde " + z.runde, "Drei Kategorien, neun Antworten", "start");
+    if (z.phase === "uebergang") {
+      var naechster = S.names[(z.dran || 0) % S.names.length];
+      return ditoAnsage("Alle haben eingetragen",
+        (naechster === meinName() ? "Du suchst" : esc(naechster) + " sucht") +
+        " die n\u00e4chste Kategorie aus", "uebergang");
+    }
   }
   // Nie waehrend des Zeichnens senden: die Antwort kaeme mitten in den Aufbau
-  if ((z.phase === "aufloesungStart" || z.phase === "rundenstart") && S.hostet) {
+  if ((z.phase === "aufloesungStart" || z.phase === "rundenstart" || z.phase === "uebergang") && S.hostet) {
     var jetzige = z.phase;
     setTimeout(function(){ if (QUIZ && QUIZ.phase === jetzige) quizSenden({ tat: "ansageVorbei" }); }, 0);
   }
 
   if (z.phase === "rundenstart") return ditoAnsage("Runde " + z.runde, "Drei Kategorien, neun Antworten", "start");
+  if (z.phase === "uebergang") return viewDitoKategorie(z);
   if (z.phase === "nachschub") return viewDitoNachschub(z);
   if (z.phase === "kategorie") return viewDitoKategorie(z);
   if (z.phase === "schreiben") return viewDitoSchreiben(z);
@@ -3906,7 +3914,7 @@ function ditoTableau(felder, optionen){
       (f.zustand === "kreuz" ? '<svg class="tkreuz" viewBox="0 0 100 60"><path d="M14 10 L86 50"/><path d="M86 10 L14 50"/></svg>' : '') +
       '</div>');
     if (o.waehlbar && f.zustand === o.waehlbar && o.tippen) bindTap(zelle, function(){ o.tippen(i); });
-    else if (o.bearbeiten && f.zustand === "voll") {
+    else if (o.bearbeiten && f.zustand === "voll" && f.kategorie === o.kategorie) {
       zelle.classList.add("aenderbar");
       bindTap(zelle, function(){ o.bearbeiten(i); });
     }
@@ -3998,10 +4006,10 @@ function viewDitoSchreiben(z){
     }
     app.appendChild(el('<p class="hintline" style="text-align:center">Drei Antworten zu dieser Kategorie. ' +
       'Tipp ein freies Feld an und schreib hinein, h\u00f6chstens zwei W\u00f6rter. ' +
-      'Ein Tipp auf eine fertige Antwort \u00f6ffnet sie zum \u00c4ndern.</p>'));
+      'Solange diese Kategorie l\u00e4uft, kannst du deine drei Antworten noch \u00e4ndern.</p>'));
     app.appendChild(ditoTableau(meine, { waehlbar: "leer", gewaehlt: ditoFeldWahl,
       tippen: function(i){ ditoFeldWahl = i; render(); },
-      bearbeiten: function(i){ ditoBearbeiten(z, meine, i); } }));
+      kategorie: z.kategorie, bearbeiten: function(i){ ditoBearbeiten(z, meine, i); } }));
 
     var feld = merkeEingabe(el('<div class="codeeingabe"><input type="text" maxlength="60" ' +
       'autocomplete="off" placeholder="Antwort ' + (gesetzt + 1) + ' von 3"></div>'),
@@ -4041,7 +4049,7 @@ function viewDitoSchreiben(z){
 function ditoBearbeiten(z, felder, i){
   var f = felder[i] || {};
   var ich = meinName();
-  var ausRunde = f.kategorie === z.kategorie;   // nur die laufende Kategorie darf leer bleiben
+  var ausRunde = f.kategorie === z.kategorie;
   var freie = [];
   felder.forEach(function(x, k){ if (x.zustand === "leer") freie.push(k); });
 
@@ -4085,9 +4093,6 @@ function ditoBearbeiten(z, felder, i){
       setTimeout(render, 0);
     };
     panel.appendChild(weg);
-  } else {
-    panel.appendChild(el('<p class="hintline" style="text-align:center">Aus einer fr\u00fcheren Kategorie. ' +
-      'Der Text l\u00e4sst sich \u00e4ndern, das Feld muss aber belegt bleiben.</p>'));
   }
   var fertig = el('<button class="cta ghost" type="button">Zur\u00fcck</button>');
   fertig.onclick = zu;
@@ -5034,7 +5039,7 @@ var RULES_DITO = [
   ["Jeder braucht sein eigenes Handy", "Der Gastgeber gibt die Partie frei, die anderen treten mit Code oder QR-Code bei und w\u00e4hlen ihren Namen. Drei bis sieben Spieler."],
   ["Eine Runde", "Reihum w\u00e4hlt einer aus zwei Kategorien. Danach schreiben alle gleichzeitig eine Antwort in ein freies Feld ihres Rasters. Das dreimal, dann sind neun Felder voll."],
   ["Antworten", "H\u00f6chstens zwei W\u00f6rter, Ausnahmen sind feste Begriffe und Eigennamen. Dieselbe Antwort darf in einer Runde nicht zweimal vorkommen, die App passt auf."],
-  ["Korrigieren", "Solange geschrieben wird, geh\u00f6rt dein Raster dir: Tipp auf eine fertige Antwort, dann kannst du ihren Text \u00e4ndern oder sie auf ein freies Feld schieben. L\u00f6schen geht nur bei Antworten der laufenden Kategorie, sonst fehlt am Ende eine. Ab der Aufl\u00f6sung ist alles eingefroren."],
+  ["Korrigieren", "Solange die Kategorie l\u00e4uft, geh\u00f6ren dir deine drei Antworten dazu: Tipp eine an, dann kannst du den Text \u00e4ndern, sie auf ein freies Feld schieben oder sie l\u00f6schen und neu schreiben. Sobald die n\u00e4chste Kategorie beginnt, sind sie fest."],
   ["Aufl\u00f6sung", "Reihum liest einer eine seiner Antworten vor. Wer dasselbe gemeint hat, tippt sein Feld an. Synonyme z\u00e4hlen, unterschiedlich genaue Antworten nicht: Violine und Geige ja, Instrument und Geige nein. Bei Streit entscheidet die Gruppe."],
   ["Punkte", "Ein Punkt je umkreiste Antwort. Hat genau einer dasselbe, gibt es zus\u00e4tzlich einen Stern: zwei Punkte, zu dritt einen. Hat niemand dasselbe, wird die Antwort gestrichen und bringt nichts."],
   ["Zu zweit", "Nicht im Original vorgesehen, geht hier aber. Sterne fallen weg, weil zu zweit jeder Treffer automatisch von genau einem kommt. Es z\u00e4hlen die Kreise und vor allem die Boni f\u00fcr volle Reihen und Spalten."],
