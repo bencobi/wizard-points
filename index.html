@@ -364,6 +364,16 @@
   @keyframes ansageauf{0%{opacity:0; transform:translateY(14px) scale(.94)}100%{opacity:1; transform:none}}
   @keyframes ansagebalken{0%{transform:scaleX(0)}100%{transform:scaleX(1)}}
 
+  .dreier{display:flex; align-items:center; justify-content:center; gap:6px; margin:0 0 10px;
+    font-size:12.5px; color:var(--dim)}
+  .dreier i{width:10px; height:10px; border-radius:50%; background:var(--hair);
+    transition:background .3s ease, transform .3s ease}
+  .dreier i.voll{background:var(--gold); transform:scale(1.15)}
+  .dreier span{margin-left:6px}
+  .rasterknopf{width:38px; height:38px; border-radius:12px; border:1px solid var(--hair);
+    background:var(--glass-2); color:var(--dim); font-size:17px; line-height:1; margin-left:6px}
+  .sheet .tableau{margin:6px 0 10px}
+
   .tableau{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:6px 2px 14px}
   .tfeld{position:relative; aspect-ratio:1/.82; border-radius:14px; background:var(--glass-2);
     border:1px solid var(--hair); display:grid; place-items:center; padding:6px; overflow:hidden;
@@ -664,7 +674,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-17.1";
+var VERSION = "2026-09-17.3";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -2960,6 +2970,9 @@ function nurFortschritt(alt, neu){
   // Beim Bluff dasselbe: solange nur andere abgeben, bleibt die Ansicht stehen
   if (neu.phase === "schreiben") {
     if ((alt.runde || 1) !== (neu.runde || 1)) return false;
+    if ((alt.schritt || 0) !== (neu.schritt || 0)) return false;
+    // Bei Dito zaehlt jede einzelne der drei Antworten, nicht nur das Fertigsein
+    if (neu.modus === "dito" && ((alt.gesetzt || {})[ich] || 0) !== ((neu.gesetzt || {})[ich] || 0)) return false;
     return (alt.geschrieben.indexOf(ich) >= 0) === (neu.geschrieben.indexOf(ich) >= 0);
   }
   if (neu.phase === "raten" || neu.phase === "janein") {
@@ -3753,13 +3766,39 @@ function viewDito(){
 
 function ditoKopf(z, unter){
   quizKopf(null, null);
+  if (z.felder && z.felder[meinName()]) app.querySelector(".top").appendChild(ditoRasterKnopf());
   app.appendChild(el('<p class="meta">Runde ' + (z.runde || 1) + ' von 3' +
     (unter ? ' \u00b7 ' + unter : '') + '</p>'));
+}
+
+// Das eigene Raster laesst sich jederzeit aufschlagen, auch waehrend einer Ansage
+function ditoRasterKnopf(){
+  var b = el('<button class="rasterknopf" type="button" aria-label="Mein Raster">\u25a6</button>');
+  bindTap(b, ditoRasterZeigen);
+  return b;
+}
+
+function ditoRasterZeigen(){
+  var z = QUIZ;
+  if (!z || !z.felder) return;
+  var sheet = el('<div class="sheet"><div class="panel"><div class="griff"></div>' +
+    '<div class="mkopf"><b>Dein Raster</b><span>Runde ' + (z.runde || 1) + ' von 3</span></div></div></div>');
+  var panel = sheet.querySelector(".panel");
+  panel.appendChild(ditoTableau(z.felder[meinName()] || [], {}));
+  var stand = el('<p class="hintline" style="text-align:center">Kreis: hatte jemand auch. ' +
+    'Stern: genau einer. Kreuz: niemand.</p>');
+  panel.appendChild(stand);
+  var zu = el('<button class="cta ghost" type="button">Schlie\u00dfen</button>');
+  zu.onclick = function(){ sheet.remove(); };
+  panel.appendChild(zu);
+  sheet.onclick = function(e){ if (e.target === sheet) sheet.remove(); };
+  document.body.appendChild(sheet);
 }
 
 // Grosse Ansage zwischen den Abschnitten, damit niemand ueberrumpelt wird
 function ditoAnsage(titel, unter, art){
   quizKopf(null, null);
+  if (QUIZ && QUIZ.felder && QUIZ.felder[meinName()]) app.querySelector(".top").appendChild(ditoRasterKnopf());
   var box = el('<div class="ansage ' + art + '"><b>' + titel + '</b>' +
     (unter ? '<span>' + unter + '</span>' : '') + '<i></i></div>');
   app.appendChild(box);
@@ -3837,10 +3876,14 @@ function viewDitoNachschub(z){
 function viewDitoSchreiben(z){
   var ich = meinName();
   var meine = z.felder[ich] || [];
-  var fertig = (z.geschrieben || []).indexOf(ich) >= 0;
+  var gesetzt = (z.gesetzt || {})[ich] || 0;
+  var fertig = (z.geschrieben || []).indexOf(ich) >= 0 || gesetzt >= 3;
   ditoKopf(z, "Kategorie " + (z.schritt || 1) + " von 3");
   app.appendChild(el('<h1 class="frage">' + esc(z.kategorie) + '</h1>'));
   uhr(z.endeZeit, 90000);
+  app.appendChild(el('<div class="dreier">' +
+    [0,1,2].map(function(i){ return '<i class="' + (i < gesetzt ? "voll" : "") + '"></i>'; }).join("") +
+    '<span>' + (fertig ? "alle drei stehen" : (gesetzt + " von 3 Antworten")) + '</span></div>'));
   app.appendChild(ditoPlaketten(z.geschrieben));
 
   if (fertig) {
@@ -3850,15 +3893,16 @@ function viewDitoSchreiben(z){
     if (ditoFeldWahl === null || (meine[ditoFeldWahl] && meine[ditoFeldWahl].zustand !== "leer")) {
       ditoFeldWahl = meine.findIndex(function(f){ return f.zustand === "leer"; });
     }
-    app.appendChild(el('<p class="hintline" style="text-align:center">Tipp ein freies Feld an, ' +
-      'schreib deine Antwort hinein. H\u00f6chstens zwei W\u00f6rter.</p>'));
+    app.appendChild(el('<p class="hintline" style="text-align:center">Drei Antworten zu dieser Kategorie. ' +
+      'Tipp ein freies Feld an und schreib hinein, h\u00f6chstens zwei W\u00f6rter.</p>'));
     app.appendChild(ditoTableau(meine, { waehlbar: "leer", gewaehlt: ditoFeldWahl,
       tippen: function(i){ ditoFeldWahl = i; render(); } }));
 
     var feld = merkeEingabe(el('<div class="codeeingabe"><input type="text" maxlength="60" ' +
-      'autocomplete="off" placeholder="deine Antwort"></div>'), "dito" + z.runde + "-" + z.schritt);
+      'autocomplete="off" placeholder="Antwort ' + (gesetzt + 1) + ' von 3"></div>'),
+      "dito" + z.runde + "-" + z.schritt + "-" + gesetzt);
     app.appendChild(feld);
-    var ab = el('<button class="cta" type="button">Antwort eintragen</button>');
+    var ab = el('<button class="cta" type="button">Antwort ' + (gesetzt + 1) + ' eintragen</button>');
     ab.onclick = function(){
       var t = feld.querySelector("input").value.trim();
       if (t.length < 1 || ditoFeldWahl < 0) return;
@@ -3868,7 +3912,7 @@ function viewDitoSchreiben(z){
         warn.textContent = "Das steht schon in dieser Runde. Nimm etwas anderes.";
         return;
       }
-      entwurfWeg("dito" + z.runde + "-" + z.schritt);
+      entwurfWeg("dito" + z.runde + "-" + z.schritt + "-" + gesetzt);
       quizSenden({ tat: "schreiben", spieler: ich, feld: ditoFeldWahl, text: t });
       ditoFeldWahl = null;
     };
