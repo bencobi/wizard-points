@@ -391,6 +391,9 @@
   .tfeld.leer{border-style:dashed}
   .tfeld.waehlbar{cursor:pointer; border-color:var(--gold)}
   .tfeld.gewaehlt{background:var(--tint); border-color:var(--gold); transform:scale(1.03)}
+  .tfeld.aenderbar{cursor:pointer}
+  .tfeld.aenderbar::after{content:"\u270e"; position:absolute; right:5px; bottom:3px;
+    font-size:11px; color:var(--dim); opacity:.7}
   .tfeld.kreis{background:rgba(46,158,91,.10); border-color:rgba(46,158,91,.5)}
   .tfeld.kreuz .tt{opacity:.45}
   .tkreis, .tkreuz{position:absolute; inset:8% 4%; pointer-events:none}
@@ -685,7 +688,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-18.4";
+var VERSION = "2026-09-18.6";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -3004,7 +3007,13 @@ function nurFortschritt(alt, neu){
     if ((alt.runde || 1) !== (neu.runde || 1)) return false;
     if ((alt.schritt || 0) !== (neu.schritt || 0)) return false;
     // Bei Dito zaehlt jede einzelne der drei Antworten, nicht nur das Fertigsein
-    if (neu.modus === "dito" && ((alt.gesetzt || {})[ich] || 0) !== ((neu.gesetzt || {})[ich] || 0)) return false;
+    if (neu.modus === "dito") {
+      if (((alt.gesetzt || {})[ich] || 0) !== ((neu.gesetzt || {})[ich] || 0)) return false;
+      // Verschieben aendert die Belegung, ohne dass die Zahl der Antworten steigt
+      var a = ((alt.felder || {})[ich] || []).map(function(f){ return f.zustand; }).join();
+      var b = ((neu.felder || {})[ich] || []).map(function(f){ return f.zustand; }).join();
+      if (a !== b) return false;
+    }
     return (alt.geschrieben.indexOf(ich) >= 0) === (neu.geschrieben.indexOf(ich) >= 0);
   }
   if (neu.phase === "raten" || neu.phase === "janein") {
@@ -3897,6 +3906,10 @@ function ditoTableau(felder, optionen){
       (f.zustand === "kreuz" ? '<svg class="tkreuz" viewBox="0 0 100 60"><path d="M14 10 L86 50"/><path d="M86 10 L14 50"/></svg>' : '') +
       '</div>');
     if (o.waehlbar && f.zustand === o.waehlbar && o.tippen) bindTap(zelle, function(){ o.tippen(i); });
+    else if (o.bearbeiten && f.zustand === "voll") {
+      zelle.classList.add("aenderbar");
+      bindTap(zelle, function(){ o.bearbeiten(i); });
+    }
     raster.appendChild(zelle);
     // Am Ende jeder Reihe der Bonus dieser Reihe
     if (i % 3 === 2) {
@@ -3984,9 +3997,11 @@ function viewDitoSchreiben(z){
       ditoFeldWahl = meine.findIndex(function(f){ return f.zustand === "leer"; });
     }
     app.appendChild(el('<p class="hintline" style="text-align:center">Drei Antworten zu dieser Kategorie. ' +
-      'Tipp ein freies Feld an und schreib hinein, h\u00f6chstens zwei W\u00f6rter.</p>'));
+      'Tipp ein freies Feld an und schreib hinein, h\u00f6chstens zwei W\u00f6rter. ' +
+      'Ein Tipp auf eine fertige Antwort \u00f6ffnet sie zum \u00c4ndern.</p>'));
     app.appendChild(ditoTableau(meine, { waehlbar: "leer", gewaehlt: ditoFeldWahl,
-      tippen: function(i){ ditoFeldWahl = i; render(); } }));
+      tippen: function(i){ ditoFeldWahl = i; render(); },
+      bearbeiten: function(i){ ditoBearbeiten(z, meine, i); } }));
 
     var feld = merkeEingabe(el('<div class="codeeingabe"><input type="text" maxlength="60" ' +
       'autocomplete="off" placeholder="Antwort ' + (gesetzt + 1) + ' von 3"></div>'),
@@ -4021,6 +4036,63 @@ function viewDitoSchreiben(z){
     app.appendChild(los);
   }
   app.appendChild(tabs());
+}
+
+function ditoBearbeiten(z, felder, i){
+  var f = felder[i] || {};
+  var ich = meinName();
+  var ausRunde = f.kategorie === z.kategorie;   // nur die laufende Kategorie darf leer bleiben
+  var freie = [];
+  felder.forEach(function(x, k){ if (x.zustand === "leer") freie.push(k); });
+
+  var sheet = el('<div class="sheet"><div class="panel"><div class="griff"></div>' +
+    '<div class="mkopf"><b>' + esc(f.text || "") + '</b><span>' +
+    (f.kategorie ? esc(f.kategorie) : "Antwort " + (i + 1)) + '</span></div></div></div>');
+  var panel = sheet.querySelector(".panel");
+  var zu = function(){ sheet.remove(); };
+  sheet.onclick = function(e){ if (e.target === sheet) zu(); };
+
+  var feld = el('<div class="codeeingabe"><input type="text" maxlength="60" autocomplete="off"></div>');
+  feld.querySelector("input").value = f.text || "";
+  panel.appendChild(feld);
+  panel.appendChild(absenden("Text \u00e4ndern", feld, function(){
+    var t = feld.querySelector("input").value.trim();
+    if (!t) return;
+    ditoMerkeEigene(z.runde || 1, i, t);
+    quizSenden({ tat: "aendern", spieler: ich, feld: i, text: t });
+    zu();
+    setTimeout(render, 0);
+  }));
+
+  if (freie.length) {
+    panel.appendChild(el('<p class="hintline" style="text-align:center">Oder auf ein freies Feld schieben:</p>'));
+    var raster = ditoTableau(felder, { waehlbar: "leer", tippen: function(nach){
+      ditoMerkeEigene(z.runde || 1, nach, f.text);
+      delete DITO_MEINE[(z.runde || 1) + "-" + i];
+      quizSenden({ tat: "verschieben", spieler: ich, von: i, nach: nach });
+      zu();
+      setTimeout(render, 0);
+    } });
+    panel.appendChild(raster);
+  }
+
+  if (ausRunde) {
+    var weg = el('<button class="cta ghost" type="button">L\u00f6schen und neu schreiben</button>');
+    weg.onclick = function(){
+      delete DITO_MEINE[(z.runde || 1) + "-" + i];
+      quizSenden({ tat: "loeschen", spieler: ich, feld: i });
+      zu();
+      setTimeout(render, 0);
+    };
+    panel.appendChild(weg);
+  } else {
+    panel.appendChild(el('<p class="hintline" style="text-align:center">Aus einer fr\u00fcheren Kategorie. ' +
+      'Der Text l\u00e4sst sich \u00e4ndern, das Feld muss aber belegt bleiben.</p>'));
+  }
+  var fertig = el('<button class="cta ghost" type="button">Zur\u00fcck</button>');
+  fertig.onclick = zu;
+  panel.appendChild(fertig);
+  document.body.appendChild(sheet);
 }
 
 function ditoSchonDa(felder, text){
@@ -4962,6 +5034,7 @@ var RULES_DITO = [
   ["Jeder braucht sein eigenes Handy", "Der Gastgeber gibt die Partie frei, die anderen treten mit Code oder QR-Code bei und w\u00e4hlen ihren Namen. Drei bis sieben Spieler."],
   ["Eine Runde", "Reihum w\u00e4hlt einer aus zwei Kategorien. Danach schreiben alle gleichzeitig eine Antwort in ein freies Feld ihres Rasters. Das dreimal, dann sind neun Felder voll."],
   ["Antworten", "H\u00f6chstens zwei W\u00f6rter, Ausnahmen sind feste Begriffe und Eigennamen. Dieselbe Antwort darf in einer Runde nicht zweimal vorkommen, die App passt auf."],
+  ["Korrigieren", "Solange geschrieben wird, geh\u00f6rt dein Raster dir: Tipp auf eine fertige Antwort, dann kannst du ihren Text \u00e4ndern oder sie auf ein freies Feld schieben. L\u00f6schen geht nur bei Antworten der laufenden Kategorie, sonst fehlt am Ende eine. Ab der Aufl\u00f6sung ist alles eingefroren."],
   ["Aufl\u00f6sung", "Reihum liest einer eine seiner Antworten vor. Wer dasselbe gemeint hat, tippt sein Feld an. Synonyme z\u00e4hlen, unterschiedlich genaue Antworten nicht: Violine und Geige ja, Instrument und Geige nein. Bei Streit entscheidet die Gruppe."],
   ["Punkte", "Ein Punkt je umkreiste Antwort. Hat genau einer dasselbe, gibt es zus\u00e4tzlich einen Stern: zwei Punkte, zu dritt einen. Hat niemand dasselbe, wird die Antwort gestrichen und bringt nichts."],
   ["Zu zweit", "Nicht im Original vorgesehen, geht hier aber. Sterne fallen weg, weil zu zweit jeder Treffer automatisch von genau einem kommt. Es z\u00e4hlen die Kreise und vor allem die Boni f\u00fcr volle Reihen und Spalten."],
