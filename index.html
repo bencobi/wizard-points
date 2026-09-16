@@ -685,7 +685,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-17.7";
+var VERSION = "2026-09-17.8";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -724,7 +724,7 @@ function grenzen(id){
   if (id === "skyjo")   return { min: 2, max: 8 };
   if (id === "quiz")    return { min: 2, max: 8 };
   if (id === "bluff")   return { min: 3, max: 8 };   // unter drei lohnt das Bluffen nicht
-  if (id === "dito")    return { min: 3, max: 7 };
+  if (id === "dito")    return { min: 2, max: 7 };
   if (id === "phase10") return { min: 2, max: 6 };
   return { min: 2, max: 6 };                          // Wizard, offiziell ab 3
 }
@@ -4026,7 +4026,8 @@ function viewDitoMelden(z){
 function viewDitoTreffer(z){
   var t = z.letzterTreffer || {};
   ditoKopf(z, "Aufl\u00f6sung");
-  var titel = t.ohne ? "Niemand hatte das" : (t.stern ? "Nur ihr zwei!" : "Mehrere hatten das");
+  var titel = t.ohne ? "Niemand hatte das"
+    : (t.stern ? "Nur ihr zwei!" : (S.names.length === 2 ? "Ihr beide hattet das" : "Mehrere hatten das"));
   app.appendChild(el('<div class="trefferkarte ' + (t.ohne ? "leer" : (t.stern ? "stern" : "gut")) + '">' +
     '<b>' + esc(t.text || "") + '</b><span>' + titel + '</span></div>'));
 
@@ -4893,6 +4894,7 @@ var RULES_DITO = [
   ["Antworten", "H\u00f6chstens zwei W\u00f6rter, Ausnahmen sind feste Begriffe und Eigennamen. Dieselbe Antwort darf in einer Runde nicht zweimal vorkommen, die App passt auf."],
   ["Aufl\u00f6sung", "Reihum liest einer eine seiner Antworten vor. Wer dasselbe gemeint hat, tippt sein Feld an. Synonyme z\u00e4hlen, unterschiedlich genaue Antworten nicht: Violine und Geige ja, Instrument und Geige nein. Bei Streit entscheidet die Gruppe."],
   ["Punkte", "Ein Punkt je umkreiste Antwort. Hat genau einer dasselbe, gibt es zus\u00e4tzlich einen Stern: zwei Punkte, zu dritt einen. Hat niemand dasselbe, wird die Antwort gestrichen und bringt nichts."],
+  ["Zu zweit", "Nicht im Original vorgesehen, geht hier aber. Sterne fallen weg, weil zu zweit jeder Treffer automatisch von genau einem kommt. Es z\u00e4hlen die Kreise und vor allem die Boni f\u00fcr volle Reihen und Spalten."],
   ["Bonus", "Volle Reihen und Spalten bringen extra: die Reihen von oben nach unten 3, 2 und 1, die Spalten von links nach rechts 1, 2 und 3."],
   ["Ende", "Nach drei Runden gewinnt, wer die meisten Punkte hat. Bei Gleichstand z\u00e4hlt die beste einzelne Runde."]
 ];
