@@ -360,6 +360,7 @@
     transform-origin:left center; animation:ansagebalken 2.6s linear both}
   .ansage.auf b{color:var(--gold)}
   .ansage.wert b{color:#2E9E5B}
+  .ansage.start b{font-size:46px}
   @keyframes ansageauf{0%{opacity:0; transform:translateY(14px) scale(.94)}100%{opacity:1; transform:none}}
   @keyframes ansagebalken{0%{transform:scaleX(0)}100%{transform:scaleX(1)}}
 
@@ -663,7 +664,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-16.9";
+var VERSION = "2026-09-17.1";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -3729,12 +3730,16 @@ function viewDito(){
     if (z.phase === "schreiben") return ditoAnsage("Schreibt jetzt", esc(z.kategorie), "schreib");
     if (z.phase === "aufloesungStart") return ditoAnsage("Aufl\u00f6sung", "Reihum wird vorgelesen", "auf");
     if (z.phase === "wertung") return ditoAnsage("Wertung", "Runde " + z.runde, "wert");
+    if (z.phase === "rundenstart")
+      return ditoAnsage("Runde " + z.runde, "Drei Kategorien, neun Antworten", "start");
   }
   // Nie waehrend des Zeichnens senden: die Antwort kaeme mitten in den Aufbau
-  if (z.phase === "aufloesungStart" && S.hostet) {
-    setTimeout(function(){ if (QUIZ && QUIZ.phase === "aufloesungStart") quizSenden({ tat: "ansageVorbei" }); }, 0);
+  if ((z.phase === "aufloesungStart" || z.phase === "rundenstart") && S.hostet) {
+    var jetzige = z.phase;
+    setTimeout(function(){ if (QUIZ && QUIZ.phase === jetzige) quizSenden({ tat: "ansageVorbei" }); }, 0);
   }
 
+  if (z.phase === "rundenstart") return ditoAnsage("Runde " + z.runde, "Drei Kategorien, neun Antworten", "start");
   if (z.phase === "nachschub") return viewDitoNachschub(z);
   if (z.phase === "kategorie") return viewDitoKategorie(z);
   if (z.phase === "schreiben") return viewDitoSchreiben(z);
