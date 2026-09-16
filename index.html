@@ -685,7 +685,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-18.1";
+var VERSION = "2026-09-18.4";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -867,21 +867,28 @@ function tausenderFeld(feld){
 }
 
 function bindTap(btn, fn){
-  var sx = 0, sy = 0, moved = false, touched = false;
+  var sx = 0, sy = 0, moved = false, zuletzt = 0;
   btn.addEventListener("touchstart", function(e){
-    touched = true; moved = false;
+    moved = false;
     sx = e.touches[0].clientX; sy = e.touches[0].clientY;
   }, { passive:true });
   btn.addEventListener("touchmove", function(e){
-    if (Math.abs(e.touches[0].clientX - sx) > 8 || Math.abs(e.touches[0].clientY - sy) > 8) moved = true;
+    // Schliesst sich die Tastatur, rollt die Seite unter dem Finger weg. Das ist kein Wischen,
+    // deshalb ein grosszuegiger Spielraum.
+    if (Math.abs(e.touches[0].clientX - sx) > 16 || Math.abs(e.touches[0].clientY - sy) > 16) moved = true;
   }, { passive:true });
   btn.addEventListener("touchend", function(e){
-    if (moved || btn.disabled) return;
+    if (btn.disabled || moved) return;
     e.preventDefault();
     btn.classList.add("tap");
+    zuletzt = Date.now();
     fn();
   }, { passive:false });
-  btn.addEventListener("click", function(){ if (!touched && !btn.disabled) fn(); });
+  // Auffangnetz: wurde der Tipp als Wischen verworfen, kommt der Klick trotzdem durch
+  btn.addEventListener("click", function(){
+    if (btn.disabled || Date.now() - zuletzt < 700) return;
+    fn();
+  });
 }
 
 var HUES = ["#E0982A", "#12A79B", "#E05A63", "#7B5BD6", "#6E9E22", "#2D82C7", "#C2568F", "#8A6A3B"];
@@ -3753,10 +3760,26 @@ function aufholHinweis(nm, mehr, feld){
 
 /* ---------- Dito: dasselbe denken wie die anderen ---------- */
 var ditoEntwurf = {};      // getippter Text je Feld, ueberlebt das Neuzeichnen
+var DITO_MEINE = {};       // eigene Antworten der laufenden Runde, der Server verdeckt sie fuer alle
+
+function ditoMerkeEigene(runde, feld, text){ DITO_MEINE[runde + "-" + feld] = text; }
+function ditoEigene(z, felder){
+  return (felder || []).map(function(f, i){
+    if (f.text) return f;
+    var eigen = DITO_MEINE[(z.runde || 1) + "-" + i];
+    return eigen ? { text: eigen, kategorie: f.kategorie, zustand: f.zustand, stern: f.stern } : f;
+  });
+}
 var ditoFeldWahl = null;   // welches Feld beim Schreiben gemeint ist
 
 function viewDito(){
   var z = QUIZ;
+  if (z && z.runde && DITO_MEINE.runde !== z.runde) {
+    Object.keys(DITO_MEINE).forEach(function(k){
+      if (k !== "runde" && k.split("-")[0] !== String(z.runde)) delete DITO_MEINE[k];
+    });
+    DITO_MEINE.runde = z.runde;
+  }
   if (quizTakt) { clearInterval(quizTakt); clearTimeout(quizTakt); quizTakt = null; }
 
   if (!z || !z.modus) return viewDitoLobby();
@@ -3766,6 +3789,11 @@ function viewDito(){
     if (z.phase === "schreiben") return ditoAnsage("Schreibt jetzt", esc(z.kategorie), "schreib");
     if (z.phase === "aufloesungStart") return ditoAnsage("Aufl\u00f6sung", "Reihum wird vorgelesen", "auf");
     if (z.phase === "wertung") return ditoAnsage("Wertung", "Runde " + z.runde, "wert");
+    if (z.phase === "vorlesen") {
+      var wer = S.names[(z.aktiv || 0) % S.names.length];
+      return ditoAnsage(wer === meinName() ? "Du liest vor" : esc(wer) + " liest vor",
+        wer === meinName() ? "Such dir eine Antwort aus" : "Gleich h\u00f6rst du seine Antwort", "vorlesen");
+    }
     if (z.phase === "rundenstart")
       return ditoAnsage("Runde " + z.runde, "Drei Kategorien, neun Antworten", "start");
   }
@@ -3801,13 +3829,32 @@ function ditoRasterKnopf(){
   return b;
 }
 
+function ditoFremdesRaster(z, name){
+  var felder = name === meinName() ? ditoEigene(z, z.felder[name]) : (z.felder[name] || []);
+  var r = (z.rundenpunkte || {})[name];
+  var sheet = el('<div class="sheet"><div class="panel"><div class="griff"></div>' +
+    '<div class="mkopf"><b>' + esc(name) + '</b><span>' +
+    (r ? r.kreise + (r.kreise === 1 ? " Kreis" : " Kreise") +
+         (r.sterne ? ", " + r.sterne + " Stern" + (r.sterne > 1 ? "e" : "") : "") +
+         (r.bonus ? ", " + r.bonus + " Bonus" : "") + " \u00b7 " +
+         r.summe + (r.summe === 1 ? " Punkt" : " Punkte") + " in dieser Runde"
+       : "Runde " + (z.runde || 1)) + '</span></div></div></div>');
+  var panel = sheet.querySelector(".panel");
+  panel.appendChild(ditoTableau(felder, {}));
+  var zu = el('<button class="cta ghost" type="button">Schlie\u00dfen</button>');
+  zu.onclick = function(){ sheet.remove(); };
+  panel.appendChild(zu);
+  sheet.onclick = function(e){ if (e.target === sheet) sheet.remove(); };
+  document.body.appendChild(sheet);
+}
+
 function ditoRasterZeigen(){
   var z = QUIZ;
   if (!z || !z.felder) return;
   var sheet = el('<div class="sheet"><div class="panel"><div class="griff"></div>' +
     '<div class="mkopf"><b>Dein Raster</b><span>Runde ' + (z.runde || 1) + ' von 3</span></div></div></div>');
   var panel = sheet.querySelector(".panel");
-  panel.appendChild(ditoTableau(z.felder[meinName()] || [], {}));
+  panel.appendChild(ditoTableau(ditoEigene(z, z.felder[meinName()]), {}));
   var stand = el('<p class="hintline" style="text-align:center">Kreis: hatte jemand auch. ' +
     'Stern: genau einer. Kreuz: niemand. Die Zahlen am Rand sind der Bonus f\u00fcr eine ' +
     'volle Reihe oder Spalte.</p>');
@@ -3918,12 +3965,12 @@ function viewDitoNachschub(z){
 /* --- Schreiben --- */
 function viewDitoSchreiben(z){
   var ich = meinName();
-  var meine = z.felder[ich] || [];
+  var meine = ditoEigene(z, z.felder[ich]);
   var gesetzt = (z.gesetzt || {})[ich] || 0;
   var fertig = (z.geschrieben || []).indexOf(ich) >= 0 || gesetzt >= 3;
   ditoKopf(z, "Kategorie " + (z.schritt || 1) + " von 3");
   app.appendChild(el('<h1 class="frage">' + esc(z.kategorie) + '</h1>'));
-  uhr(z.endeZeit, 90000);
+  uhr(z.endeZeit, 120000);
   app.appendChild(el('<div class="dreier">' +
     [0,1,2].map(function(i){ return '<i class="' + (i < gesetzt ? "voll" : "") + '"></i>'; }).join("") +
     '<span>' + (fertig ? "alle drei stehen" : (gesetzt + " von 3 Antworten")) + '</span></div>'));
@@ -3962,6 +4009,7 @@ function viewDitoSchreiben(z){
         return;
       }
       entwurfWeg("dito" + z.runde + "-" + z.schritt + "-" + gesetzt);
+      ditoMerkeEigene(z.runde || 1, ziel, t);
       quizSenden({ tat: "schreiben", spieler: ich, feld: ziel, text: t });
       ditoFeldWahl = null;
     };
@@ -3987,7 +4035,7 @@ function ditoSchonDa(felder, text){
 function viewDitoVorlesen(z){
   var aktivName = S.names[(z.aktiv || 0) % S.names.length];
   var ichLese = aktivName === meinName();
-  var meine = z.felder[meinName()] || [];
+  var meine = ditoEigene(z, z.felder[meinName()]);
   ditoKopf(z, "Aufl\u00f6sung");
   app.appendChild(el('<h1 class="headline">' + (ichLese ? "Du liest vor" : esc(aktivName) + " liest vor") + '</h1>'));
 
@@ -4009,12 +4057,12 @@ function viewDitoMelden(z){
   var ich = meinName();
   var v = z.vorgelesen || {};
   var binVorleser = v.spieler === ich;
-  var meine = z.felder[ich] || [];
+  var meine = ditoEigene(z, z.felder[ich]);
   var fertig = (z.gemeldet || []).indexOf(ich) >= 0;
   ditoKopf(z, esc(v.spieler) + " liest vor");
   app.appendChild(el('<div class="vorgelesen"><span>' + esc(v.spieler) + ' sagt</span><b>' +
     esc(v.text) + '</b></div>'));
-  if (!binVorleser) uhr(z.endeZeit, 45000);
+  if (!binVorleser) uhr(z.endeZeit, 60000);
   app.appendChild(ditoPlaketten((z.gemeldet || []).concat([v.spieler])));
 
   if (binVorleser) {
@@ -4061,7 +4109,7 @@ function viewDitoTreffer(z){
     ? "Das Feld wird durchgestrichen, daf\u00fcr gibt es nichts."
     : (t.stern ? "Ein Kreis und ein Stern f\u00fcr beide. Zwei Punkte extra."
                : "Ein Kreis f\u00fcr alle, die das hatten.")) + '</p>'));
-  app.appendChild(ditoTableau(z.felder[meinName()] || [], {}));
+  app.appendChild(ditoTableau(ditoEigene(z, z.felder[meinName()]), {}));
 
   if (S.hostet) {
     var w = el('<button class="cta" type="button">Weiter</button>');
@@ -4083,13 +4131,19 @@ function viewDitoWertung(z){
   reihe.forEach(function(p, i){
     app.appendChild(el('<div class="rank' + (i === 0 ? ' first' : '') + '" data-nm="' + esc(p.nm) +
       '" style="--acc:' + hue(p.i) + '"><span class="pos num">' + (i + 1) + '</span>' +
-      '<span class="nm">' + esc(p.nm) + '<span class="sub">' + p.r.kreise + ' Kreise' +
+      '<span class="nm">' + esc(p.nm) + '<span class="sub">' + p.r.kreise +
+      (p.r.kreise === 1 ? ' Kreis' : ' Kreise') +
       (p.r.sterne ? ' \u00b7 ' + p.r.sterne + ' Stern' + (p.r.sterne > 1 ? 'e' : '') : '') +
       (p.r.bonus ? ' \u00b7 ' + p.r.bonus + ' Bonus' : '') + '</span></span>' +
       '<span class="pt num">' + p.pt + '<span class="sub">+' + p.r.summe + '</span></span></div>'));
+    var zeile = app.lastChild;
+    zeile.classList.add("tap");
+    bindTap(zeile, function(){ ditoFremdesRaster(z, p.nm); });
   });
+  app.appendChild(el('<p class="hintline" style="text-align:center">Tipp auf einen Namen, ' +
+    'um sein Raster zu sehen.</p>'));
   rangAnimieren("dito");
-  app.appendChild(ditoTableau(z.felder[meinName()] || [], {}));
+  app.appendChild(ditoTableau(ditoEigene(z, z.felder[meinName()]), {}));
   if (S.hostet) {
     var w = el('<button class="cta" type="button">' +
       (z.runde >= 3 ? "Endergebnis zeigen" : "Runde " + (z.runde + 1) + " starten") + '</button>');
@@ -4254,7 +4308,7 @@ function viewBluff(){
 function bluffSchreiben(z){
   var ich = meinName();
   var fertig = z.geschrieben.indexOf(ich) >= 0;
-  uhr(z.endeZeit, 90000);
+  uhr(z.endeZeit, 120000);
   app.appendChild(bluffPlaketten(z.geschrieben));
 
   if (fertig) {
