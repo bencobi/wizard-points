@@ -575,7 +575,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-16.5";
+var VERSION = "2026-09-16.6";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -3664,6 +3664,7 @@ function viewBluffLobby(){
 
 function viewBluff(){
   var z = QUIZ;
+  if (bluffTipp && bluffTipp.runde !== (z.runde || 1)) bluffTipp = null;
   quizKopf(null, null);
   // Vor der Runde nur die Ankuendigung, die Frage bleibt noch verdeckt
   if (z.zeigenAb && serverJetzt() < z.zeigenAb && (z.phase === "schreiben" || z.phase === "janein"))
@@ -3735,7 +3736,7 @@ function bluffRaten(z){
   }
   z.optionen.forEach(function(o, i){
     var eigen = meine && o.text.toLowerCase().replace(/[^a-z0-9\u00e4\u00f6\u00fc\u00df]+/g, " ").trim() === meine;
-    var gewaehlt = bluffTipp && bluffTipp.idx === z.idx && bluffTipp.wert === i;
+    var gewaehlt = bluffTipp && bluffTipp.runde === (z.runde || 1) && bluffTipp.wert === i;
     var b = el('<div class="antwort' + (gewaehlt ? " gewaehlt" : (fertig || eigen ? " ruhig" : "")) + '">' +
       '<span class="buchstabe">' + (i + 1) + '</span>' + esc(o.text) +
       (gewaehlt ? '<span class="marke">dein Tipp</span>' : (eigen ? '<span class="marke">von dir</span>' : '')) +
@@ -3743,7 +3744,7 @@ function bluffRaten(z){
     if (!fertig && !eigen && !wahrheit) {
       b.setAttribute("role", "button");
       bindTap(b, function(){
-        bluffTipp = { idx: z.idx, wert: i };
+        bluffTipp = { runde: z.runde || 1, wert: i };
         quizSenden({ tat: "stimme", spieler: ich, wert: i });
       });
     }
@@ -3850,12 +3851,12 @@ function bluffJaNein(z){
     'Richtig geraten gibt 100 Punkte.</p>'));
 
   [["Stimmt", true], ["Erfunden", false]].forEach(function(paar, i){
-    var meins = bluffTipp && bluffTipp.idx === z.idx && bluffTipp.wert === paar[1];
+    var meins = bluffTipp && bluffTipp.runde === (z.runde || 1) && bluffTipp.wert === paar[1];
     var b = el('<div class="antwort' + (meins ? " gewaehlt" : (fertig ? " ruhig" : "")) + '">' +
       '<span class="buchstabe">' + (paar[1] ? "\u2713" : "\u2715") + '</span>' + paar[0] +
       (meins ? '<span class="marke">eingeloggt</span>' : '') + '</div>');
     if (!fertig) bindTap(b, function(){
-      bluffTipp = { idx: z.idx, wert: paar[1] };
+      bluffTipp = { runde: z.runde || 1, wert: paar[1] };
       quizSenden({ tat: "janein", spieler: ich, wert: paar[1], anzahl: S.names.length });
     });
     app.appendChild(b);
