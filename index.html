@@ -394,12 +394,13 @@
   .tfeld.kreis{background:rgba(46,158,91,.10); border-color:rgba(46,158,91,.5)}
   .tfeld.kreuz .tt{opacity:.45}
   .tkreis, .tkreuz{position:absolute; inset:8% 4%; pointer-events:none}
-  .tkreis ellipse{fill:none; stroke:#2E9E5B; stroke-width:3; stroke-linecap:round;
-    stroke-dasharray:220; animation:kreisziehen .6s ease both}
-  .tkreuz path{fill:none; stroke:var(--warn); stroke-width:4; stroke-linecap:round;
-    stroke-dasharray:90; animation:kreisziehen .45s ease both}
-  .tkreuz path:nth-child(2){animation-delay:.16s}
-  @keyframes kreisziehen{0%{stroke-dashoffset:220; opacity:.2}100%{stroke-dashoffset:0; opacity:1}}
+  .tkreis ellipse{fill:none; stroke:#2E9E5B; stroke-width:3.5; stroke-linecap:round;
+    stroke-dasharray:230; animation:kreisziehen .6s ease both}
+  .tkreuz path{fill:none; stroke:var(--miss); stroke-width:5; stroke-linecap:round;
+    stroke-dasharray:84; animation:strichziehen .35s ease both}
+  .tkreuz path:nth-child(2){animation-delay:.18s}
+  @keyframes kreisziehen{0%{stroke-dashoffset:230; opacity:.2}100%{stroke-dashoffset:0; opacity:1}}
+  @keyframes strichziehen{0%{stroke-dashoffset:84; opacity:.3}100%{stroke-dashoffset:0; opacity:1}}
   .tstern{position:absolute; top:4px; right:6px; color:var(--gold); font-size:15px;
     animation:sternauf .5s .35s cubic-bezier(.2,.9,.3,1) both}
   @keyframes sternauf{0%{opacity:0; transform:scale(.3) rotate(-40deg)}100%{opacity:1; transform:none}}
@@ -425,8 +426,8 @@
   .trefferkarte.gut span{color:#2E9E5B}
   .trefferkarte.stern{border-color:var(--gold); background:var(--tint)}
   .trefferkarte.stern span{color:var(--gold)}
-  .trefferkarte.leer{border-color:var(--warn); background:rgba(200,60,60,.10)}
-  .trefferkarte.leer span{color:var(--warn)}
+  .trefferkarte.leer{border-color:var(--miss); background:rgba(200,60,60,.10)}
+  .trefferkarte.leer span{color:var(--miss)}
 
   .ministand{display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:10px 0 4px;
     font-size:12.5px; color:var(--dim)}
@@ -435,7 +436,8 @@
   .ministand b{font-weight:700; color:var(--text)}
   @media (prefers-reduced-motion:reduce){
     .ansage b, .ansage span, .ansage i, .tkreis ellipse, .tkreuz path, .tstern,
-    .vorgelesen, .trefferkarte, .bonus.erreicht{animation:none}}
+    .vorgelesen, .trefferkarte, .bonus.erreicht{animation:none}
+    .tkreis ellipse, .tkreuz path{stroke-dashoffset:0; opacity:1}}
 
   .lader{display:flex; flex-direction:column; align-items:center; gap:14px; padding:26px 0 10px}
   .lader .karten{position:relative; width:118px; height:74px}
@@ -475,8 +477,8 @@
   .antwort .buchstabe{flex:none; width:28px; height:28px; border-radius:9px; background:var(--glass-2);
     display:grid; place-items:center; font-weight:800; font-size:14px; color:var(--gold)}
   .uhr{position:relative; height:8px; border-radius:6px; background:var(--glass-2); margin:0 2px 16px}
-  .uhr.knapp i{background:var(--warn)}
-  .uhr.knapp span{color:var(--warn); font-weight:800}
+  .uhr.knapp i{background:var(--miss)}
+  .uhr.knapp span{color:var(--miss); font-weight:800}
   .uhr i{position:absolute; left:0; top:0; bottom:0; border-radius:6px;
     background:linear-gradient(90deg, var(--gold), var(--gold-2)); transition:width .2s linear}
   .uhr span{position:absolute; right:2px; top:12px; font-size:12px; font-weight:700; color:var(--dim)}
@@ -494,9 +496,9 @@
   .antwort.richtig{border-color:#2E9E5B; background:rgba(46,158,91,.16); animation:aufdecken .6s ease}
   .antwort.richtig .buchstabe{background:#2E9E5B; color:#fff}
   .antwort.richtig .marke{color:#2E9E5B}
-  .antwort.falsch{border-color:var(--warn); background:rgba(200,60,60,.12)}
-  .antwort.falsch .buchstabe{background:var(--warn); color:#fff}
-  .antwort.falsch .marke{color:var(--warn)}
+  .antwort.falsch{border-color:var(--miss); background:rgba(200,60,60,.12)}
+  .antwort.falsch .buchstabe{background:var(--miss); color:#fff}
+  .antwort.falsch .marke{color:var(--miss)}
   @keyframes aufdecken{0%{transform:scale(.97)}55%{transform:scale(1.02)}100%{transform:none}}
   @media (prefers-reduced-motion:reduce){ .antwort.richtig{animation:none} .sheet.menu .panel{transition:none} }
 
@@ -522,15 +524,15 @@
   .mtext b{display:block; font-size:16px; font-weight:600}
   .mtext span{display:block; font-size:13px; color:var(--dim); margin-top:1px;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-  .mzeile.danger .mtext b{color:var(--warn)}
-  .mzeile.danger .mzeichen{color:var(--warn)}
+  .mzeile.danger .mtext b{color:var(--miss)}
+  .mzeile.danger .mzeichen{color:var(--miss)}
 
   body{--f-begriff:#8B6BD1; --f-kuriosum:#2D82C7; --f-wahrheit:#2E9E5B; --f-ziel:var(--gold)}
   .brett{margin:6px 0 14px; --f-begriff:#8B6BD1; --f-kuriosum:#2D82C7; --f-wahrheit:#2E9E5B; --f-ziel:var(--gold)}
   .brett svg{width:100%; height:auto; display:block; overflow:visible}
   .brett .bahn{fill:none; stroke:var(--hair); stroke-width:26; stroke-linecap:round; stroke-linejoin:round}
   .brett .bahnhell{fill:none; stroke:var(--glass-2); stroke-width:22; stroke-linecap:round; stroke-linejoin:round}
-  .brett .feld{stroke:var(--card); stroke-width:1.5}
+  .brett .feld{stroke:var(--panel); stroke-width:1.5}
   .brett .feld.begriff{fill:var(--f-begriff)}
   .brett .feld.kuriosum{fill:var(--f-kuriosum)}
   .brett .feld.wahrheit{fill:var(--f-wahrheit)}
@@ -539,7 +541,7 @@
   @keyframes aufholblink{0%,100%{r:10}25%{r:15}50%{r:10}75%{r:15}}
   .brett .aufholzahl{font-size:10px; font-weight:800; fill:#fff; text-anchor:middle}
   .brett .zielmarke{font-size:12px; font-weight:800; fill:var(--gold); text-anchor:middle}
-  .brett .figur circle{fill:var(--acc); stroke:var(--card); stroke-width:2.5;
+  .brett .figur circle{fill:var(--acc); stroke:var(--panel); stroke-width:2.5;
     filter:drop-shadow(0 2px 4px rgba(0,0,0,.2))}
   .brett .figur text{fill:#fff; font-size:13px; font-weight:800; text-anchor:middle}
   .brett .figur.springt circle{filter:drop-shadow(0 8px 10px rgba(0,0,0,.22))}
@@ -628,7 +630,7 @@
     font-size:11.5px; font-weight:800; color:#2E9E5B}
   .strahl .tipp{position:absolute; top:52px; transform:translateX(-50%)}
   .strahl .tipp i{display:block; width:11px; height:11px; border-radius:50%; background:var(--acc);
-    border:2px solid var(--card); margin:-4px auto 0}
+    border:2px solid var(--panel); margin:-4px auto 0}
   .strahl .tipp span{position:absolute; top:11px; left:50%; transform:translateX(-50%); white-space:nowrap;
     font-size:11px; font-weight:700; color:var(--dim)}
   .strahl .tipp.e1 span{top:27px}
@@ -683,7 +685,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-17.4";
+var VERSION = "2026-09-17.7";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
