@@ -689,7 +689,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-18.9";
+var VERSION = "2026-09-19.1";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -3990,11 +3990,11 @@ function viewDitoSchreiben(z){
   var gesetzt = (z.gesetzt || {})[ich] || 0;
   var fertig = (z.geschrieben || []).indexOf(ich) >= 0;
   var alleDrei = gesetzt >= 3;
-  // Ein alter Worker kennt die Zaehlung nicht: dann fehlt das Feld ganz
-  if (z.gesetzt === undefined) app.appendChild(el('<p class="note warn">Der Server ist auf einem ' +
-    '\u00e4lteren Stand. Lade worker.js neu hoch, sonst kommen Antworten nicht an.</p>'));
   ditoKopf(z, "Kategorie " + (z.schritt || 1) + " von 3");
   app.appendChild(el('<h1 class="frage">' + esc(z.kategorie) + '</h1>'));
+  // Ein alter Worker kennt die Zaehlung nicht und schickt das Feld gar nicht mit
+  if (z.gesetzt === undefined) app.appendChild(el('<p class="note warn">Der Server ist auf einem ' +
+    '\u00e4lteren Stand. Lade worker.js neu hoch, sonst kommen Antworten nicht an.</p>'));
   uhr(z.endeZeit, 120000);
   app.appendChild(el('<div class="dreier">' +
     [0,1,2].map(function(i){ return '<i class="' + (i < gesetzt ? "voll" : "") + '"></i>'; }).join("") +
