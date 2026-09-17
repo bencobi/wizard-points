@@ -734,7 +734,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-19.5";
+var VERSION = "2026-09-19.6";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -4127,7 +4127,7 @@ function ditoAnfechten(z, felder){
   sheet.onclick = function(e){ if (e.target === sheet) zu(); };
   panel.appendChild(el('<p class="hintline" style="text-align:center">Die K\u00fcnstliche Intelligenz ' +
     'entscheidet, ob beides dasselbe meint. Synonyme z\u00e4hlen, unterschiedlich genaue Antworten nicht. ' +
-    'Das geht nur einmal in der ganzen Partie, und das Urteil gilt.</p>'));
+    'Das geht einmal je Runde, und das Urteil gilt.</p>'));
   panel.appendChild(ditoTableau(felder, { waehlbar: "voll", tippen: function(i){
     quizSenden({ tat: "anfechten", spieler: ich, feld: i });
     zu();
@@ -4282,12 +4282,12 @@ function viewDitoMelden(z){
     // Einmal je Partie darf jeder die KI entscheiden lassen
     var schonAngefochten = (z.angefochten || []).indexOf(ich) >= 0;
     if (!schonAngefochten && !z.urteiltGerade) {
-      var an = el('<button class="cta ghost" type="button">Anfechten lassen \u00b7 einmal je Partie</button>');
+      var an = el('<button class="cta ghost" type="button">Anfechten lassen \u00b7 einmal je Runde</button>');
       bindTap(an, function(){ ditoAnfechten(z, meine); });
       app.appendChild(an);
     } else if (schonAngefochten) {
-      app.appendChild(el('<p class="hintline" style="text-align:center">Dein Anfechten ist ' +
-        'schon verbraucht.</p>'));
+      app.appendChild(el('<p class="hintline" style="text-align:center">Dein Anfechten ist in ' +
+        'dieser Runde schon verbraucht. In der n\u00e4chsten hast du wieder eines.</p>'));
     }
   }
   if (S.hostet) {
@@ -5182,7 +5182,7 @@ var RULES_DITO = [
   ["Eine Runde", "Reihum w\u00e4hlt einer aus zwei Kategorien. Danach schreiben alle gleichzeitig eine Antwort in ein freies Feld ihres Rasters. Das dreimal, dann sind neun Felder voll."],
   ["Antworten", "H\u00f6chstens zwei W\u00f6rter, Ausnahmen sind feste Begriffe und Eigennamen. Dieselbe Antwort darf in einer Runde nicht zweimal vorkommen, die App passt auf."],
   ["Korrigieren und abgeben", "Stehen deine drei Antworten, kannst du sie weiter \u00e4ndern, verschieben oder l\u00f6schen. Erst dein Haken auf Fertig gibt sie ab, und auch den kannst du zur\u00fccknehmen. Weiter geht es, wenn alle abgegeben haben oder die Zeit abgelaufen ist."],
-  ["Anfechten", "Bist du dir unsicher, ob deine Antwort dasselbe meint wie die vorgelesene, kannst du die K\u00fcnstliche Intelligenz entscheiden lassen. Das geht einmal in der ganzen Partie, alle sehen das Urteil samt Begr\u00fcndung, und es gilt. Sie h\u00e4lt sich an dieselbe Regel: Synonyme z\u00e4hlen, unterschiedlich genaue Antworten nicht."],
+  ["Anfechten", "Bist du dir unsicher, ob deine Antwort dasselbe meint wie die vorgelesene, kannst du die K\u00fcnstliche Intelligenz entscheiden lassen. Das geht einmal je Runde, also dreimal in der Partie, alle sehen das Urteil samt Begr\u00fcndung, und es gilt. Sie h\u00e4lt sich an dieselbe Regel: Synonyme z\u00e4hlen, unterschiedlich genaue Antworten nicht."],
   ["Aufl\u00f6sung", "Reihum liest einer eine seiner Antworten vor. Wer dasselbe gemeint hat, tippt sein Feld an. Synonyme z\u00e4hlen, unterschiedlich genaue Antworten nicht: Violine und Geige ja, Instrument und Geige nein. Bei Streit entscheidet die Gruppe."],
   ["Punkte", "Ein Punkt je umkreiste Antwort. Hat genau einer dasselbe, gibt es zus\u00e4tzlich einen Stern: zwei Punkte, zu dritt einen. Hat niemand dasselbe, wird die Antwort gestrichen und bringt nichts."],
   ["Zu zweit", "Nicht im Original vorgesehen, geht hier aber. Sterne fallen weg, weil zu zweit jeder Treffer automatisch von genau einem kommt. Es z\u00e4hlen die Kreise und vor allem die Boni f\u00fcr volle Reihen und Spalten."],
