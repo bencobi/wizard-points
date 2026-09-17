@@ -438,6 +438,8 @@
   .ministand span{padding:4px 10px; border-radius:999px; background:var(--glass-2);
     border-left:3px solid var(--acc)}
   .ministand b{font-weight:700; color:var(--text)}
+  .ministand .legende{width:100%; text-align:center; background:none; border:0; padding:2px 0 0;
+    font-size:11px; opacity:.75}
   @media (prefers-reduced-motion:reduce){
     .ansage b, .ansage span, .ansage i, .tkreis ellipse, .tkreuz path, .tstern,
     .vorgelesen, .trefferkarte, .bonus.erreicht{animation:none}
@@ -689,7 +691,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-19.1";
+var VERSION = "2026-09-19.3";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -3776,6 +3778,9 @@ function ditoMerkeEigene(runde, feld, text){ DITO_MEINE[runde + "-" + feld] = te
 function ditoEigene(z, felder){
   return (felder || []).map(function(f, i){
     if (f.text) return f;
+    // Ein leeres Feld bleibt leer. Sonst taucht in einer neuen Partie
+    // wieder auf, was hier einmal stand.
+    if (f.zustand === "leer") return f;
     var eigen = DITO_MEINE[(z.runde || 1) + "-" + i];
     return eigen ? { text: eigen, kategorie: f.kategorie, zustand: f.zustand, stern: f.stern } : f;
   });
@@ -3784,11 +3789,8 @@ var ditoFeldWahl = null;   // welches Feld beim Schreiben gemeint ist
 
 function viewDito(){
   var z = QUIZ;
-  if (z && z.runde && DITO_MEINE.runde !== z.runde) {
-    Object.keys(DITO_MEINE).forEach(function(k){
-      if (k !== "runde" && k.split("-")[0] !== String(z.runde)) delete DITO_MEINE[k];
-    });
-    DITO_MEINE.runde = z.runde;
+  if (z && z.phase === "rundenstart") {
+    Object.keys(DITO_MEINE).forEach(function(k){ delete DITO_MEINE[k]; });
   }
   if (quizTakt) { clearInterval(quizTakt); clearTimeout(quizTakt); quizTakt = null; }
 
@@ -4087,14 +4089,25 @@ function ditoBearbeiten(z, felder, i){
   var feld = el('<div class="codeeingabe"><input type="text" maxlength="60" autocomplete="off"></div>');
   feld.querySelector("input").value = f.text || "";
   panel.appendChild(feld);
+  var meldung = el('<p class="note warn" hidden></p>');
   panel.appendChild(absenden("Text \u00e4ndern", feld, function(){
     var t = feld.querySelector("input").value.trim();
     if (!t) return;
+    var schonDa = felder.some(function(x, k){
+      return k !== i && x.text && x.text.toLowerCase().replace(/[^a-z0-9\u00e4\u00f6\u00fc\u00df]+/g, "") ===
+        t.toLowerCase().replace(/[^a-z0-9\u00e4\u00f6\u00fc\u00df]+/g, "");
+    });
+    if (schonDa) {
+      meldung.textContent = "Das steht schon in dieser Runde. Nimm etwas anderes.";
+      meldung.hidden = false;
+      return;
+    }
     ditoMerkeEigene(z.runde || 1, i, t);
     quizSenden({ tat: "aendern", spieler: ich, feld: i, text: t });
     zu();
     setTimeout(render, 0);
   }));
+  panel.appendChild(meldung);
 
   if (freie.length) {
     panel.appendChild(el('<p class="hintline" style="text-align:center">Oder auf ein freies Feld schieben:</p>'));
@@ -4279,12 +4292,21 @@ function viewDitoEnde(z){
 }
 
 function ditoStand(z){
-  var reihe = S.names.map(function(nm, i){ return { nm: nm, i: i, pt: z.punkte[nm] || 0 }; })
-                     .sort(function(a, b){ return b.pt - a.pt; });
+  // Punkte gibt es erst bei der Rundenwertung. Waehrend der Aufloesung hilft
+  // stattdessen, wie viele Felder schon eingekreist sind.
+  var kreise = {};
+  S.names.forEach(function(nm){
+    kreise[nm] = (z.felder[nm] || []).filter(function(f){ return f.zustand === "kreis"; }).length;
+  });
+  var reihe = S.names.map(function(nm, i){
+    return { nm: nm, i: i, pt: z.punkte[nm] || 0, k: kreise[nm] };
+  }).sort(function(a, b){ return (b.pt + b.k) - (a.pt + a.k); });
   var box = el('<div class="ministand"></div>');
   reihe.forEach(function(p){
-    box.appendChild(el('<span style="--acc:' + hue(p.i) + '"><b>' + esc(p.nm) + '</b> ' + p.pt + '</span>'));
+    box.appendChild(el('<span style="--acc:' + hue(p.i) + '"><b>' + esc(p.nm) + '</b> ' +
+      (z.runde > 1 ? p.pt + ' \u00b7 ' : '') + p.k + '\u25ef</span>'));
   });
+  box.appendChild(el('<span class="legende">eingekreist in dieser Runde</span>'));
   return box;
 }
 
