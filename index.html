@@ -417,6 +417,23 @@
   .knr{flex:none; width:26px; height:26px; border-radius:9px; background:var(--tint); color:var(--gold);
     display:grid; place-items:center; font-weight:800; font-size:13px}
 
+  .urteil{text-align:center; padding:16px 14px; margin:4px 2px 12px; border-radius:18px;
+    border:1px solid var(--hair); background:var(--glass-2); animation:ansageauf .5s both}
+  .urteil span{display:block; font-size:12px; color:var(--dim)}
+  .urteil b{display:block; font-size:21px; font-weight:800; margin:2px 0; overflow-wrap:anywhere}
+  .urteil i{display:block; font-size:12.5px; color:var(--dim); font-style:normal}
+  .urteil .spruch{margin:8px 0 2px; font-size:15px; font-weight:800}
+  .urteil .grund{margin:0; font-size:12.5px; color:var(--dim); line-height:1.35}
+  .urteil.ja{border-color:rgba(46,158,91,.55); background:rgba(46,158,91,.10)}
+  .urteil.ja .spruch{color:#2E9E5B}
+  .urteil.nein{border-color:var(--miss); background:rgba(200,60,60,.10)}
+  .urteil.nein .spruch{color:var(--miss)}
+  .urteil.laeuft p{margin:8px 0 0; font-size:13px; color:var(--dim)}
+  .urteil .pkt{display:inline-block; width:5px; height:5px; margin-left:3px; border-radius:50%;
+    background:var(--gold); animation:nachladepunkt 1.1s infinite}
+  .urteil .pkt:nth-child(2){animation-delay:.18s}
+  .urteil .pkt:nth-child(3){animation-delay:.36s}
+
   .vorgelesen{text-align:center; padding:18px 14px; margin:4px 2px 14px; border-radius:18px;
     background:var(--glass-2); border:1px solid var(--hair); animation:ansageauf .5s both}
   .vorgelesen span{display:block; font-size:12.5px; color:var(--dim); margin-bottom:4px}
@@ -691,7 +708,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-19.3";
+var VERSION = "2026-09-19.4";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -4072,6 +4089,29 @@ function viewDitoSchreiben(z){
   app.appendChild(tabs());
 }
 
+// Die KI vergleicht die eigene Antwort mit der vorgelesenen
+function ditoAnfechten(z, felder){
+  var ich = meinName();
+  var v = z.vorgelesen || {};
+  var sheet = el('<div class="sheet"><div class="panel"><div class="griff"></div>' +
+    '<div class="mkopf"><b>Welche Antwort meinst du?</b><span>Vorgelesen wurde: ' + esc(v.text) +
+    '</span></div></div></div>');
+  var panel = sheet.querySelector(".panel");
+  var zu = function(){ sheet.remove(); };
+  sheet.onclick = function(e){ if (e.target === sheet) zu(); };
+  panel.appendChild(el('<p class="hintline" style="text-align:center">Die K\u00fcnstliche Intelligenz ' +
+    'entscheidet, ob beides dasselbe meint. Synonyme z\u00e4hlen, unterschiedlich genaue Antworten nicht. ' +
+    'Das geht nur einmal in der ganzen Partie, und das Urteil gilt.</p>'));
+  panel.appendChild(ditoTableau(felder, { waehlbar: "voll", tippen: function(i){
+    quizSenden({ tat: "anfechten", spieler: ich, feld: i });
+    zu();
+  } }));
+  var ab = el('<button class="cta ghost" type="button">Doch nicht</button>');
+  ab.onclick = zu;
+  panel.appendChild(ab);
+  document.body.appendChild(sheet);
+}
+
 function ditoBearbeiten(z, felder, i){
   var f = felder[i] || {};
   var ich = meinName();
@@ -4179,6 +4219,19 @@ function viewDitoMelden(z){
   if (!binVorleser) uhr(z.endeZeit, 60000);
   app.appendChild(ditoPlaketten((z.gemeldet || []).concat([v.spieler])));
 
+  if (z.urteiltGerade) {
+    app.appendChild(el('<div class="urteil laeuft"><span>Angefochten</span><b>' +
+      esc(z.urteiltGerade.text) + '</b><i>gegen ' + esc(v.text) + '</i>' +
+      '<p>Die K\u00fcnstliche Intelligenz vergleicht<span class="pkt"></span>' +
+      '<span class="pkt"></span><span class="pkt"></span></p></div>'));
+  } else if (z.urteil) {
+    app.appendChild(el('<div class="urteil ' + (z.urteil.gleich ? "ja" : "nein") + '">' +
+      '<span>' + esc(z.urteil.spieler) + ' hat angefochten</span><b>' + esc(z.urteil.text) + '</b>' +
+      '<i>gegen ' + esc(z.urteil.vorgelesen || v.text) + '</i>' +
+      '<p class="spruch">' + (z.urteil.gleich ? "Z\u00e4hlt als dasselbe" : "Z\u00e4hlt nicht") + '</p>' +
+      '<p class="grund">' + esc(z.urteil.grund) + '</p></div>'));
+  }
+
   if (binVorleser) {
     app.appendChild(el('<p class="note">Die anderen pr\u00fcfen gerade ihre Felder.</p>'));
     app.appendChild(ditoTableau(meine, {}));
@@ -4191,8 +4244,19 @@ function viewDitoMelden(z){
     app.appendChild(ditoTableau(meine, { waehlbar: "voll",
       tippen: function(i){ quizSenden({ tat: "melden", spieler: ich, feld: i }); } }));
     var nix = el('<button class="cta ghost" type="button">Hab ich nicht</button>');
-    nix.onclick = function(){ quizSenden({ tat: "melden", spieler: ich, feld: -1 }); };
+    bindTap(nix, function(){ quizSenden({ tat: "melden", spieler: ich, feld: -1 }); });
     app.appendChild(nix);
+
+    // Einmal je Partie darf jeder die KI entscheiden lassen
+    var schonAngefochten = (z.angefochten || []).indexOf(ich) >= 0;
+    if (!schonAngefochten && !z.urteiltGerade) {
+      var an = el('<button class="cta ghost" type="button">Anfechten lassen \u00b7 einmal je Partie</button>');
+      bindTap(an, function(){ ditoAnfechten(z, meine); });
+      app.appendChild(an);
+    } else if (schonAngefochten) {
+      app.appendChild(el('<p class="hintline" style="text-align:center">Dein Anfechten ist ' +
+        'schon verbraucht.</p>'));
+    }
   }
   if (S.hostet) {
     var auf = el('<button class="cta ghost" type="button">Jetzt aufl\u00f6sen</button>');
@@ -5086,6 +5150,7 @@ var RULES_DITO = [
   ["Eine Runde", "Reihum w\u00e4hlt einer aus zwei Kategorien. Danach schreiben alle gleichzeitig eine Antwort in ein freies Feld ihres Rasters. Das dreimal, dann sind neun Felder voll."],
   ["Antworten", "H\u00f6chstens zwei W\u00f6rter, Ausnahmen sind feste Begriffe und Eigennamen. Dieselbe Antwort darf in einer Runde nicht zweimal vorkommen, die App passt auf."],
   ["Korrigieren und abgeben", "Stehen deine drei Antworten, kannst du sie weiter \u00e4ndern, verschieben oder l\u00f6schen. Erst dein Haken auf Fertig gibt sie ab, und auch den kannst du zur\u00fccknehmen. Weiter geht es, wenn alle abgegeben haben oder die Zeit abgelaufen ist."],
+  ["Anfechten", "Bist du dir unsicher, ob deine Antwort dasselbe meint wie die vorgelesene, kannst du die K\u00fcnstliche Intelligenz entscheiden lassen. Das geht einmal in der ganzen Partie, alle sehen das Urteil samt Begr\u00fcndung, und es gilt. Sie h\u00e4lt sich an dieselbe Regel: Synonyme z\u00e4hlen, unterschiedlich genaue Antworten nicht."],
   ["Aufl\u00f6sung", "Reihum liest einer eine seiner Antworten vor. Wer dasselbe gemeint hat, tippt sein Feld an. Synonyme z\u00e4hlen, unterschiedlich genaue Antworten nicht: Violine und Geige ja, Instrument und Geige nein. Bei Streit entscheidet die Gruppe."],
   ["Punkte", "Ein Punkt je umkreiste Antwort. Hat genau einer dasselbe, gibt es zus\u00e4tzlich einen Stern: zwei Punkte, zu dritt einen. Hat niemand dasselbe, wird die Antwort gestrichen und bringt nichts."],
   ["Zu zweit", "Nicht im Original vorgesehen, geht hier aber. Sterne fallen weg, weil zu zweit jeder Treffer automatisch von genau einem kommt. Es z\u00e4hlen die Kreise und vor allem die Boni f\u00fcr volle Reihen und Spalten."],
