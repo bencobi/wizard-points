@@ -393,7 +393,7 @@
   .tfeld.waehlbar{cursor:pointer; border-color:var(--gold)}
   .tfeld.gewaehlt{background:var(--tint); border-color:var(--gold); transform:scale(1.03)}
   .tfeld.aenderbar{cursor:pointer}
-  .tfeld.aenderbar::after{content:"\u270e"; position:absolute; right:5px; bottom:3px;
+  .tfeld.aenderbar::after{content:"✎"; position:absolute; right:5px; bottom:3px;
     font-size:11px; color:var(--dim); opacity:.7}
   .tfeld.kreis{background:rgba(46,158,91,.10); border-color:rgba(46,158,91,.5)}
   .tfeld.kreuz .tt{opacity:.45}
@@ -689,7 +689,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-18.8";
+var VERSION = "2026-09-18.9";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -3988,18 +3988,33 @@ function viewDitoSchreiben(z){
   var ich = meinName();
   var meine = ditoEigene(z, z.felder[ich]);
   var gesetzt = (z.gesetzt || {})[ich] || 0;
-  var fertig = (z.geschrieben || []).indexOf(ich) >= 0 || gesetzt >= 3;
+  var fertig = (z.geschrieben || []).indexOf(ich) >= 0;
+  var alleDrei = gesetzt >= 3;
+  // Ein alter Worker kennt die Zaehlung nicht: dann fehlt das Feld ganz
+  if (z.gesetzt === undefined) app.appendChild(el('<p class="note warn">Der Server ist auf einem ' +
+    '\u00e4lteren Stand. Lade worker.js neu hoch, sonst kommen Antworten nicht an.</p>'));
   ditoKopf(z, "Kategorie " + (z.schritt || 1) + " von 3");
   app.appendChild(el('<h1 class="frage">' + esc(z.kategorie) + '</h1>'));
   uhr(z.endeZeit, 120000);
   app.appendChild(el('<div class="dreier">' +
     [0,1,2].map(function(i){ return '<i class="' + (i < gesetzt ? "voll" : "") + '"></i>'; }).join("") +
-    '<span>' + (fertig ? "alle drei stehen" : (gesetzt + " von 3 Antworten")) + '</span></div>'));
+    '<span>' + (fertig ? "abgegeben" : (gesetzt + " von 3 Antworten")) + '</span></div>'));
   app.appendChild(ditoPlaketten(z.geschrieben));
 
   if (fertig) {
     app.appendChild(ditoTableau(meine, {}));
-    app.appendChild(el('<p class="note">Steht. Warten auf die anderen.</p>'));
+    app.appendChild(el('<p class="note">Abgegeben. Warten auf die anderen.</p>'));
+    var zurueck = el('<button class="cta ghost" type="button">Doch noch \u00e4ndern</button>');
+    bindTap(zurueck, function(){ quizSenden({ tat: "fertig", spieler: ich, wert: false }); });
+    app.appendChild(zurueck);
+  } else if (alleDrei) {
+    app.appendChild(el('<p class="hintline" style="text-align:center">Alle drei stehen. Du kannst sie noch ' +
+      '\u00e4ndern, verschieben oder l\u00f6schen. Erst dein Haken schaltet weiter.</p>'));
+    app.appendChild(ditoTableau(meine, { kategorie: z.kategorie,
+      bearbeiten: function(i){ ditoBearbeiten(z, meine, i); } }));
+    var ab2 = el('<button class="cta" type="button">Fertig, abgeben</button>');
+    bindTap(ab2, function(){ quizSenden({ tat: "fertig", spieler: ich, wert: true }); });
+    app.appendChild(ab2);
   } else {
     if (ditoFeldWahl === null || (meine[ditoFeldWahl] && meine[ditoFeldWahl].zustand !== "leer")) {
       ditoFeldWahl = meine.findIndex(function(f){ return f.zustand === "leer"; });
@@ -4038,7 +4053,7 @@ function viewDitoSchreiben(z){
       // Nachfassen: Ist die Antwort nach anderthalb Sekunden nicht angekommen, sag es.
       var warVorher = gesetzt;
       setTimeout(function(){
-        if (!QUIZ || QUIZ.phase !== "schreiben") return;
+        if (!QUIZ || QUIZ.phase !== "schreiben" || QUIZ.gesetzt === undefined) return;
         if (((QUIZ.gesetzt || {})[ich] || 0) > warVorher) return;
         var warn = app.querySelector(".dopwarn");
         if (!warn) { warn = el('<p class="note warn dopwarn"></p>'); app.appendChild(warn); }
@@ -5048,7 +5063,7 @@ var RULES_DITO = [
   ["Jeder braucht sein eigenes Handy", "Der Gastgeber gibt die Partie frei, die anderen treten mit Code oder QR-Code bei und w\u00e4hlen ihren Namen. Drei bis sieben Spieler."],
   ["Eine Runde", "Reihum w\u00e4hlt einer aus zwei Kategorien. Danach schreiben alle gleichzeitig eine Antwort in ein freies Feld ihres Rasters. Das dreimal, dann sind neun Felder voll."],
   ["Antworten", "H\u00f6chstens zwei W\u00f6rter, Ausnahmen sind feste Begriffe und Eigennamen. Dieselbe Antwort darf in einer Runde nicht zweimal vorkommen, die App passt auf."],
-  ["Korrigieren", "Solange die Kategorie l\u00e4uft, geh\u00f6ren dir deine drei Antworten dazu: Tipp eine an, dann kannst du den Text \u00e4ndern, sie auf ein freies Feld schieben oder sie l\u00f6schen und neu schreiben. Sobald die n\u00e4chste Kategorie beginnt, sind sie fest."],
+  ["Korrigieren und abgeben", "Stehen deine drei Antworten, kannst du sie weiter \u00e4ndern, verschieben oder l\u00f6schen. Erst dein Haken auf Fertig gibt sie ab, und auch den kannst du zur\u00fccknehmen. Weiter geht es, wenn alle abgegeben haben oder die Zeit abgelaufen ist."],
   ["Aufl\u00f6sung", "Reihum liest einer eine seiner Antworten vor. Wer dasselbe gemeint hat, tippt sein Feld an. Synonyme z\u00e4hlen, unterschiedlich genaue Antworten nicht: Violine und Geige ja, Instrument und Geige nein. Bei Streit entscheidet die Gruppe."],
   ["Punkte", "Ein Punkt je umkreiste Antwort. Hat genau einer dasselbe, gibt es zus\u00e4tzlich einen Stern: zwei Punkte, zu dritt einen. Hat niemand dasselbe, wird die Antwort gestrichen und bringt nichts."],
   ["Zu zweit", "Nicht im Original vorgesehen, geht hier aber. Sterne fallen weg, weil zu zweit jeder Treffer automatisch von genau einem kommt. Es z\u00e4hlen die Kreise und vor allem die Boni f\u00fcr volle Reihen und Spalten."],
