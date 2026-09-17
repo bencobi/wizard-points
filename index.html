@@ -689,7 +689,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-18.7";
+var VERSION = "2026-09-18.8";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -4035,6 +4035,15 @@ function viewDitoSchreiben(z){
       ditoMerkeEigene(z.runde || 1, ziel, t);
       quizSenden({ tat: "schreiben", spieler: ich, feld: ziel, text: t });
       ditoFeldWahl = null;
+      // Nachfassen: Ist die Antwort nach anderthalb Sekunden nicht angekommen, sag es.
+      var warVorher = gesetzt;
+      setTimeout(function(){
+        if (!QUIZ || QUIZ.phase !== "schreiben") return;
+        if (((QUIZ.gesetzt || {})[ich] || 0) > warVorher) return;
+        var warn = app.querySelector(".dopwarn");
+        if (!warn) { warn = el('<p class="note warn dopwarn"></p>'); app.appendChild(warn); }
+        warn.textContent = "Die Antwort kam nicht an. Tipp noch einmal auf Eintragen.";
+      }, 1500);
     };
     app.appendChild(absenden("Antwort " + (gesetzt + 1) + " eintragen", feld, eintragen));
   }
@@ -5136,6 +5145,7 @@ function openMenu(){
   zeile("\u21C4", "Gemeinsam spielen",
     S.live ? "Code " + S.live + (S.hostet ? "" : " \u00b7 als Gast dabei") : "Noch nicht freigegeben",
     S.live ? "an" : "", liveSheet);
+  zeile("\u2139", "Version", VERSION, "", null);
   var themaName = "Hell";
   THEMES.forEach(function(t){ if (t.id === ALL.theme) themaName = t.name; });
   zeile("\u25D1", "Farbe", themaName, "", function(){
