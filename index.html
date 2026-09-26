@@ -734,7 +734,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-19.6";
+var VERSION = "2026-09-19.7";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -771,7 +771,7 @@ function fresh(){ return { theme:"light", cur:null, games:{}, history:[] }; }
 function grenzen(id){
   if (id === "kniffel") return { min: 1, max: 8 };   // allein spielbar
   if (id === "skyjo")   return { min: 2, max: 8 };
-  if (id === "quiz")    return { min: 2, max: 8 };
+  if (id === "quiz")    return { min: 2, max: 10 };
   if (id === "bluff")   return { min: 3, max: 8 };   // unter drei lohnt das Bluffen nicht
   if (id === "dito")    return { min: 2, max: 7 };
   if (id === "phase10") return { min: 2, max: 6 };
@@ -940,7 +940,8 @@ function bindTap(btn, fn){
   });
 }
 
-var HUES = ["#E0982A", "#12A79B", "#E05A63", "#7B5BD6", "#6E9E22", "#2D82C7", "#C2568F", "#8A6A3B"];
+var HUES = ["#E0982A", "#12A79B", "#E05A63", "#7B5BD6", "#6E9E22", "#2D82C7", "#C2568F", "#8A6A3B",
+            "#4A8F7B", "#B0483C"];
 function hue(i){ return HUES[i % HUES.length]; }
 
 function strip(cur){
