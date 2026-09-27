@@ -677,6 +677,7 @@
   .loesung.verdeckt{opacity:0}
   .loesung{transition:opacity .4s ease}
   .strahl.laeuft .tipp{transition:left .55s cubic-bezier(.2,.8,.25,1)}
+  .strahl.laeuft.nurpunkte .tipp{transition:left .8s cubic-bezier(.2,.8,.25,1)}
   .strahl.laeuft .tipp span{opacity:0; transform:translateY(8px);
     transition:opacity .3s ease, transform .3s ease}
   .strahl.laeuft.an .tipp span{opacity:1; transform:none}
@@ -693,16 +694,28 @@
   .strahl .ziel.randrechts span{left:auto; right:-4px; transform:none}
   .strahl .tipp.randrechts span{left:auto; right:-4px; transform:none}
   /* Bei vielen Tipps traegt die Linie nur die Punkte, die Werte stehen darunter */
-  .strahl.nurpunkte{height:86px; padding-top:14px}
+  .strahl.nurpunkte{height:104px; margin-top:36px}
+  .strahl .faeden{position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible;
+    pointer-events:none}
+  .strahl .faeden line{stroke-width:1.2; opacity:.55; transition:opacity .3s ease}
+  .strahl .faeden line.kommt{opacity:0}
+  .strahl .marke{position:absolute; top:76px; transform:translateX(-50%); width:19px; height:19px;
+    border-radius:50%; background:var(--acc); color:#fff; font-size:10.5px; font-weight:800;
+    line-height:19px; text-align:center; border:1.5px solid var(--panel);
+    transition:opacity .3s ease, transform .3s ease}
+  .strahl .marke.kommt{opacity:0; transform:translate(-50%, -6px) scale(.6)}
   .strahlbox{margin:0 0 14px}
   .tippliste{display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin:0 4px;
     transition:opacity .4s ease}
-  .ruf{position:absolute; top:-6px; left:50%; transform:translate(-50%, 6px) scale(.8);
-    padding:6px 12px; border-radius:999px; background:var(--acc, var(--gold)); color:#fff;
-    font-size:15px; font-weight:800; white-space:nowrap; opacity:0; pointer-events:none;
+  .ruf{position:absolute; top:-30px; left:50%; transform:translate(-50%, 6px) scale(.8);
+    padding:5px 11px; border-radius:999px; background:var(--acc, var(--gold)); color:#fff;
+    font-size:14px; font-weight:800; white-space:nowrap; opacity:0; pointer-events:none;
     box-shadow:0 6px 16px rgba(0,0,0,.18)}
   .ruf span{margin-left:6px; font-weight:600; opacity:.9}
-  .ruf.an{animation:rufauf 1.1s cubic-bezier(.2,.9,.3,1) both}
+  /* Der Zeiger zeigt auf den eigenen Punkt, auch wenn die Blase am Rand nach innen geschoben wurde */
+  .ruf::after{content:""; position:absolute; top:100%; left:calc(50% + var(--zeiger, 0px));
+    transform:translateX(-50%); border:6px solid transparent; border-top-color:var(--acc, var(--gold))}
+  .ruf.an{animation:rufauf 1.5s cubic-bezier(.2,.9,.3,1) both}
   @keyframes rufauf{
     0%{opacity:0; transform:translate(-50%, 14px) scale(.7)}
     18%{opacity:1; transform:translate(-50%, -2px) scale(1.06)}
@@ -770,7 +783,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-20.3";
+var VERSION = "2026-09-20.8";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -3130,6 +3143,8 @@ function zahlenstrahl(a, sofort, loesungsfeld){
   // Dann traegt die Linie nur noch die Punkte, die Werte stehen darunter in einer Liste.
   var alsListe = namen.length > 5;
   var huelle = el('<div class="strahlbox"></div>');
+  var takt = alsListe ? 1250 : 900;          // Abstand zwischen zwei einfliegenden Tipps
+  var landung = alsListe ? 620 : 420;        // wann der Tipp ankommt, gemessen ab seinem Start
   var box = el('<div class="strahl' + (laufen ? " laeuft" : "") +
     (alsListe ? " nurpunkte" : "") + '"></div>');
   box.appendChild(el('<div class="linie"></div>'));
@@ -3150,17 +3165,17 @@ function zahlenstrahl(a, sofort, loesungsfeld){
     etage = (p - letzte < 12) ? (etage + 1) % 3 : 0;
     letzte = p;
     var t = el('<div class="tipp e' + (alsListe ? 0 : etage) + '" style="--acc:' + hue(e.i) + '">' +
-      '<i></i>' + (alsListe ? '' :
-        '<span>' + esc(e.nm.charAt(0).toUpperCase()) + " " + esc(zahl(e.w)) + '</span>') + '</div>');
+      '<i></i>' + (alsListe ? ''
+        : '<span>' + esc(e.nm.charAt(0).toUpperCase()) + " " + esc(zahl(e.w)) + '</span>') + '</div>');
     t.style.left = laufen ? "0%" : p.toFixed(2) + "%";
     if (p < 10) t.classList.add("randlinks");
     else if (p > 90) t.classList.add("randrechts");
     t.setAttribute("data-ziel", p.toFixed(2));
     t.setAttribute("data-ab", String(Math.abs(e.w - loesung)));
     if (laufen) {
-      t.style.transitionDelay = (500 + k * 900) + "ms";
+      t.style.transitionDelay = (500 + k * takt) + "ms";
       var beschriftung = t.querySelector("span");
-      if (beschriftung) beschriftung.style.transitionDelay = (900 + k * 900) + "ms";
+      if (beschriftung) beschriftung.style.transitionDelay = (900 + k * takt) + "ms";
     }
     box.appendChild(t);
     punkte.push(t);
@@ -3169,6 +3184,38 @@ function zahlenstrahl(a, sofort, loesungsfeld){
   var naechster = punkte.slice().sort(function(x, y){
     return Number(x.getAttribute("data-ab")) - Number(y.getAttribute("data-ab"));
   })[0];
+
+  var marken = [], faeden = [];
+  if (alsListe) {
+    // Eine Marke ist etwa 20 Pixel breit, auf dem Handy rund sechs Prozent der Leiste.
+    // Liegen Punkte dichter, ruecken die Marken seitlich auseinander und ein Faden
+    // fuehrt zum Punkt. So bleibt alles in einer Reihe, egal wie eng es wird.
+    var abstand = 6.5, rand = 3;
+    var xs = punkte.map(function(t){ return Number(t.getAttribute("data-ziel")); });
+    var lx = [];
+    xs.forEach(function(x, k){ lx[k] = Math.max(x, rand, k ? lx[k - 1] + abstand : rand); });
+    for (var k = lx.length - 1; k >= 0; k--) {
+      var grenze = k === lx.length - 1 ? 100 - rand : lx[k + 1] - abstand;
+      if (lx[k] > grenze) lx[k] = grenze;
+    }
+    var svgNs = "http://www.w3.org/2000/svg";
+    var svg = document.createElementNS(svgNs, "svg");
+    svg.setAttribute("class", "faeden");
+    box.appendChild(svg);
+    sortiert.forEach(function(e, k){
+      var linie = document.createElementNS(svgNs, "line");
+      linie.setAttribute("x1", xs[k].toFixed(2) + "%"); linie.setAttribute("y1", "59");
+      linie.setAttribute("x2", lx[k].toFixed(2) + "%"); linie.setAttribute("y2", "76");
+      linie.setAttribute("class", laufen ? "kommt" : "");
+      linie.style.stroke = hue(e.i);
+      svg.appendChild(linie);
+      faeden.push(linie);
+      var m = el('<b class="marke' + (laufen ? " kommt" : "") + '" style="--acc:' + hue(e.i) +
+        ';left:' + lx[k].toFixed(2) + '%">' + esc(e.nm.charAt(0).toUpperCase()) + '</b>');
+      box.appendChild(m);
+      marken.push(m);
+    });
+  }
 
   huelle.appendChild(box);
   var liste = null, zeilen = {};
@@ -3196,13 +3243,18 @@ function zahlenstrahl(a, sofort, loesungsfeld){
         // Erst den Text setzen, dann messen: eine breite Blase am Rand darf nicht hinausragen
         var breite = box.offsetWidth || 1, halb = (ruf.offsetWidth || 0) / 2;
         var rand = Math.min(50, (halb / breite) * 100 + 1);
-        ruf.style.left = Math.max(rand, Math.min(100 - rand, p)).toFixed(2) + "%";
+        var mitte = Math.max(rand, Math.min(100 - rand, p));
+        ruf.style.left = mitte.toFixed(2) + "%";
+        var versatz = ((p - mitte) / 100) * breite;
+        ruf.style.setProperty("--zeiger", Math.max(-halb + 10, Math.min(halb - 10, versatz)).toFixed(1) + "px");
         ruf.style.setProperty("--acc", hue(e.i));
         ruf.classList.remove("an"); void ruf.offsetWidth; ruf.classList.add("an");
         if (zeilen[e.nm]) zeilen[e.nm].classList.remove("kommt");
-      }, 500 + k * 900 + 420);
+        if (marken[k]) marken[k].classList.remove("kommt");
+        if (faeden[k]) faeden[k].setAttribute("class", "");
+      }, 500 + k * takt + landung);
     });
-    setTimeout(function(){ ruf.classList.remove("an"); }, 500 + sortiert.length * 900 + 500);
+    setTimeout(function(){ ruf.classList.remove("an"); }, 500 + sortiert.length * takt + 700);
   }
 
   function aufdecken(){
@@ -3210,6 +3262,8 @@ function zahlenstrahl(a, sofort, loesungsfeld){
     box.classList.add("aufgedeckt");
     if (naechster) naechster.classList.add("naechster");
     if (liste) [].forEach.call(liste.children, function(z){ z.classList.remove("kommt"); });
+    marken.forEach(function(m){ m.classList.remove("kommt"); });
+    faeden.forEach(function(f){ f.setAttribute("class", ""); });
     if (!loesungsfeld) return;
     loesungsfeld.classList.remove("verdeckt");
     if (!laufen) return;
@@ -3233,7 +3287,7 @@ function zahlenstrahl(a, sofort, loesungsfeld){
       punkte.forEach(function(t){ t.style.left = t.getAttribute("data-ziel") + "%"; });
     });
   });
-  setTimeout(aufdecken, 900 + punkte.length * 900);
+  setTimeout(aufdecken, 900 + punkte.length * takt);
   return huelle;
 }
 
