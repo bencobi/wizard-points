@@ -629,7 +629,13 @@
 
   .antwort{display:flex; align-items:center; gap:10px; text-align:left}
   .antwort > .buchstabe{flex:none}
-  .antwort .tipper{display:flex; gap:4px; margin-left:auto; flex:none}
+  .antwort .tipper{display:flex; gap:4px; margin-left:auto; flex:0 1 auto; flex-wrap:wrap;
+    justify-content:flex-end; max-width:52%}
+  /* Ab sieben Mitspielern ruecken die Zeichen zusammen und ueberlappen sich wie ein Stapel */
+  .antwort .tipper.viele{gap:0; flex-wrap:nowrap; max-width:58%}
+  .antwort .tipper.viele .flieger{width:21px; height:21px; font-size:10px; margin-left:-5px;
+    border:1.5px solid var(--panel)}
+  .antwort .tipper.viele .flieger:first-child{margin-left:0}
   .antwort .marke{position:static; transform:none; margin-left:auto; flex:none; text-align:right;
     max-width:40%; line-height:1.25}
   .antwort .marke + .tipper{margin-left:8px}
@@ -682,6 +688,19 @@
     border:2px solid var(--panel); margin:-4px auto 0}
   .strahl .tipp span{position:absolute; top:11px; left:50%; transform:translateX(-50%); white-space:nowrap;
     font-size:11px; font-weight:700; color:var(--dim)}
+  /* Bei vielen Tipps traegt die Linie nur die Punkte, die Werte stehen darunter */
+  .strahl.nurpunkte{height:72px}
+  .strahlbox{margin:0 0 14px}
+  .tippliste{display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin:0 4px;
+    transition:opacity .4s ease}
+  .tippliste.wartet{opacity:0}
+  .tz{display:inline-flex; align-items:center; gap:5px; padding:4px 10px 4px 7px; border-radius:999px;
+    background:var(--glass-2); border:1px solid var(--hair); font-size:12.5px; color:var(--dim);
+    white-space:nowrap}
+  .tz i{width:8px; height:8px; border-radius:50%; background:var(--acc); flex:none}
+  .tz b{font-weight:700; color:var(--text)}
+  .tz.nah{border-color:#2E9E5B; background:rgba(46,158,91,.12); color:#2E9E5B}
+  .tz.nah b{color:#2E9E5B}
   .strahl .tipp.e1 span{top:27px}
   .strahl .tipp.e2 span{top:43px}
 
@@ -734,7 +753,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-19.7";
+var VERSION = "2026-09-20.1";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -3090,7 +3109,12 @@ function zahlenstrahl(a, sofort, loesungsfeld){
   try { if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) laufen = false; } catch (e) {}
   if (typeof requestAnimationFrame !== "function") laufen = false;
 
-  var box = el('<div class="strahl' + (laufen ? " laeuft" : "") + '"></div>');
+  // Viele Tipps drängen sich an der Linie und die Beschriftungen liegen uebereinander.
+  // Dann traegt die Linie nur noch die Punkte, die Werte stehen darunter in einer Liste.
+  var alsListe = namen.length > 5;
+  var huelle = el('<div class="strahlbox"></div>');
+  var box = el('<div class="strahl' + (laufen ? " laeuft" : "") +
+    (alsListe ? " nurpunkte" : "") + '"></div>');
   box.appendChild(el('<div class="linie"></div>'));
   var ziel = el('<div class="ziel' + (laufen ? " spaeter" : "") + '" style="left:' + pos(loesung).toFixed(2) + '%">' +
     '<span>' + esc(zahl(loesung)) + '</span></div>');
@@ -3103,14 +3127,16 @@ function zahlenstrahl(a, sofort, loesungsfeld){
     var p = pos(e.w);
     etage = (p - letzte < 12) ? (etage + 1) % 3 : 0;
     letzte = p;
-    var t = el('<div class="tipp e' + etage + '" style="--acc:' + hue(e.i) + '">' +
-      '<i></i><span>' + esc(e.nm.charAt(0).toUpperCase()) + " " + esc(zahl(e.w)) + '</span></div>');
+    var t = el('<div class="tipp e' + (alsListe ? 0 : etage) + '" style="--acc:' + hue(e.i) + '">' +
+      '<i></i>' + (alsListe ? '' :
+        '<span>' + esc(e.nm.charAt(0).toUpperCase()) + " " + esc(zahl(e.w)) + '</span>') + '</div>');
     t.style.left = laufen ? "0%" : p.toFixed(2) + "%";
     t.setAttribute("data-ziel", p.toFixed(2));
     t.setAttribute("data-ab", String(Math.abs(e.w - loesung)));
     if (laufen) {
       t.style.transitionDelay = (500 + k * 900) + "ms";
-      t.querySelector("span").style.transitionDelay = (900 + k * 900) + "ms";
+      var beschriftung = t.querySelector("span");
+      if (beschriftung) beschriftung.style.transitionDelay = (900 + k * 900) + "ms";
     }
     box.appendChild(t);
     punkte.push(t);
@@ -3120,10 +3146,24 @@ function zahlenstrahl(a, sofort, loesungsfeld){
     return Number(x.getAttribute("data-ab")) - Number(y.getAttribute("data-ab"));
   })[0];
 
+  huelle.appendChild(box);
+  var liste = null;
+  if (alsListe) {
+    liste = el('<div class="tippliste' + (laufen ? " wartet" : "") + '"></div>');
+    namen.slice().sort(function(x, y){
+      return Math.abs(x.w - loesung) - Math.abs(y.w - loesung);
+    }).forEach(function(e, k){
+      liste.appendChild(el('<span class="tz' + (k === 0 ? " nah" : "") + '" style="--acc:' + hue(e.i) + '">' +
+        '<i></i><b>' + esc(e.nm) + '</b> ' + esc(zahl(e.w)) + '</span>'));
+    });
+    huelle.appendChild(liste);
+  }
+
   function aufdecken(){
     ziel.classList.remove("spaeter");
     box.classList.add("aufgedeckt");
     if (naechster) naechster.classList.add("naechster");
+    if (liste) liste.classList.remove("wartet");
     if (!loesungsfeld) return;
     loesungsfeld.classList.remove("verdeckt");
     if (!laufen) return;
@@ -3139,7 +3179,7 @@ function zahlenstrahl(a, sofort, loesungsfeld){
     })();
   }
 
-  if (!laufen) { aufdecken(); return box; }
+  if (!laufen) { aufdecken(); return huelle; }
 
   requestAnimationFrame(function(){
     requestAnimationFrame(function(){
@@ -3148,7 +3188,7 @@ function zahlenstrahl(a, sofort, loesungsfeld){
     });
   });
   setTimeout(aufdecken, 900 + punkte.length * 900);
-  return box;
+  return huelle;
 }
 
 var RANG_POS = {};
@@ -3520,7 +3560,7 @@ function viewQuizAuf(){
         '<span class="buchstabe">' + "ABCD".charAt(i) + '</span>' + esc(o) +
         (richtig ? '<span class="marke' + (sofort ? "" : " verdeckt") + '">richtig</span>'
                  : (meins ? '<span class="marke' + (sofort ? "" : " verdeckt") + '">dein Tipp</span>' : '')) +
-        '<span class="tipper"></span></div>');
+        '<span class="tipper' + (S.names.length > 6 ? " viele" : "") + '"></span></div>');
       feld.setAttribute("data-ende", endklasse);
       felder.push(feld);
       app.appendChild(feld);
@@ -4608,7 +4648,7 @@ function bluffAuf(z){
     var feld = el('<div class="antwort' + (sofort ? (wahr ? " richtig" : " ruhig") : "") + '">' +
       '<span class="buchstabe">' + (i + 1) + '</span>' + esc(o.text) +
       '<span class="marke' + (sofort ? "" : " verdeckt") + '">' + esc(quelle) + '</span>' +
-      '<span class="tipper"></span></div>');
+      '<span class="tipper' + (S.names.length > 6 ? " viele" : "") + '"></span></div>');
     feld.setAttribute("data-ende", wahr ? "richtig" : "ruhig");
     felder.push(feld);
     app.appendChild(feld);
@@ -4716,7 +4756,7 @@ function bluffJaNeinAuf(z){
     var feld = el('<div class="antwort' + (sofort ? (richtig ? " richtig" : " falsch") : "") + '">' +
       '<span class="buchstabe">' + (paar[1] ? "\u2713" : "\u2715") + '</span>' + paar[0] +
       '<span class="marke' + (sofort ? "" : " verdeckt") + '">' + (richtig ? "richtig" : "daneben") + '</span>' +
-      '<span class="tipper"></span></div>');
+      '<span class="tipper' + (S.names.length > 6 ? " viele" : "") + '"></span></div>');
     feld.setAttribute("data-ende", richtig ? "richtig" : "falsch");
     felder.push(feld);
     app.appendChild(feld);
