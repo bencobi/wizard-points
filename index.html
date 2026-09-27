@@ -48,7 +48,8 @@
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
   html{touch-action:manipulation}
-  html,body{margin:0; min-height:100%}
+  html,body{margin:0; min-height:100%; overflow-x:hidden}
+  @supports (overflow-x:clip){ html,body{overflow-x:clip} }
   body{
     background:
       radial-gradient(125% 58% at 50% -10%, var(--glow) 0%, transparent 64%),
@@ -60,7 +61,7 @@
     padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
     overscroll-behavior:none;
   }
-  #app{max-width:560px; margin:0 auto; padding:12px 14px 104px}
+  #app{max-width:560px; margin:0 auto; padding:12px 14px 104px; overflow-x:clip}
   button{font:inherit; color:inherit; background:none; border:none; cursor:pointer;
     touch-action:manipulation; user-select:none; -webkit-user-select:none}
   input{font:inherit}
@@ -688,12 +689,28 @@
     border:2px solid var(--panel); margin:-4px auto 0}
   .strahl .tipp span{position:absolute; top:11px; left:50%; transform:translateX(-50%); white-space:nowrap;
     font-size:11px; font-weight:700; color:var(--dim)}
+  .strahl .tipp.randlinks span, .strahl .ziel.randlinks span{left:-4px; transform:none}
+  .strahl .ziel.randrechts span{left:auto; right:-4px; transform:none}
+  .strahl .tipp.randrechts span{left:auto; right:-4px; transform:none}
   /* Bei vielen Tipps traegt die Linie nur die Punkte, die Werte stehen darunter */
-  .strahl.nurpunkte{height:72px}
+  .strahl.nurpunkte{height:86px; padding-top:14px}
   .strahlbox{margin:0 0 14px}
   .tippliste{display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin:0 4px;
     transition:opacity .4s ease}
-  .tippliste.wartet{opacity:0}
+  .ruf{position:absolute; top:-6px; left:50%; transform:translate(-50%, 6px) scale(.8);
+    padding:6px 12px; border-radius:999px; background:var(--acc, var(--gold)); color:#fff;
+    font-size:15px; font-weight:800; white-space:nowrap; opacity:0; pointer-events:none;
+    box-shadow:0 6px 16px rgba(0,0,0,.18)}
+  .ruf span{margin-left:6px; font-weight:600; opacity:.9}
+  .ruf.an{animation:rufauf 1.1s cubic-bezier(.2,.9,.3,1) both}
+  @keyframes rufauf{
+    0%{opacity:0; transform:translate(-50%, 14px) scale(.7)}
+    18%{opacity:1; transform:translate(-50%, -2px) scale(1.06)}
+    30%{transform:translate(-50%, 0) scale(1)}
+    78%{opacity:1; transform:translate(-50%, 0) scale(1)}
+    100%{opacity:0; transform:translate(-50%, -10px) scale(.94)}}
+  .tz.kommt{opacity:0; transform:translateY(6px)}
+  .tz{transition:opacity .35s ease, transform .35s ease}
   .tz{display:inline-flex; align-items:center; gap:5px; padding:4px 10px 4px 7px; border-radius:999px;
     background:var(--glass-2); border:1px solid var(--hair); font-size:12.5px; color:var(--dim);
     white-space:nowrap}
@@ -753,7 +770,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-20.1";
+var VERSION = "2026-09-20.3";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -3116,7 +3133,12 @@ function zahlenstrahl(a, sofort, loesungsfeld){
   var box = el('<div class="strahl' + (laufen ? " laeuft" : "") +
     (alsListe ? " nurpunkte" : "") + '"></div>');
   box.appendChild(el('<div class="linie"></div>'));
-  var ziel = el('<div class="ziel' + (laufen ? " spaeter" : "") + '" style="left:' + pos(loesung).toFixed(2) + '%">' +
+  var ruf = alsListe ? el('<div class="ruf"><b></b><span></span></div>') : null;
+  if (ruf) box.appendChild(ruf);
+  var zielPos = pos(loesung);
+  var ziel = el('<div class="ziel' + (laufen ? " spaeter" : "") +
+    (zielPos < 10 ? " randlinks" : zielPos > 90 ? " randrechts" : "") +
+    '" style="left:' + zielPos.toFixed(2) + '%">' +
     '<span>' + esc(zahl(loesung)) + '</span></div>');
   box.appendChild(ziel);
 
@@ -3131,6 +3153,8 @@ function zahlenstrahl(a, sofort, loesungsfeld){
       '<i></i>' + (alsListe ? '' :
         '<span>' + esc(e.nm.charAt(0).toUpperCase()) + " " + esc(zahl(e.w)) + '</span>') + '</div>');
     t.style.left = laufen ? "0%" : p.toFixed(2) + "%";
+    if (p < 10) t.classList.add("randlinks");
+    else if (p > 90) t.classList.add("randrechts");
     t.setAttribute("data-ziel", p.toFixed(2));
     t.setAttribute("data-ab", String(Math.abs(e.w - loesung)));
     if (laufen) {
@@ -3147,23 +3171,45 @@ function zahlenstrahl(a, sofort, loesungsfeld){
   })[0];
 
   huelle.appendChild(box);
-  var liste = null;
+  var liste = null, zeilen = {};
   if (alsListe) {
-    liste = el('<div class="tippliste' + (laufen ? " wartet" : "") + '"></div>');
-    namen.slice().sort(function(x, y){
+    liste = el('<div class="tippliste"></div>');
+    var nachNaehe = namen.slice().sort(function(x, y){
       return Math.abs(x.w - loesung) - Math.abs(y.w - loesung);
-    }).forEach(function(e, k){
-      liste.appendChild(el('<span class="tz' + (k === 0 ? " nah" : "") + '" style="--acc:' + hue(e.i) + '">' +
-        '<i></i><b>' + esc(e.nm) + '</b> ' + esc(zahl(e.w)) + '</span>'));
+    });
+    nachNaehe.forEach(function(e, k){
+      var z = el('<span class="tz' + (laufen ? " kommt" : "") + (k === 0 ? " nah" : "") +
+        '" style="--acc:' + hue(e.i) + '"><i></i><b>' + esc(e.nm) + '</b> ' + esc(zahl(e.w)) + '</span>');
+      zeilen[e.nm] = z;
+      liste.appendChild(z);
     });
     huelle.appendChild(liste);
+  }
+
+  // Jeder Tipp bekommt seinen Auftritt: gross am Strahl, danach wandert er in die Liste
+  if (laufen && alsListe) {
+    sortiert.forEach(function(e, k){
+      var p = pos(e.w);
+      setTimeout(function(){
+        ruf.querySelector("b").textContent = e.nm;
+        ruf.querySelector("span").textContent = zahl(e.w);
+        // Erst den Text setzen, dann messen: eine breite Blase am Rand darf nicht hinausragen
+        var breite = box.offsetWidth || 1, halb = (ruf.offsetWidth || 0) / 2;
+        var rand = Math.min(50, (halb / breite) * 100 + 1);
+        ruf.style.left = Math.max(rand, Math.min(100 - rand, p)).toFixed(2) + "%";
+        ruf.style.setProperty("--acc", hue(e.i));
+        ruf.classList.remove("an"); void ruf.offsetWidth; ruf.classList.add("an");
+        if (zeilen[e.nm]) zeilen[e.nm].classList.remove("kommt");
+      }, 500 + k * 900 + 420);
+    });
+    setTimeout(function(){ ruf.classList.remove("an"); }, 500 + sortiert.length * 900 + 500);
   }
 
   function aufdecken(){
     ziel.classList.remove("spaeter");
     box.classList.add("aufgedeckt");
     if (naechster) naechster.classList.add("naechster");
-    if (liste) liste.classList.remove("wartet");
+    if (liste) [].forEach.call(liste.children, function(z){ z.classList.remove("kommt"); });
     if (!loesungsfeld) return;
     loesungsfeld.classList.remove("verdeckt");
     if (!laufen) return;
