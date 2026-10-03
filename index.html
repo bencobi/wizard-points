@@ -626,6 +626,11 @@
     background:var(--gold); color:#fff; font-size:13px}
   .zs-platz span{font-size:14px; line-height:1.25}
   .zs-platz .zs-leer{font-size:12px; color:var(--dim)}
+  .zs-platz.joker{border-color:#7B5BD6; background:rgba(123,91,214,.13)}
+  .zs-platz.joker b{background:#7B5BD6}
+  .zs-jtag{margin-left:auto; flex:none; font-style:normal; font-size:10.5px; font-weight:800; color:#7B5BD6;
+    padding:2px 7px; border-radius:999px; border:1px solid #7B5BD6}
+  .zs-jokerknopf b{color:#7B5BD6; margin-right:4px}
   .zs-karten{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:0 0 14px}
   .zs-karte{display:flex; align-items:flex-start; gap:9px; text-align:left; padding:12px; border-radius:16px;
     border:1px solid var(--hair); background:var(--glass-2); color:var(--text); font:inherit; min-height:74px;
@@ -956,7 +961,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-21.7";
+var VERSION = "2026-09-21.8";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -3340,6 +3345,8 @@ function nurFortschritt(alt, neu){
     if (alt.modus !== "zeitstrahl" || alt.phase !== "sortieren" || neu.phase !== "sortieren") return false;
     if (alt.runde !== neu.runde) return false;
     var ich2 = meinName();
+    if (JSON.stringify(alt.meinJoker || null) !== JSON.stringify(neu.meinJoker || null)) return false;
+    if (alt.jokerUebrig !== neu.jokerUebrig) return false;
     return ((alt.abgegeben || []).indexOf(ich2) >= 0) === ((neu.abgegeben || []).indexOf(ich2) >= 0);
   }
   if (neu.modus === "skala") {
@@ -4231,6 +4238,7 @@ var ZEIT_FOLGE = {};        // eigene Auswahl je Runde: Kartenpositionen in Reih
 var ZEIT_ABGABE = {};       // wann man eingeloggt hat, fuer die Anzeige
 var ZEIT_GESEHEN = null;
 var ZEIT_RUNDEN = 8;
+var ZEIT_JOKER = false;
 var BUCHSTABEN = ["A", "B", "C", "D"];
 
 function jahrText(j){ return j < 0 ? (-j) + " v. Chr." : String(j); }
@@ -4247,6 +4255,7 @@ function viewZeit(){
   var z = QUIZ;
   if (quizTakt) { clearInterval(quizTakt); clearTimeout(quizTakt); quizTakt = null; }
   if (!z || z.modus !== "zeitstrahl") return viewZeitLobby();
+  if (skalaGemeldet !== sock) setTimeout(skalaAnmelden, 0);
   if (z.zeigenAb && serverJetzt() < z.zeigenAb && z.phase === "ansage")
     return ditoAnsage("Runde " + z.runde, esc((z.aufgabe || {}).frage || "Was kam zuerst?"), "start");
   if (z.phase === "ansage" && S.hostet) {
@@ -4280,23 +4289,33 @@ function viewZeitSortieren(z){
   var ich = meinName();
   var eingeloggt = (z.abgegeben || []).indexOf(ich) >= 0;
   var key = rundenKey(z), auf = z.aufgabe || {};
-  var folge = ZEIT_FOLGE[key] || (ZEIT_FOLGE[key] = []);
+  // vier feste Plaetze, leer ist null
+  var folge = ZEIT_FOLGE[key];
+  if (!folge || folge.length !== 4) folge = ZEIT_FOLGE[key] = [null, null, null, null];
+  // Vom Joker aufgedeckte Plaetze: fest belegt, nicht mehr aenderbar
+  var gesperrt = {};
+  (z.meinJoker || []).forEach(function(h){
+    for (var i = 0; i < 4; i++) if (folge[i] === h.karte && i !== h.platz) folge[i] = null;
+    folge[h.platz] = h.karte; gesperrt[h.platz] = true;
+  });
+  var voll = folge.every(function(x){ return x !== null; });
+
   zeitKopf(z, null);
   app.appendChild(el('<h1 class="headline zs-frage">' + esc(auf.frage || "Was kam zuerst?") + '</h1>'));
   uhr(z.endeZeit, 30000);
   app.appendChild(zeitPlaketten(z));
 
-  // Die vier Plaetze, oben das aelteste
   var plaetze = el('<div class="zs-plaetze"></div>');
   for (var p = 0; p < 4; p++) {
     var k = folge[p];
-    var platz = el('<div class="zs-platz' + (k !== undefined ? " belegt" : "") + '">' +
+    var platz = el('<div class="zs-platz' + (k !== null ? " belegt" : "") + (gesperrt[p] ? " joker" : "") + '">' +
       '<span class="zs-nr">' + (p + 1) + '</span>' +
-      (k !== undefined ? '<b>' + BUCHSTABEN[k] + '</b><span>' + esc((z.karten[k] || {}).text || "") + '</span>'
-                       : '<span class="zs-leer">' + (p === 0 ? esc(auf.oben || "zuerst") : p === 3 ? esc(auf.unten || "zuletzt") : "") + '</span>') +
+      (k !== null ? '<b>' + BUCHSTABEN[k] + '</b><span>' + esc((z.karten[k] || {}).text || "") + '</span>' +
+                    (gesperrt[p] ? '<em class="zs-jtag">50:50</em>' : '')
+                  : '<span class="zs-leer">' + (p === 0 ? esc(auf.oben || "zuerst") : p === 3 ? esc(auf.unten || "zuletzt") : "") + '</span>') +
       '</div>');
-    if (k !== undefined && !eingeloggt) {
-      (function(stelle){ bindTap(platz, function(){ folge.splice(stelle, 1); render(); }); })(p);
+    if (k !== null && !gesperrt[p] && !eingeloggt) {
+      (function(stelle){ bindTap(platz, function(){ folge[stelle] = null; render(); }); })(p);
     }
     plaetze.appendChild(platz);
   }
@@ -4312,22 +4331,35 @@ function viewZeitSortieren(z){
       var benutzt = folge.indexOf(i) >= 0;
       var b = el('<button class="zs-karte' + (benutzt ? " benutzt" : "") + '" type="button">' +
         '<b>' + BUCHSTABEN[i] + '</b><span>' + esc(kt.text) + '</span></button>');
-      if (!benutzt) bindTap(b, function(){ if (folge.length < 4) { folge.push(i); render(); } });
+      if (!benutzt) bindTap(b, function(){
+        var frei = folge.indexOf(null);
+        if (frei >= 0) { folge[frei] = i; render(); }
+      });
       karten.appendChild(b);
     });
     app.appendChild(karten);
-    var los = el('<button class="cta" type="button"' + (folge.length < 4 ? " disabled" : "") + '>Einloggen</button>');
+    var los = el('<button class="cta" type="button"' + (voll ? "" : " disabled") + '>Einloggen</button>');
     bindTap(los, function(){
-      if (folge.length < 4) return;
+      if (!folge.every(function(x){ return x !== null; })) return;
       ZEIT_ABGABE[key] = Math.max(0, serverJetzt() - (z.startZeit || serverJetzt()));
       quizSenden({ tat: "sortiert", spieler: ich, folge: folge.slice() });
     });
     app.appendChild(los);
+    if (z.joker && z.jokerUebrig && !z.meinJoker) {
+      var joker = el('<button class="cta ghost zs-jokerknopf" type="button"><b>50:50</b> Joker nehmen \u00b7 einmal je Partie</button>');
+      bindTap(joker, function(){
+        if (confirm("Zwei Pl\u00e4tze aufdecken? Der Joker geht nur einmal je Partie, und die zwei Pl\u00e4tze bringen dir keinen Punkt."))
+          quizSenden({ tat: "joker", spieler: ich });
+      });
+      app.appendChild(joker);
+    } else if (z.joker && !z.jokerUebrig && !z.meinJoker) {
+      app.appendChild(el('<p class="hintline" style="text-align:center">Dein Joker ist in dieser Partie verbraucht.</p>'));
+    }
   }
   if (S.hostet) {
-    var auf = el('<button class="cta ghost" type="button">Jetzt aufl\u00f6sen</button>');
-    bindTap(auf, function(){ quizSenden({ tat: "aufloesen" }); });
-    app.appendChild(auf);
+    var aufl = el('<button class="cta ghost" type="button">Jetzt aufl\u00f6sen</button>');
+    bindTap(aufl, function(){ quizSenden({ tat: "aufloesen" }); });
+    app.appendChild(aufl);
   }
   app.appendChild(tabs());
 }
@@ -4378,7 +4410,7 @@ function viewZeitAuf(z){
   reihe.forEach(function(p, k){
     var e = p.e, alles = e.richtig === 4;
     var sub = e.folge ? e.folge.map(function(x){ return BUCHSTABEN[x]; }).join(" ") +
-      (alles ? "" : " \u00b7 " + e.richtig + " richtig") : "nicht eingeloggt";
+      (alles ? "" : " \u00b7 " + e.richtig + " richtig") + (e.joker ? " \u00b7 mit 50:50" : "") : "nicht eingeloggt";
     rest.appendChild(el('<div class="rank zs-rang' + (alles ? ' alles' : '') + (e.schnellster ? ' schnellster' : '') +
       '" data-nm="' + esc(p.nm) + '" style="--acc:' + hue(p.i) + '">' +
       '<span class="pos num">' + (alles ? '\u2713' : (k + 1)) + '</span>' +
@@ -4462,6 +4494,14 @@ function viewZeitLobby(){
     b.onclick = function(){ ZEIT_RUNDEN = Number(b.dataset.n); render(); };
   });
   app.appendChild(wahl);
+  app.appendChild(el('<p class="group">Joker</p>'));
+  var jw = el('<div class="modes"><button type="button" data-j="0"><b>Ohne Joker</b></button>' +
+    '<button type="button" data-j="1"><b>Mit 50:50</b><span>jeder einmal je Partie</span></button></div>');
+  [].forEach.call(jw.children, function(b){
+    b.setAttribute("aria-current", (b.dataset.j === "1") === ZEIT_JOKER ? "true" : "false");
+    b.onclick = function(){ ZEIT_JOKER = b.dataset.j === "1"; render(); };
+  });
+  app.appendChild(jw);
   var feld = merkeEingabe(el('<div class="codeeingabe"><input type="text" maxlength="80" ' +
     'placeholder="eigener Wunsch, etwa Musik oder Erfindungen"></div>'), "zeitwunsch");
   app.appendChild(feld);
@@ -4470,7 +4510,7 @@ function viewZeitLobby(){
     var wunsch = feld.querySelector("input").value.trim();
     quizLaedt = true; quizFehler = null; render();
     zeitHolen(ZEIT_RUNDEN + 2, wunsch, function(runden){
-      quizSenden({ tat: "zeitneu", spieler: S.names, runden: runden, wunsch: wunsch, anzahl: ZEIT_RUNDEN });
+      quizSenden({ tat: "zeitneu", spieler: S.names, runden: runden, wunsch: wunsch, anzahl: ZEIT_RUNDEN, joker: ZEIT_JOKER });
     });
   });
   app.appendChild(los);
@@ -4759,7 +4799,7 @@ var SKALA_TIPP = {};        // eigener Reglerstand je Runde, ueberlebt das Neuze
 var skalaGemeldet = null;   // ueber welche Verbindung wir zuletzt "ich bin" geschickt haben
 
 function skalaAnmelden(){
-  if (!S || (S.game !== "skala" && S.game !== "spion") || !meinName()) return;
+  if (!S || ["skala", "spion", "zeitstrahl"].indexOf(S.game) < 0 || !meinName()) return;
   // Nur als erledigt merken, wenn die Verbindung offen ist und die Nachricht wirklich rausging
   if (!sock || sock.readyState !== 1) return;
   quizSenden({ tat: "ichbin", spieler: meinName() });
@@ -6479,6 +6519,7 @@ var RULES_ZEIT = [
   ["Worum es geht", "Wie die Auswahlrunde bei Wer wird Million\u00e4r: eine Frage, vier Antworten A bis D, und ihr bringt sie so schnell wie m\u00f6glich in die richtige Reihenfolge. Mal nach der Zeit, was kam zuerst, mal nach einer Gr\u00f6\u00dfe, etwa wer die meisten Champions-League-Titel hat."],
   ["Sortieren", "Tipp die Antworten nacheinander an, oben f\u00e4ngst du an. Was oben und unten bedeutet, steht in den leeren Pl\u00e4tzen. Ein Tipp auf einen belegten Platz nimmt ihn wieder heraus. Mit Einloggen ist die Antwort fest und die Zeit gestoppt. Je Runde 30 Sekunden."],
   ["Punkte", "Ein Punkt je richtigem Platz. Alles richtig gibt zwei extra. Wer am schnellsten alles richtig hat, bekommt noch drei obendrauf."],
+  ["Joker", "Wenn der Gastgeber ihn vor der Partie einschaltet, hat jeder einmal je Partie einen 50:50-Joker. Er deckt zwei der vier Pl\u00e4tze auf. Diese zwei bringen keinen Platzpunkt, aber alles richtig und am schnellsten sind weiter drin."],
   ["Mitspieler", "Zwei bis zehn, jeder am eigenen Handy. Die Ereignisse sucht die KI aus, \u00fcber das Wunschfeld k\u00f6nnt ihr sie steuern, etwa Musik oder Erfindungen."]
 ];
 
