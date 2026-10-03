@@ -667,6 +667,19 @@
   .zs-rang.schnellster{box-shadow:0 0 0 2px #2E9E5B inset}
   @media (prefers-reduced-motion:reduce){ .zs-ereignis.kommt{animation:none} }
 
+  /* Logo als Zurueck, Lobbykopf */
+  .imspiel .top .brand{cursor:pointer}
+  .imspiel .top .brand::before{content:"\2039"; margin-right:6px; font-size:26px; line-height:0;
+    color:var(--dim); position:relative; top:1px}
+  .linkknopf{border:0; background:none; padding:0 2px; color:var(--gold); font:inherit; font-size:12.5px;
+    text-decoration:underline; text-underline-offset:2px}
+  .lobbyfehlt{margin-top:-6px}
+  .einladung{display:flex; flex-direction:column; align-items:center; gap:2px; width:100%; margin:4px 0 16px;
+    padding:12px; border-radius:16px; border:1.5px dashed var(--gold); background:var(--tint); color:var(--text); font:inherit}
+  .einladung span{font-size:12px; color:var(--dim)}
+  .einladung b{font-size:30px; font-weight:900; letter-spacing:.18em}
+  .einladung i{font-style:normal; font-size:12.5px; font-weight:700; color:var(--gold)}
+
   .lader{display:flex; flex-direction:column; align-items:center; gap:14px; padding:26px 0 10px}
   .lader .karten{position:relative; width:118px; height:74px}
   .lader .karten i{position:absolute; left:50%; top:0; width:50px; height:70px; margin-left:-25px;
@@ -961,7 +974,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-21.9";
+var VERSION = "2026-09-22.1";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -1262,8 +1275,10 @@ function viewSetup(){
       hint.textContent = (names.length === 1 ? "allein" : names.length + " Spieler") + ", je 13 Felder";
     } else if (id === "phase10") {
       hint.textContent = names.length + " Spieler, zehn Phasen der Reihe nach";
-    } else {
+    } else if (id === "skyjo") {
       hint.textContent = names.length + " Spieler, Schluss bei 100 Punkten";
+    } else {
+      hint.textContent = names.length + " Spieler, jeder auf dem eigenen Handy";
     }
   }
 
@@ -2145,6 +2160,13 @@ function viewSkyjoFinal(){
 
 
 /* ---------- Hauptmen\u00fc ---------- */
+// Das Logo oben links fuehrt aus jedem Spiel zurueck. Der Spielstand bleibt erhalten.
+document.addEventListener("click", function(e){
+  var marke = e.target.closest && e.target.closest(".top .brand");
+  if (!marke || !S) return;
+  if (document.querySelector(".sheet")) return;
+  toHome(); save(); render();
+});
 function statusOf(id){
   var st = ALL.games[id];
   if (!st || !st.names.length || st.setup) return null;
@@ -2917,6 +2939,8 @@ function beitrittsLink(code){
 
 /* ---------- Gemeinsam spielen ---------- */
 var sock = null, sockCode = null, liveVersion = 0, letzterStand = null, wendetAn = false, liveAnzahl = 1;
+var ANWESEND = [];   // Namen der verbundenen Handys, vom Server gemeldet
+function geraeteText(n){ return n === 1 ? "1 Ger\u00e4t verbunden" : n + " Ger\u00e4te verbunden"; }
 var verbindet = false, neuTimer = null;
 var LIVE_KEYS = ["game", "names", "mode", "strict", "versatz", "rounds", "draft", "sheet"];
 
@@ -3017,7 +3041,11 @@ function liveVerbinden(){
       if (nurFortschritt(vorher, QUIZ)) fortschrittAuffrischen();
       else render();
     } else if (n.type === "anwesend") {
-      render();
+      if (Array.isArray(n.namen)) ANWESEND = n.namen;
+      // In der Lobby nur die Plaketten auffrischen, damit Eingaben nicht verloren gehen
+      var leute = app.querySelector(".lobbyleute");
+      if (leute) leute.parentNode.replaceChild(lobbyLeute(), leute);
+      else render();
     } else if (n.type === "ende") {
       if (S && !S.hostet) {
         S.live = null;
@@ -3121,7 +3149,7 @@ function liveChip(){
 function codeSheet(){
   var sheet = el('<div class="sheet"><div class="panel"><div class="head">Partie freigegeben</div>' +
     '<p class="hintline" style="padding:0 16px 2px">Diesen Code sagen die anderen ihrer App unter ' +
-    '\u201eGemeinsam spielen\u201c. Spieler eintragen muss niemand mehr.</p>' +
+    'im Hauptmen\u00fc unter \u201eBeitreten\u201c. Spieler eintragen muss niemand mehr.</p>' +
     '<div class="qrbox">' + (qrSVG(beitrittsLink(S.live), 210) || "") + '</div>' +
     '<div class="bigcode">' + esc(S.live) + '</div></div></div>');
   var panel = sheet.querySelector(".panel");
@@ -3255,7 +3283,7 @@ function liveSheet(){
     panel.appendChild(el('<div class="qrbox">' + (qrSVG(beitrittsLink(S.live), 190) || "") + '</div>'));
     panel.appendChild(el('<div class="bigcode">' + esc(S.live) + '</div>'));
     panel.appendChild(el('<p class="hintline" style="padding:0 16px 4px">Code <b>' + esc(S.live) + '</b>, ' +
-      (sock && sock.readyState === 1 ? liveAnzahl + ' Ger\u00e4te verbunden' : 'nicht verbunden') +
+      (sock && sock.readyState === 1 ? geraeteText(liveAnzahl) : 'nicht verbunden') +
       '. Jedes Ger\u00e4t darf f\u00fcr jeden eintragen. ' +
       (S.hostet ? 'Du bist Gastgeber: Zur\u00fccksetzen und L\u00f6schen liegt bei dir.'
                 : 'Der Gastgeber kann Runden l\u00f6schen und neu starten.') + '</p>'));
@@ -3327,6 +3355,7 @@ var THEMEN = ["Allgemeinwissen", "Musik der 90er", "Filme und Serien", "Tiere un
 
 function bluffHolen(thema, anzahl, arten){
   if (quizLaedt) return;
+  if (!startBestaetigt()) return;
   quizLaedt = true; quizFehler = null; render();
   fetch(API + "/bluff", { method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ thema: thema, anzahl: anzahl, arten: arten, vermeiden: sperrliste() }) })
@@ -3336,6 +3365,50 @@ function bluffHolen(thema, anzahl, arten){
       quizSenden({ tat: "bluffneu", fragen: d.fragen, spieler: S.names, thema: thema });
     })
     .catch(function(e){ quizLaedt = false; quizFehler = e.message || "Es hat nicht geklappt"; render(); });
+}
+
+// Kopf jeder Lobby: wer spielt hier, wer ist schon verbunden, und fuer den Gastgeber der Code
+function lobbyLeute(){
+  var box = el('<div class="lobbyleute"></div>');
+  var ich = meinName();
+  var zeile = el('<p class="hintline" style="text-align:center">Du spielst als <b>' + esc(ich || "?") + '</b> ' +
+    '<button class="linkknopf" type="button">nicht du?</button></p>');
+  zeile.querySelector("button").onclick = function(){
+    ICH_NEU_WAEHLEN = true; S.ich = null; S.ichFuer = null; save(); render();
+  };
+  box.appendChild(zeile);
+  var reihe = el('<div class="wersteht"></div>');
+  S.names.forEach(function(nm, i){
+    var da = nm === ich || ANWESEND.indexOf(nm) >= 0;
+    reihe.appendChild(el('<span class="wp' + (da ? " fertig" : "") + '" style="--acc:' + hue(i) + '">' +
+      '<b>' + esc(nm.charAt(0).toUpperCase()) + '</b><i>' + esc(nm) + '</i></span>'));
+  });
+  box.appendChild(reihe);
+  var fehlen = fehlendeSpieler();
+  box.appendChild(el('<p class="hintline lobbyfehlt" style="text-align:center">' +
+    (!sock || sock.readyState !== 1 ? "Verbinde \u2026" :
+     fehlen.length ? namenListe(fehlen) + (fehlen.length === 1 ? " fehlt" : " fehlen") + " noch" : "Alle sind da") + '</p>'));
+  if (S.hostet) {
+    var code = el('<button class="einladung" type="button"><span>Code zum Beitreten</span><b>' + esc(S.live || "") +
+      '</b><i>QR-Code zeigen</i></button>');
+    code.onclick = codeSheet;
+    box.appendChild(code);
+  }
+  return box;
+}
+function fehlendeSpieler(){
+  var ich = meinName();
+  return S.names.filter(function(nm){ return nm !== ich && ANWESEND.indexOf(nm) < 0; });
+}
+function namenListe(l){
+  return l.length === 1 ? l[0] : l.slice(0, -1).join(", ") + " und " + l[l.length - 1];
+}
+// Vor dem Start: fehlt jemand, lieber nachfragen
+function startBestaetigt(){
+  var fehlen = fehlendeSpieler();
+  if (!fehlen.length || !sock || sock.readyState !== 1) return true;
+  return confirm(namenListe(fehlen) + (fehlen.length === 1 ? " ist" : " sind") +
+    " noch nicht verbunden. Trotzdem starten?");
 }
 
 function quizNeustart(){
@@ -3631,12 +3704,14 @@ function quizSenden(obj){
 function meinName(){ return (S && typeof S.ich === "number") ? S.names[S.ich] : null; }
 
 // Bindet die Spielerwahl an Beitrittscode und Namensliste. Aendert sich eines, wird neu gefragt.
+var ICH_NEU_WAEHLEN = false;   // gesetzt, wenn jemand bewusst "nicht ich" tippt
 function ichSchluessel(){
   if (!S) return "";
   return (S.live || "-") + "|" + (S.names || []).join("\u0001");
 }
 
 function quizFragenHolen(thema, anzahl){
+  if (!startBestaetigt()) return;
   quizLaedt = true; quizFehler = null; render();
   fetch(API + "/fragen", {
     method: "POST",
@@ -3672,33 +3747,33 @@ function quizKopf(titel, unter){
 function viewQuiz(){
   if (quizTakt) { clearInterval(quizTakt); clearTimeout(quizTakt); quizTakt = null; }
 
-  // Ohne Freigabe geht Quiz nicht
+  // Partyspiele gehen nur gemeinsam. Also gleich freigeben, der Code steht dann in der Lobby.
   if (!S.live) {
-    quizKopf(S.game === "bluff" ? "Bluff zu mehreren" : S.game === "dito" ? "Dito zu mehreren" :
-      S.game === "skala" ? "Skala zu mehreren" : S.game === "spion" ? "Spion zu mehreren" : S.game === "zeitstrahl" ? "Zeitstrahl zu mehreren" : "Quiz zu mehreren",
-      "Hier spielt jeder auf dem eigenen Handy. Gib die Partie frei, damit die anderen beitreten k\u00f6nnen.");
-    var frei = el('<button class="cta" type="button">Partie freigeben</button>');
-    frei.onclick = function(){
-      S.live = liveCode(); S.hostet = true; letzterStand = null; liveVersion = 0;
-      save(); render(); liveVerbinden(); codeSheet();
-    };
-    app.appendChild(frei);
-    return;
+    S.live = liveCode(); S.hostet = true; letzterStand = null; liveVersion = 0;
+    save(); liveVerbinden();
   }
 
-  // Wer sitzt an diesem Handy? Die Zuordnung gilt nur fuer diese Partie und diese Namensliste.
+  // Wer sitzt an diesem Handy? Kennt das Handy seinen Namen aus einer frueheren Partie, nimmt es ihn.
+  if ((typeof S.ich !== "number" || !S.names[S.ich] || S.ichFuer !== ichSchluessel()) &&
+      ALL.meinName && S.names.indexOf(ALL.meinName) >= 0 && !ICH_NEU_WAEHLEN) {
+    S.ich = S.names.indexOf(ALL.meinName); S.ichFuer = ichSchluessel(); save();
+  }
   if (typeof S.ich !== "number" || !S.names[S.ich] || S.ichFuer !== ichSchluessel()) {
     quizKopf("Wer bist du?", "W\u00e4hl deinen Namen, damit die Antworten zugeordnet werden.");
     S.names.forEach(function(nm, i){
       var b = el('<button class="rank tap" type="button" style="--acc:' + hue(i) + '">' +
         '<span class="pos num">' + (i+1) + '</span><span class="nm">' + esc(nm) + '</span></button>');
-      bindTap(b, function(){ S.ich = i; S.ichFuer = ichSchluessel(); save(); render(); });
+      bindTap(b, function(){
+        S.ich = i; S.ichFuer = ichSchluessel(); ALL.meinName = nm; ICH_NEU_WAEHLEN = false;
+        save(); render(); skalaAnmelden();
+      });
       app.appendChild(b);
     });
     app.appendChild(tabs());
     return;
   }
 
+  if (skalaGemeldet !== sock || gemeldetAls !== meinName()) setTimeout(skalaAnmelden, 0);
   var z = QUIZ;
   if (istDito()) return viewDito();
   if (istSkala()) return viewSkala();
@@ -3719,8 +3794,7 @@ function viewQuizLobby(){
     quizLaedt ? "Das dauert ein paar Sekunden." :
     (S.hostet ? "Thema w\u00e4hlen oder eigenes eintippen, dann geht es los."
               : "Der Gastgeber sucht gerade ein Thema aus."));
-  app.appendChild(el('<p class="hintline" style="text-align:center">Du spielst als <b>' + esc(meinName()) + '</b>' +
-    ' \u00b7 ' + (sock && sock.readyState === 1 ? liveAnzahl + ' Ger\u00e4te verbunden' : 'nicht verbunden') + '</p>'));
+  app.appendChild(lobbyLeute());
 
   if (quizFehler) app.appendChild(el('<p class="note warn">' + esc(quizFehler) + '</p>'));
   if (quizLaedt) { app.appendChild(kartenLader("Die Karten werden ausgedacht")); return; }
@@ -3767,6 +3841,7 @@ function viewQuizLobby(){
 
   var radStart = el('<button class="cta ghost" type="button">Stattdessen Buchstabenrad</button>');
   radStart.onclick = function(){
+    if (!startBestaetigt()) return;
     quizSenden({ tat: "radneu", spieler: S.names, proRunde: anzahl });
   };
   app.appendChild(radStart);
@@ -4484,9 +4559,7 @@ function viewZeitLobby(){
     quizLaedt ? "Gleich geht es los." :
     (S.hostet ? "Vier Ereignisse, so schnell wie m\u00f6glich in die richtige Reihenfolge."
               : "Der Gastgeber startet gleich."));
-  app.appendChild(el('<p class="hintline" style="text-align:center">Du spielst als <b>' +
-    esc(meinName()) + '</b> \u00b7 ' + (sock && sock.readyState === 1 ? liveAnzahl + ' Ger\u00e4te verbunden'
-      : 'nicht verbunden') + '</p>'));
+  app.appendChild(lobbyLeute());
   if (quizFehler) app.appendChild(el('<p class="note warn">' + esc(quizFehler) + '</p>'));
   if (quizLaedt) { app.appendChild(kartenLader("Ereignisse werden gesucht")); return; }
   if (!S.hostet) {
@@ -4515,6 +4588,7 @@ function viewZeitLobby(){
   app.appendChild(feld);
   var los = el('<button class="cta" type="button">Ereignisse holen und starten</button>');
   bindTap(los, function(){
+    if (!startBestaetigt()) return;
     var wunsch = feld.querySelector("input").value.trim();
     quizLaedt = true; quizFehler = null; render();
     zeitHolen(ZEIT_RUNDEN + 2, wunsch, function(runden){
@@ -4764,9 +4838,7 @@ function viewSpionLobby(){
   quizKopf(quizLaedt ? "Orte werden ausgedacht" : "Spion",
     quizLaedt ? "Gleich geht es los." :
     (S.hostet ? "Alle kennen den Ort, nur einer nicht. Findet ihn durch Fragen." : "Der Gastgeber startet gleich."));
-  app.appendChild(el('<p class="hintline" style="text-align:center">Du spielst als <b>' +
-    esc(meinName()) + '</b> \u00b7 ' + (sock && sock.readyState === 1 ? liveAnzahl + ' Ger\u00e4te verbunden'
-      : 'nicht verbunden') + '</p>'));
+  app.appendChild(lobbyLeute());
   if (quizFehler) app.appendChild(el('<p class="note warn">' + esc(quizFehler) + '</p>'));
   if (quizLaedt) { app.appendChild(kartenLader("Orte werden ausgedacht")); return; }
   if (!S.hostet) {
@@ -4787,6 +4859,7 @@ function viewSpionLobby(){
   app.appendChild(feld);
   var los = el('<button class="cta" type="button">Orte holen und starten</button>');
   bindTap(los, function(){
+    if (!startBestaetigt()) return;
     var wunsch = feld.querySelector("input").value.trim();
     quizLaedt = true; quizFehler = null; render();
     fetch(API + "/orte", { method: "POST", headers: { "Content-Type": "application/json" },
@@ -4806,12 +4879,14 @@ function viewSpionLobby(){
 var SKALA_TIPP = {};        // eigener Reglerstand je Runde, ueberlebt das Neuzeichnen
 var skalaGemeldet = null;   // ueber welche Verbindung wir zuletzt "ich bin" geschickt haben
 
+var gemeldetAls = null;
 function skalaAnmelden(){
-  if (!S || ["skala", "spion", "zeitstrahl"].indexOf(S.game) < 0 || !meinName()) return;
+  if (!S || PARTYSPIELE.indexOf(S.game) < 0 || !meinName()) return;
   // Nur als erledigt merken, wenn die Verbindung offen ist und die Nachricht wirklich rausging
   if (!sock || sock.readyState !== 1) return;
+  if (skalaGemeldet === sock && gemeldetAls === meinName()) return;
   quizSenden({ tat: "ichbin", spieler: meinName() });
-  skalaGemeldet = sock;
+  skalaGemeldet = sock; gemeldetAls = meinName();
 }
 
 function viewSkala(){
@@ -5095,9 +5170,7 @@ function viewSkalaLobby(){
     (S.hostet ? (S.names.length === 2 ? "Zu zweit spielt ihr zusammen. Jeder gibt zweimal einen Hinweis."
                                       : "Jeder gibt zweimal einen Hinweis, die anderen sch\u00e4tzen.")
               : "Der Gastgeber startet gleich."));
-  app.appendChild(el('<p class="hintline" style="text-align:center">Du spielst als <b>' +
-    esc(meinName()) + '</b> \u00b7 ' + (sock && sock.readyState === 1 ? liveAnzahl + ' Ger\u00e4te verbunden'
-      : 'nicht verbunden') + '</p>'));
+  app.appendChild(lobbyLeute());
   if (quizFehler) app.appendChild(el('<p class="note warn">' + esc(quizFehler) + '</p>'));
   if (quizLaedt) { app.appendChild(kartenLader("Skalen werden ausgedacht")); return; }
   if (!S.hostet) {
@@ -5110,6 +5183,7 @@ function viewSkalaLobby(){
   app.appendChild(feld);
   var los = el('<button class="cta" type="button">Skalen holen und starten</button>');
   bindTap(los, function(){
+    if (!startBestaetigt()) return;
     var wunsch = feld.querySelector("input").value.trim();
     quizLaedt = true; quizFehler = null; render();
     fetch(API + "/skalen", { method: "POST", headers: { "Content-Type": "application/json" },
@@ -5745,9 +5819,7 @@ function viewDitoLobby(){
     quizLaedt ? "Gleich geht es los." :
     (S.hostet ? "Dasselbe denken wie die anderen. Drei Runden, neun Antworten je Runde."
               : "Der Gastgeber startet gleich."));
-  app.appendChild(el('<p class="hintline" style="text-align:center">Du spielst als <b>' +
-    esc(meinName()) + '</b> \u00b7 ' + (sock && sock.readyState === 1 ? liveAnzahl + ' Ger\u00e4te verbunden'
-      : 'nicht verbunden') + '</p>'));
+  app.appendChild(lobbyLeute());
   if (quizFehler) app.appendChild(el('<p class="note warn">' + esc(quizFehler) + '</p>'));
   if (quizLaedt) { app.appendChild(kartenLader("Kategorien werden ausgedacht")); return; }
   if (!S.hostet) {
@@ -5763,6 +5835,7 @@ function viewDitoLobby(){
   app.appendChild(feld);
   var los = el('<button class="cta" type="button">Kategorien holen und starten</button>');
   los.onclick = function(){
+    if (!startBestaetigt()) return;
     var wunsch = feld.querySelector("input").value.trim();
     quizLaedt = true; quizFehler = null; render();
     fetch(API + "/kategorien", { method: "POST", headers: { "Content-Type": "application/json" },
@@ -5800,8 +5873,7 @@ function viewBluffLobby(){
     quizLaedt ? "Das dauert ein paar Sekunden." :
     (S.hostet ? "Wer besser spinnt, gewinnt. Kartenarten w\u00e4hlen und los."
               : "Der Gastgeber sucht die Kartenarten aus."));
-  app.appendChild(el('<p class="hintline" style="text-align:center">Du spielst als <b>' + esc(meinName()) + '</b>' +
-    ' \u00b7 ' + (sock && sock.readyState === 1 ? liveAnzahl + ' Ger\u00e4te verbunden' : 'nicht verbunden') + '</p>'));
+  app.appendChild(lobbyLeute());
   if (quizFehler) app.appendChild(el('<p class="note warn">' + esc(quizFehler) + '</p>'));
   if (quizLaedt) { app.appendChild(kartenLader("Die Karten werden ausgedacht")); return; }
 
@@ -6711,6 +6783,7 @@ function applyTheme(){
 
 function render(){
   applyTheme();
+  document.body.classList.toggle("imspiel", !!S);
   if (aktiverCode()) liveVerbinden(); else if (sock) liveTrennen();
   keepAwake(!!S && !!S.names.length && !S.setup);
   if (!S && ALL.pendingJoin) return viewJoining();
