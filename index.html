@@ -674,6 +674,9 @@
   .linkknopf{border:0; background:none; padding:0 2px; color:var(--gold); font:inherit; font-size:12.5px;
     text-decoration:underline; text-underline-offset:2px}
   .lobbyfehlt{margin-top:-6px}
+  .wp{position:relative}
+  .wp-weg{margin-left:2px; width:20px; height:20px; border-radius:50%; border:0; background:var(--glass-2);
+    color:var(--dim); font:inherit; font-size:14px; line-height:20px; padding:0}
   .einladung{display:flex; flex-direction:column; align-items:center; gap:2px; width:100%; margin:4px 0 16px;
     padding:12px; border-radius:16px; border:1.5px dashed var(--gold); background:var(--tint); color:var(--text); font:inherit}
   .einladung span{font-size:12px; color:var(--dim)}
@@ -974,7 +977,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-22.1";
+var VERSION = "2026-09-22.2";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -1222,17 +1225,23 @@ function viewSetup(){
   app.appendChild(el('<div class="top"><div class="brand"><span class="hat">\u25B2</span> ' + meta.name + '</div></div>'));
   app.querySelector(".top").appendChild(helpButton());
 
-  var gr = grenzen(id), min = gr.min, max = gr.max;
+  var gr = grenzen(id), max = gr.max;
+  // Bei Partyspielen tragen sich die anderen beim Beitreten selbst ein. Dann reicht hier ein Name.
+  var party = PARTYSPIELE.indexOf(id) >= 0;
+  var min = party ? 1 : gr.min;
   var names = S.names.length ? S.names.slice() : ["", "", ""].slice(0, Math.max(min, 3));
+  if (party && !S.names.length && ALL.meinName) names[0] = ALL.meinName;
   while (names.length < min) names.push("");
   while (names.length > max) names.pop();
   var mode = S.mode || "up";
   var strict = !!S.strict;
 
   app.appendChild(el('<h1 class="headline">Wer spielt mit?</h1>'));
-  app.appendChild(el('<p class="lead-in">' +
-    (min === 1 ? "Von allein bis " + max : min + " bis " + max) +
-    ' Spieler, in der Reihenfolge wie ihr am Tisch sitzt.</p>'));
+  app.appendChild(el('<p class="lead-in">' + (party
+    ? gr.min + " bis " + max + " Spieler. Trag dich ein, die anderen tragen sich beim Beitreten selbst ein. " +
+      "Du kannst aber auch alle vorab eintragen."
+    : (min === 1 ? "Von allein bis " + max : min + " bis " + max) +
+      " Spieler, in der Reihenfolge wie ihr am Tisch sitzt.") + '</p>'));
 
   var list = el('<div></div>');
   app.appendChild(list);
@@ -1266,7 +1275,8 @@ function viewSetup(){
     info();
   }
   function info(){
-    startBtn.disabled = names.length < min;
+    var gefuellt = names.filter(function(n){ return n.trim(); }).length;
+    startBtn.disabled = party ? gefuellt < 1 : names.length < min;
     if (id === "wizard") {
       var pl = schedule(names.length, mode);
       hint.textContent = names.length + " Spieler, " + pl.length + " Runden, h\u00f6chstens " + maxOf(pl) + " Karten" +
@@ -1278,7 +1288,8 @@ function viewSetup(){
     } else if (id === "skyjo") {
       hint.textContent = names.length + " Spieler, Schluss bei 100 Punkten";
     } else {
-      hint.textContent = names.length + " Spieler, jeder auf dem eigenen Handy";
+      hint.textContent = gefuellt <= 1 ? "Die anderen tragen sich beim Beitreten selbst ein"
+                                       : gefuellt + " Spieler, jeder auf dem eigenen Handy";
     }
   }
 
@@ -1289,7 +1300,7 @@ function viewSetup(){
         '<input type="text" inputmode="text" autocomplete="off" placeholder="Spieler ' + (i+1) + '" value="' + esc(n) + '">' +
         (names.length > min ? '<button class="rm" type="button" aria-label="entfernen">\u00d7</button>' : '') + '</div>');
       var input = row.querySelector("input");
-      input.oninput = function(){ names[i] = input.value; };
+      input.oninput = function(){ names[i] = input.value; if (party) info(); };
       var rm = row.querySelector(".rm");
       if (rm) rm.onclick = function(){ names.splice(i, 1); paint(); };
       list.appendChild(row);
@@ -1300,7 +1311,15 @@ function viewSetup(){
   addBtn.onclick = function(){ if (names.length < max) { names.push(""); paint(); } };
 
   startBtn.onclick = function(){
-    S.names = names.map(function(n, i){ return n.trim() || ("Spieler " + (i+1)); });
+    if (party) {
+      // leere Felder fallen weg, doppelte Namen auch
+      var gesehen = {};
+      S.names = names.map(function(n){ return n.trim(); }).filter(function(n){
+        var k = n.toLowerCase(); if (!n || gesehen[k]) return false; gesehen[k] = true; return true; });
+      if (!S.names.length) return;
+    } else {
+      S.names = names.map(function(n, i){ return n.trim() || ("Spieler " + (i+1)); });
+    }
     // Sitzreihenfolge bleibt, nur wer zuerst gibt wird ausgelost
     ALL.zufallStart = losen;
     // Die Sitzreihenfolge bleibt, nur wer zuerst gibt wird ausgelost
@@ -2940,6 +2959,8 @@ function beitrittsLink(code){
 /* ---------- Gemeinsam spielen ---------- */
 var sock = null, sockCode = null, liveVersion = 0, letzterStand = null, wendetAn = false, liveAnzahl = 1;
 var ANWESEND = [];   // Namen der verbundenen Handys, vom Server gemeldet
+var WARTEND = [];    // wer waehrend einer laufenden Partie beigetreten ist
+var EINTRAG_FEHLER = null, EINTRAG_VORHER = null;
 function geraeteText(n){ return n === 1 ? "1 Ger\u00e4t verbunden" : n + " Ger\u00e4te verbunden"; }
 var verbindet = false, neuTimer = null;
 var LIVE_KEYS = ["game", "names", "mode", "strict", "versatz", "rounds", "draft", "sheet"];
@@ -3040,8 +3061,13 @@ function liveVerbinden(){
       partieMerken(QUIZ);
       if (nurFortschritt(vorher, QUIZ)) fortschrittAuffrischen();
       else render();
+    } else if (n.type === "eintragFehler") {
+      EINTRAG_FEHLER = n.grund === "voll" ? "Die Partie ist voll."
+                     : "\u201e" + n.name + "\u201c ist schon dabei. Nimm einen anderen Namen oder tipp oben auf deinen.";
+      ALL.meinName = EINTRAG_VORHER; save(); render();
     } else if (n.type === "anwesend") {
       if (Array.isArray(n.namen)) ANWESEND = n.namen;
+      if (Array.isArray(n.wartend)) WARTEND = n.wartend;
       // In der Lobby nur die Plaketten auffrischen, damit Eingaben nicht verloren gehen
       var leute = app.querySelector(".lobbyleute");
       if (leute) leute.parentNode.replaceChild(lobbyLeute(), leute);
@@ -3380,8 +3406,20 @@ function lobbyLeute(){
   var reihe = el('<div class="wersteht"></div>');
   S.names.forEach(function(nm, i){
     var da = nm === ich || ANWESEND.indexOf(nm) >= 0;
-    reihe.appendChild(el('<span class="wp' + (da ? " fertig" : "") + '" style="--acc:' + hue(i) + '">' +
-      '<b>' + esc(nm.charAt(0).toUpperCase()) + '</b><i>' + esc(nm) + '</i></span>'));
+    var p = el('<span class="wp' + (da ? " fertig" : "") + '" style="--acc:' + hue(i) + '">' +
+      '<b>' + esc(nm.charAt(0).toUpperCase()) + '</b><i>' + esc(nm) + '</i></span>');
+    if (S.hostet && nm !== ich) {
+      var weg = el('<button class="wp-weg" type="button" aria-label="' + esc(nm) + ' herausnehmen">\u00d7</button>');
+      weg.onclick = function(){
+        if (!confirm(nm + " aus der Partie nehmen?")) return;
+        var meiner = meinName();
+        S.names = S.names.filter(function(x){ return x !== nm; });
+        S.ich = S.names.indexOf(meiner); S.ichFuer = ichSchluessel();
+        save(); render();
+      };
+      p.appendChild(weg);
+    }
+    reihe.appendChild(p);
   });
   box.appendChild(reihe);
   var fehlen = fehlendeSpieler();
@@ -3405,6 +3443,16 @@ function namenListe(l){
 }
 // Vor dem Start: fehlt jemand, lieber nachfragen
 function startBestaetigt(){
+  var gr = grenzen(S.game), name = (GAMES.filter(function(g){ return g.id === S.game; })[0] || {}).name || "";
+  if (S.names.length < gr.min) {
+    alert("F\u00fcr " + name + " braucht ihr mindestens " + gr.min + " Spieler. Die anderen treten mit dem Code bei.");
+    return false;
+  }
+  // Spion lebt davon, dass mindestens drei wirklich mitspielen
+  if (S.game === "spion" && sock && sock.readyState === 1) {
+    var da = S.names.filter(function(nm){ return nm === meinName() || ANWESEND.indexOf(nm) >= 0; }).length;
+    if (da < 3) { alert("F\u00fcr Spion m\u00fcssen mindestens drei verbunden sein, gerade sind es " + da + "."); return false; }
+  }
   var fehlen = fehlendeSpieler();
   if (!fehlen.length || !sock || sock.readyState !== 1) return true;
   return confirm(namenListe(fehlen) + (fehlen.length === 1 ? " ist" : " sind") +
@@ -3759,16 +3807,52 @@ function viewQuiz(){
     S.ich = S.names.indexOf(ALL.meinName); S.ichFuer = ichSchluessel(); save();
   }
   if (typeof S.ich !== "number" || !S.names[S.ich] || S.ichFuer !== ichSchluessel()) {
-    quizKopf("Wer bist du?", "W\u00e4hl deinen Namen, damit die Antworten zugeordnet werden.");
+    // Mitten in einer Partie beigetreten: zuschauen bis zur naechsten
+    if (ALL.meinName && WARTEND.indexOf(ALL.meinName) >= 0) {
+      quizKopf("Gleich bist du dabei", "Die laufende Partie geht noch. Ab der n\u00e4chsten spielst du als <b>" +
+        esc(ALL.meinName) + "</b> mit.");
+      app.appendChild(el('<div class="lader"><span></span><span></span><span></span></div>'));
+      app.appendChild(tabs());
+      return;
+    }
+    quizKopf("Wer bist du?", S.names.length ? "Tipp auf deinen Namen. Fehlt er, trag dich unten ein."
+                                            : "Trag dich ein, dann geht es los.");
     S.names.forEach(function(nm, i){
       var b = el('<button class="rank tap" type="button" style="--acc:' + hue(i) + '">' +
         '<span class="pos num">' + (i+1) + '</span><span class="nm">' + esc(nm) + '</span></button>');
       bindTap(b, function(){
         S.ich = i; S.ichFuer = ichSchluessel(); ALL.meinName = nm; ICH_NEU_WAEHLEN = false;
-        save(); render(); skalaAnmelden();
+        EINTRAG_FEHLER = null; save(); render(); skalaAnmelden();
       });
       app.appendChild(b);
     });
+    // Selbst eintragen: der Server haengt den Namen an, auch wenn mehrere gleichzeitig kommen
+    if (!S.hostet) {
+      app.appendChild(el('<p class="group">Neu dabei?</p>'));
+      var eig = el('<div class="codeeingabe"><input type="text" maxlength="24" autocomplete="off" ' +
+        'placeholder="dein Name"></div>');
+      if (ALL.meinName && S.names.indexOf(ALL.meinName) < 0) eig.querySelector("input").value = ALL.meinName;
+      app.appendChild(eig);
+      if (EINTRAG_FEHLER) app.appendChild(el('<p class="note warn">' + esc(EINTRAG_FEHLER) + '</p>'));
+      app.appendChild(absenden("Eintragen", eig, function(){
+        var nm = eig.querySelector("input").value.replace(/\s+/g, " ").trim();
+        if (!nm) return;
+        var schon = S.names.filter(function(x){ return x.toLowerCase() === nm.toLowerCase(); })[0];
+        if (schon && ANWESEND.indexOf(schon) >= 0) {
+          // jemand anderes spielt schon unter diesem Namen
+          EINTRAG_FEHLER = "\u201e" + schon + "\u201c spielt schon auf einem anderen Handy. Nimm einen anderen Namen.";
+          render(); return;
+        }
+        if (schon) {           // vorab eingetragen, aber noch niemand da: diesen Namen uebernehmen
+          S.ich = S.names.indexOf(schon); S.ichFuer = ichSchluessel(); ALL.meinName = schon;
+          EINTRAG_FEHLER = null; save(); render(); skalaAnmelden(); return;
+        }
+        EINTRAG_VORHER = ALL.meinName; EINTRAG_FEHLER = null;
+        ALL.meinName = nm; ICH_NEU_WAEHLEN = false; save();
+        quizSenden({ tat: "eintragen", name: nm, max: grenzen(S.game).max });
+        render();
+      }));
+    }
     app.appendChild(tabs());
     return;
   }
