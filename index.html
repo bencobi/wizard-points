@@ -542,6 +542,8 @@
   .hm-join{flex:none; padding:8px 14px; border-radius:999px; border:1px solid var(--gold);
     background:var(--tint); color:var(--text); font:inherit; font-size:13px; font-weight:700}
   .hm-raster{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+  /* Bei ungerader Anzahl nimmt die letzte Karte die ganze Breite */
+  .hm-raster .hm-karte:last-child:nth-child(odd){grid-column:1 / -1; min-height:96px}
   .hm-karte{position:relative; text-align:left; padding:56px 13px 13px; border-radius:20px;
     border:1px solid var(--hair); background:var(--glass-2); color:var(--text); font:inherit;
     min-height:122px; display:flex; flex-direction:column; justify-content:flex-end; gap:3px; width:100%}
@@ -570,6 +572,47 @@
   .hm-zeile b{display:block; font-size:15px; font-weight:800}
   .hm-zeile span{display:block; font-size:12px; color:var(--dim)}
   .hm-zeile.live span{color:var(--gold); font-weight:700}
+
+  /* Spion */
+  .sp-karte{position:relative; min-height:150px; margin:8px 2px 16px; border-radius:22px; overflow:hidden;
+    border:1px solid var(--hair); background:var(--glass-2); user-select:none; -webkit-user-select:none;
+    -webkit-touch-callout:none; touch-action:none}
+  .sp-deckel, .sp-innen{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; gap:4px; text-align:center; padding:16px; transition:opacity .2s ease}
+  .sp-deckel b{font-size:34px; color:var(--gold)}
+  .sp-deckel span{font-size:13.5px; color:var(--dim); font-weight:600}
+  .sp-innen{opacity:0; background:var(--tint)}
+  .sp-karte.offen .sp-innen{opacity:1}
+  .sp-karte.offen .sp-deckel{opacity:0}
+  .sp-karte.spion .sp-innen{background:rgba(200,60,60,.14)}
+  .sp-innen b{font-size:26px; font-weight:800; letter-spacing:-.02em}
+  .sp-innen .sp-rolle{font-size:18px}
+  .sp-innen span{font-size:13px; color:var(--dim)}
+  .sp-klein{font-size:11.5px !important; text-transform:uppercase; letter-spacing:.08em; font-weight:700}
+  .sp-orte{display:flex; flex-wrap:wrap; gap:6px; margin:0 0 14px}
+  .sp-ort{padding:6px 11px; border-radius:999px; border:1px solid var(--hair); background:var(--glass-2);
+    color:var(--text); font:inherit; font-size:13px}
+  .sp-ort:disabled{opacity:.85}
+  .sheet .sp-ort{font-size:14.5px; padding:9px 13px; border-color:var(--gold)}
+  .sp-enthuellung{text-align:center; padding:20px 14px; margin:6px 2px 14px; border-radius:22px;
+    border:1px solid var(--hair); background:var(--glass-2)}
+  .sp-enthuellung .sp-klein{display:block; color:var(--dim); margin-top:6px}
+  .sp-enthuellung .sp-name{display:block; font-size:38px; font-weight:900; color:var(--acc);
+    letter-spacing:-.03em; animation:spionname .7s 1.6s cubic-bezier(.2,.9,.3,1) both}
+  .sp-enthuellung .sp-wo{display:block; font-size:20px; font-weight:800;
+    animation:ansageauf .5s 2.4s both}
+  .sp-enthuellung .sp-urteil{margin:12px 0 0; font-size:14px; color:var(--dim); animation:ansageauf .5s 3s both}
+  .sp-enthuellung .sp-urteil b{color:var(--text)}
+  .sp-enthuellung.gut{border-color:rgba(46,158,91,.5)}
+  .sp-enthuellung.schlecht{border-color:var(--miss)}
+  .sp-enthuellung.fertig .sp-name, .sp-enthuellung.fertig .sp-wo, .sp-enthuellung.fertig .sp-urteil{animation:none}
+  @keyframes spionname{0%{opacity:0; transform:scale(.4) rotate(-6deg); filter:blur(8px)}
+    70%{transform:scale(1.12)} 100%{opacity:1; transform:none; filter:none}}
+  .sp-stimmen{display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin:0 0 14px}
+  .sp-stimmen span{padding:4px 10px; border-radius:999px; background:var(--glass-2); font-size:12.5px;
+    border-left:3px solid var(--acc); color:var(--dim)}
+  .sp-stimmen span.richtig{color:#2E9E5B} .sp-stimmen b{color:var(--text)}
+  @media (prefers-reduced-motion:reduce){ .sp-enthuellung *{animation:none !important} }
 
   .lader{display:flex; flex-direction:column; align-items:center; gap:14px; padding:26px 0 10px}
   .lader .karten{position:relative; width:118px; height:74px}
@@ -865,7 +908,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-21.2";
+var VERSION = "2026-09-21.3";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -897,7 +940,8 @@ var GAMES = [
   { id:"quiz",    name:"Quiz",     sub:"Wissen, Bilder und Sch\u00e4tzfragen", low:false },
   { id:"bluff",   name:"Bluff",    sub:"Antworten erfinden, andere reinlegen", low:false },
   { id:"dito",    name:"Dito",     sub:"Dasselbe denken wie die anderen", low:false },
-  { id:"skala",   name:"Skala",    sub:"Gedanken auf einer Leiste lesen", low:false }
+  { id:"skala",   name:"Skala",    sub:"Gedanken auf einer Leiste lesen", low:false },
+  { id:"spion",   name:"Spion",    sub:"Einer kennt den Ort nicht", low:false }
 ];
 function fresh(){ return { theme:"light", cur:null, games:{}, history:[] }; }
 function grenzen(id){
@@ -907,6 +951,7 @@ function grenzen(id){
   if (id === "bluff")   return { min: 3, max: 8 };   // unter drei lohnt das Bluffen nicht
   if (id === "dito")    return { min: 2, max: 7 };
   if (id === "skala")   return { min: 2, max: 10 };
+  if (id === "spion")   return { min: 3, max: 10 };   // zu zweit gibt es niemanden zu verdaechtigen
   if (id === "phase10") return { min: 2, max: 6 };
   return { min: 2, max: 6 };                          // Wizard, offiziell ab 3
 }
@@ -2073,10 +2118,10 @@ function statusOf(id){
   return txt ? { txt:txt, who:st.names.join(", ") } : null;
 }
 
-var PARTYSPIELE = ["quiz", "bluff", "dito", "skala"];
+var PARTYSPIELE = ["quiz", "bluff", "dito", "skala", "spion"];
 var SPIELZEICHEN = { wizard: "\u2660", kniffel: "\u2684", phase10: "10", skyjo: "\u25A6",
-                     quiz: "?", bluff: "!", dito: "=", skala: "\u2194" };
-var SPIELFARBE = { wizard: 3, kniffel: 0, phase10: 4, skyjo: 6, quiz: 5, bluff: 2, dito: 1, skala: 3 };
+                     quiz: "?", bluff: "!", dito: "=", skala: "\u2194", spion: "\u25C9" };
+var SPIELFARBE = { wizard: 3, kniffel: 0, phase10: 4, skyjo: 6, quiz: 5, bluff: 2, dito: 1, skala: 3, spion: 7 };
 
 // Bei Partyspielen zaehlt nicht der Punktestand, sondern ob gerade eine Partie offen ist
 function partyStatus(id){
@@ -3523,11 +3568,12 @@ function quizFragenHolen(thema, anzahl){
 function istBluff(){ return S && S.game === "bluff"; }
 function istDito(){ return S && S.game === "dito"; }
 function istSkala(){ return S && S.game === "skala"; }
+function istSpion(){ return S && S.game === "spion"; }
 
 function quizKopf(titel, unter){
   app.innerHTML = "";
   app.appendChild(el('<div class="top"><div class="brand"><span class="hat">\u25B2</span> ' +
-    (istBluff() ? "Bluff" : istDito() ? "Dito" : istSkala() ? "Skala" : "Quiz") + '</div></div>'));
+    (istBluff() ? "Bluff" : istDito() ? "Dito" : istSkala() ? "Skala" : istSpion() ? "Spion" : "Quiz") + '</div></div>'));
   topBtns();
   if (titel) app.appendChild(el('<h1 class="headline">' + titel + '</h1>'));
   if (unter) app.appendChild(el('<p class="meta">' + unter + '</p>'));
@@ -3539,7 +3585,7 @@ function viewQuiz(){
   // Ohne Freigabe geht Quiz nicht
   if (!S.live) {
     quizKopf(S.game === "bluff" ? "Bluff zu mehreren" : S.game === "dito" ? "Dito zu mehreren" :
-      S.game === "skala" ? "Skala zu mehreren" : "Quiz zu mehreren",
+      S.game === "skala" ? "Skala zu mehreren" : S.game === "spion" ? "Spion zu mehreren" : "Quiz zu mehreren",
       "Hier spielt jeder auf dem eigenen Handy. Gib die Partie frei, damit die anderen beitreten k\u00f6nnen.");
     var frei = el('<button class="cta" type="button">Partie freigeben</button>');
     frei.onclick = function(){
@@ -3566,6 +3612,7 @@ function viewQuiz(){
   var z = QUIZ;
   if (istDito()) return viewDito();
   if (istSkala()) return viewSkala();
+  if (istSpion()) return viewSpion();
   if (istBluff() && (!z || z.phase === "lobby")) return viewBluffLobby();
   if (!z || z.phase === "lobby") return viewQuizLobby();
   if (z.modus === "bluff") return z.phase === "ende" ? viewQuizEnde() : viewBluff();
@@ -4101,12 +4148,291 @@ function aufholHinweis(nm, mehr, feld){
 
 
 
+
+/* ---------- Spion: einer kennt den Ort nicht ---------- */
+var SPION_GESEHEN = null;   // in welcher Runde die Aufdeckung schon gezeigt wurde
+
+function viewSpion(){
+  var z = QUIZ;
+  if (quizTakt) { clearInterval(quizTakt); clearTimeout(quizTakt); quizTakt = null; }
+  if (!z || z.modus !== "spion") return viewSpionLobby();
+  if (skalaGemeldet !== sock) setTimeout(skalaAnmelden, 0);
+
+  if (z.zeigenAb && serverJetzt() < z.zeigenAb) {
+    if (z.phase === "ansage") return ditoAnsage("Runde " + z.runde, "Schau geheim auf dein Handy", "start");
+    if (z.phase === "abstimmung") return ditoAnsage("Abstimmung", "Wer ist der Spion?", "auf");
+  }
+  if (z.phase === "ansage" && S.hostet) {
+    setTimeout(function(){ if (QUIZ && QUIZ.phase === "ansage") quizSenden({ tat: "ansageVorbei" }); }, 0);
+  }
+  if (z.phase === "spiel" || z.phase === "ansage") return viewSpionSpiel(z);
+  if (z.phase === "abstimmung") return viewSpionAbstimmung(z);
+  if (z.phase === "auf") return viewSpionAuf(z);
+  if (z.phase === "ende") return viewSpionEnde(z);
+  return viewSpionSpiel(z);
+}
+
+function spionKopf(z, unter){
+  quizKopf(null, null);
+  app.appendChild(el('<p class="meta">Runde ' + (z.runde || 1) + ' von ' + (z.gesamt || 1) +
+    (unter ? ' \u00b7 ' + unter : '') + '</p>'));
+}
+
+// Die geheime Karte: nur sichtbar, solange man den Finger darauf haelt
+function spionKarte(z){
+  var ich = z.ich || {};
+  var inhalt = !z.ich ? '<b>Verbinde\u2026</b><span>Gleich kommt deine Karte.</span>'
+    : ich.spion ? '<b>Du bist der Spion</b><span>Finde heraus, wo ihr seid, ohne aufzufliegen.</span>'
+    : '<span class="sp-klein">Ort</span><b>' + esc(ich.ort) + '</b>' +
+      '<span class="sp-klein">Deine Rolle</span><b class="sp-rolle">' + esc(ich.rolle) + '</b>';
+  var karte = el('<div class="sp-karte' + (ich.spion ? " spion" : "") + '">' +
+    '<div class="sp-deckel"><b>\u25C9</b><span>Zum Ansehen gedr\u00fcckt halten</span></div>' +
+    '<div class="sp-innen">' + inhalt + '</div></div>');
+  var auf = function(e){ if (e && e.cancelable) e.preventDefault(); karte.classList.add("offen"); };
+  var zu = function(){ karte.classList.remove("offen"); };
+  karte.addEventListener("touchstart", auf, { passive: false });
+  karte.addEventListener("touchend", zu);
+  karte.addEventListener("touchcancel", zu);
+  karte.addEventListener("mousedown", auf);
+  karte.addEventListener("mouseup", zu);
+  karte.addEventListener("mouseleave", zu);
+  return karte;
+}
+
+function spionOrteListe(z, waehlbar){
+  var box = el('<div class="sp-orte"></div>');
+  (z.orte || []).forEach(function(o, i){
+    var chip = el('<button class="sp-ort" type="button">' + esc(o) + '</button>');
+    if (waehlbar) bindTap(chip, function(){ waehlbar(i, o); });
+    else chip.disabled = true;
+    box.appendChild(chip);
+  });
+  return box;
+}
+
+function spionRatenBlatt(z){
+  var sheet = el('<div class="sheet"><div class="panel scrollable"><div class="griff"></div>' +
+    '<div class="mkopf"><b>Wo seid ihr?</b><span>Ein Tipp beendet die Runde sofort. Richtig gibt vier Punkte.</span>' +
+    '</div></div></div>');
+  var panel = sheet.querySelector(".panel");
+  var zu = function(){ sheet.remove(); };
+  sheet.onclick = function(e){ if (e.target === sheet) zu(); };
+  panel.appendChild(spionOrteListe(z, function(i, o){
+    if (!confirm(o + "? Das beendet die Runde.")) return;
+    quizSenden({ tat: "raten", spieler: meinName(), ort: i });
+    zu();
+  }));
+  var ab = el('<button class="cta ghost" type="button">Doch nicht</button>');
+  ab.onclick = zu;
+  panel.appendChild(ab);
+  document.body.appendChild(sheet);
+}
+
+/* --- Die Runde laeuft --- */
+function viewSpionSpiel(z){
+  spionKopf(z, null);
+  app.appendChild(spionKarte(z));
+  if (z.phase === "spiel") {
+    uhr(z.endeZeit, z.dauer || 480000);
+    app.appendChild(el('<p class="note"><b>' + esc(z.beginnt) + '</b> f\u00e4ngt an und stellt jemandem ' +
+      'die erste Frage.</p>'));
+  }
+  app.appendChild(el('<p class="group">M\u00f6gliche Orte</p>'));
+  app.appendChild(spionOrteListe(z, null));
+  if (z.ich && z.ich.spion) {
+    var raten = el('<button class="cta" type="button">Ich wei\u00df, wo wir sind</button>');
+    bindTap(raten, function(){ spionRatenBlatt(z); });
+    app.appendChild(raten);
+  }
+  var abst = el('<button class="cta ghost" type="button">Abstimmung starten</button>');
+  bindTap(abst, function(){
+    if (confirm("Abstimmung f\u00fcr alle starten?")) quizSenden({ tat: "abstimmen" });
+  });
+  app.appendChild(abst);
+  app.appendChild(spionStand(z));
+  app.appendChild(tabs());
+}
+
+/* --- Abstimmung --- */
+function viewSpionAbstimmung(z){
+  var ich = meinName();
+  var meine = SPION_STIMME && SPION_STIMME.runde === z.runde ? SPION_STIMME.wahl : null;
+  var fertig = (z.abgestimmt || []).indexOf(ich) >= 0;
+  spionKopf(z, "Abstimmung");
+  app.appendChild(el('<h1 class="headline">Wer ist der Spion?</h1>'));
+  var reihe = el('<div class="wersteht"></div>');
+  S.names.forEach(function(nm, i){
+    var da = (z.abgestimmt || []).indexOf(nm) >= 0;
+    reihe.appendChild(el('<span class="wp' + (da ? " fertig" : "") + '" style="--acc:' + hue(i) + '">' +
+      '<b>' + esc(nm.charAt(0).toUpperCase()) + '</b><i>' + esc(nm) + '</i></span>'));
+  });
+  app.appendChild(reihe);
+  if (fertig) {
+    app.appendChild(el('<p class="note">Du hast f\u00fcr <b>' + esc(meine || "jemanden") + '</b> gestimmt. ' +
+      'Warten auf die anderen.</p>'));
+    var zurueck = el('<button class="cta ghost" type="button">Doch noch \u00e4ndern</button>');
+    bindTap(zurueck, function(){ quizSenden({ tat: "zuruecknehmen", spieler: ich }); });
+    app.appendChild(zurueck);
+  } else {
+    S.names.forEach(function(nm, i){
+      if (nm === ich) return;
+      var b = el('<button class="rank tap" type="button" style="--acc:' + hue(i) + '">' +
+        '<span class="nm">' + esc(nm) + '</span><span class="pt">\u203A</span></button>');
+      bindTap(b, function(){
+        SPION_STIMME = { runde: z.runde, wahl: nm };
+        quizSenden({ tat: "stimme", spieler: ich, wahl: nm });
+      });
+      app.appendChild(b);
+    });
+  }
+  app.appendChild(spionKarte(z));
+  if (z.ich && z.ich.spion) {
+    var raten = el('<button class="cta ghost" type="button">Lieber den Ort raten</button>');
+    bindTap(raten, function(){ spionRatenBlatt(z); });
+    app.appendChild(raten);
+  }
+  if (S.hostet && (z.abgestimmt || []).length) {
+    var aus = el('<button class="cta ghost" type="button">Jetzt ausz\u00e4hlen</button>');
+    bindTap(aus, function(){ quizSenden({ tat: "auszaehlen" }); });
+    app.appendChild(aus);
+  }
+  app.appendChild(tabs());
+}
+var SPION_STIMME = null;
+
+/* --- Aufloesung: erst Trommelwirbel, dann der Name --- */
+function viewSpionAuf(z){
+  var l = z.letzte || {};
+  var schon = SPION_GESEHEN === z.runde;
+  SPION_GESEHEN = z.runde;
+  spionKopf(z, "Aufl\u00f6sung");
+  var spIdx = S.names.indexOf(l.spion);
+  var titel = { enttarnt: "Erwischt!", falsch: "Daneben!", gleichstand: "Keine Mehrheit",
+                erraten: "Ort erraten!", verraten: "Falsch geraten!" }[l.ergebnis] || "";
+  var text = { enttarnt: "Ihr habt den Spion enttarnt.",
+               falsch: "Ihr habt " + esc(l.angeklagt || "") + " verd\u00e4chtigt. Der Spion kommt davon.",
+               gleichstand: "Bei Gleichstand ist niemand angeklagt. Der Spion kommt davon.",
+               erraten: "Der Spion hat den Ort herausgefunden.",
+               verraten: "Der Spion tippte auf " + esc(l.geraten || "") + "." }[l.ergebnis] || "";
+  var gut = l.ergebnis === "enttarnt" || l.ergebnis === "verraten";
+  var karte = el('<div class="sp-enthuellung' + (schon ? " fertig" : "") + (gut ? " gut" : " schlecht") + '">' +
+    '<span class="sp-klein">Der Spion war</span>' +
+    '<b class="sp-name" style="--acc:' + hue(spIdx < 0 ? 0 : spIdx) + '">' + esc(l.spion || "") + '</b>' +
+    '<span class="sp-klein">Ihr wart hier</span><b class="sp-wo">' + esc(l.ort || "") + '</b>' +
+    '<p class="sp-urteil"><b>' + titel + '</b> ' + text + '</p></div>');
+  app.appendChild(karte);
+
+  var rest = el('<div class="nachher' + (schon ? "" : " wartet") + '"></div>');
+  app.appendChild(rest);
+  if (l.stimmen && Object.keys(l.stimmen).length) {
+    rest.appendChild(el('<p class="group">Wer f\u00fcr wen gestimmt hat</p>'));
+    var st = el('<div class="sp-stimmen"></div>');
+    S.names.forEach(function(nm, i){
+      if (!l.stimmen[nm]) return;
+      var richtig = l.stimmen[nm] === l.spion;
+      st.appendChild(el('<span class="' + (richtig ? "richtig" : "") + '" style="--acc:' + hue(i) + '"><b>' + esc(nm) +
+        '</b> \u2192 ' + esc(l.stimmen[nm]) + '</span>'));
+    });
+    rest.appendChild(st);
+  }
+  var reihe = S.names.map(function(nm, i){ return { nm: nm, i: i, pt: z.punkte[nm] || 0, plus: (l.plus || {})[nm] || 0 }; })
+                     .sort(function(a, b){ return b.pt - a.pt; });
+  reihe.forEach(function(p, k){
+    rest.appendChild(el('<div class="rank' + (k === 0 ? ' first' : '') + '" data-nm="' + esc(p.nm) +
+      '" style="--acc:' + hue(p.i) + '"><span class="nm">' + esc(p.nm) + '<span class="sub">' +
+      (p.nm === l.spion ? "Spion" : esc((l.rollen || {})[p.nm] || "")) + '</span></span>' +
+      '<span class="pt num">' + p.pt + '<span class="sub">+' + p.plus + '</span></span></div>'));
+  });
+  if (S.hostet) {
+    var w = el('<button class="cta" type="button">' + (z.runde >= z.gesamt ? "Endergebnis zeigen" : "N\u00e4chste Runde") + '</button>');
+    bindTap(w, function(){ quizSenden({ tat: "weiter" }); });
+    rest.appendChild(w);
+  } else {
+    rest.appendChild(el('<p class="note">Der Gastgeber schaltet weiter.</p>'));
+  }
+  if (!schon) setTimeout(function(){ rest.classList.remove("wartet"); rangAnimieren("spion"); }, 3400);
+  else rangAnimieren("spion");
+  app.appendChild(tabs());
+}
+
+function viewSpionEnde(z){
+  var reihe = S.names.map(function(nm, i){ return { nm: nm, i: i, pt: z.punkte[nm] || 0 }; })
+                     .sort(function(a, b){ return b.pt - a.pt; });
+  quizKopf(esc(reihe[0].nm) + " gewinnt", "Spion, " + (z.gesamt || 0) + " Runden");
+  reihe.forEach(function(p, i){
+    app.appendChild(el('<div class="rank' + (i === 0 ? ' first' : '') + '" style="--acc:' + hue(p.i) + '">' +
+      '<span class="pos num">' + (i + 1) + '</span><span class="nm">' + esc(p.nm) + '</span>' +
+      '<span class="pt num">' + p.pt + '</span></div>'));
+  });
+  app.appendChild(logButton(reihe));
+  if (S.hostet) {
+    var neu = el('<button class="cta" type="button">Neue Partie</button>');
+    neu.onclick = quizNeustart;
+    app.appendChild(neu);
+  }
+  app.appendChild(tabs());
+}
+
+function spionStand(z){
+  var box = el('<div class="ministand"></div>');
+  S.names.map(function(nm, i){ return { nm: nm, i: i, pt: z.punkte[nm] || 0 }; })
+    .sort(function(a, b){ return b.pt - a.pt; })
+    .forEach(function(p){
+      box.appendChild(el('<span style="--acc:' + hue(p.i) + '"><b>' + esc(p.nm) + '</b> ' + p.pt + '</span>'));
+    });
+  return box;
+}
+
+/* --- Lobby --- */
+var SPION_MINUTEN = 8;
+function viewSpionLobby(){
+  quizKopf(quizLaedt ? "Orte werden ausgedacht" : "Spion",
+    quizLaedt ? "Gleich geht es los." :
+    (S.hostet ? "Alle kennen den Ort, nur einer nicht. Findet ihn durch Fragen." : "Der Gastgeber startet gleich."));
+  app.appendChild(el('<p class="hintline" style="text-align:center">Du spielst als <b>' +
+    esc(meinName()) + '</b> \u00b7 ' + (sock && sock.readyState === 1 ? liveAnzahl + ' Ger\u00e4te verbunden'
+      : 'nicht verbunden') + '</p>'));
+  if (quizFehler) app.appendChild(el('<p class="note warn">' + esc(quizFehler) + '</p>'));
+  if (quizLaedt) { app.appendChild(kartenLader("Orte werden ausgedacht")); return; }
+  if (!S.hostet) {
+    app.appendChild(el('<div class="qrbox">' + (qrSVG(beitrittsLink(S.live), 170) || "") + '</div>'));
+    app.appendChild(tabs());
+    return;
+  }
+  app.appendChild(el('<p class="group">Zeit je Runde</p>'));
+  var wahl = el('<div class="modes">' + [5, 8, 10].map(function(m){
+    return '<button type="button" data-m="' + m + '"><b>' + m + ' Minuten</b></button>'; }).join("") + '</div>');
+  [].forEach.call(wahl.children, function(b){
+    b.setAttribute("aria-current", Number(b.dataset.m) === SPION_MINUTEN ? "true" : "false");
+    b.onclick = function(){ SPION_MINUTEN = Number(b.dataset.m); render(); };
+  });
+  app.appendChild(wahl);
+  var feld = merkeEingabe(el('<div class="codeeingabe"><input type="text" maxlength="80" ' +
+    'placeholder="eigener Wunsch, etwa Urlaub oder Arbeit"></div>'), "spionwunsch");
+  app.appendChild(feld);
+  var los = el('<button class="cta" type="button">Orte holen und starten</button>');
+  bindTap(los, function(){
+    var wunsch = feld.querySelector("input").value.trim();
+    quizLaedt = true; quizFehler = null; render();
+    fetch(API + "/orte", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ wunsch: wunsch, anzahl: 16, vermeiden: (ALL && ALL.orte) || [] }) })
+      .then(function(r){ return r.json().then(function(d){ if (!r.ok) throw new Error(d.message); return d; }); })
+      .then(function(d){
+        quizLaedt = false;
+        ALL.orte = ((ALL.orte || []).concat(d.orte.map(function(o){ return o.ort; }))).slice(-80); save();
+        quizSenden({ tat: "spionneu", spieler: S.names, orte: d.orte, wunsch: wunsch, minuten: SPION_MINUTEN });
+      })
+      .catch(function(e){ quizLaedt = false; quizFehler = e.message || "Es hat nicht geklappt"; render(); });
+  });
+  app.appendChild(los);
+}
+
 /* ---------- Skala: Gedanken auf einer Leiste lesen ---------- */
 var SKALA_TIPP = {};        // eigener Reglerstand je Runde, ueberlebt das Neuzeichnen
 var skalaGemeldet = null;   // ueber welche Verbindung wir zuletzt "ich bin" geschickt haben
 
 function skalaAnmelden(){
-  if (!S || S.game !== "skala" || !meinName()) return;
+  if (!S || (S.game !== "skala" && S.game !== "spion") || !meinName()) return;
   // Nur als erledigt merken, wenn die Verbindung offen ist und die Nachricht wirklich rausging
   if (!sock || sock.readyState !== 1) return;
   quizSenden({ tat: "ichbin", spieler: meinName() });
@@ -5822,6 +6148,15 @@ var RULES_DITO = [
   ["Ende", "Nach drei Runden gewinnt, wer die meisten Punkte hat. Bei Gleichstand z\u00e4hlt die beste einzelne Runde."]
 ];
 
+var RULES_SPION = [
+  ["Worum es geht", "Alle kennen denselben geheimen Ort, etwa Flughafen, und haben dort eine Rolle. Nur einer kennt den Ort nicht: der Spion. Die anderen wollen ihn enttarnen, er will herausfinden, wo ihr seid."],
+  ["Eine Runde", "Jeder schaut geheim auf sein Handy. Wer anf\u00e4ngt, stellt jemandem eine Frage zum Ort, etwa: Warst du hier schon mal im Urlaub? Wer gefragt wurde, antwortet und fragt den N\u00e4chsten. Die Fragen sollen den Ort nicht verraten, aber zeigen, dass man ihn kennt."],
+  ["Abstimmung", "Jeder darf jederzeit eine Abstimmung starten, sp\u00e4testens beim Ablauf der Zeit kommt sie von selbst. Jeder tippt an, wen er f\u00fcr den Spion h\u00e4lt. Wer die meisten Stimmen hat, ist angeklagt. Bei Gleichstand ist niemand angeklagt."],
+  ["Der Spion r\u00e4t", "Glaubt der Spion den Ort zu kennen, kann er jederzeit aufdecken und raten. Das beendet die Runde sofort."],
+  ["Punkte", "Spion enttarnt: jeder andere einen Punkt, wer richtig gestimmt hat einen extra. Spion kommt davon: zwei Punkte f\u00fcr ihn. Ort richtig geraten: vier f\u00fcr den Spion. Falsch geraten: einen f\u00fcr jeden anderen."],
+  ["Mitspieler", "Drei bis zehn. Zu zweit gibt es niemanden zu verd\u00e4chtigen."]
+];
+
 var RULES_SKALA = [
   ["Worum es geht", "Auf einer Leiste zwischen zwei Gegens\u00e4tzen, etwa ungesund und gesund, liegt eine geheime Stelle. Nur einer sieht sie und gibt einen einzigen Hinweis. Alle anderen sch\u00e4tzen, wo die Stelle liegt."],
   ["Eine Runde", "Wer dran ist, sieht das Ziel als farbigen Bereich und schreibt einen Begriff, der seiner Meinung nach genau dort liegt. Liegt das Ziel bei gesund weit rechts, w\u00e4re Brokkoli gut, bei knapp \u00fcber der Mitte vielleicht Vollkornpizza. Danach schiebt jeder andere seinen Regler an die vermutete Stelle."],
@@ -5833,8 +6168,8 @@ var RULES_SKALA = [
 function helpButton(){
   var b = el('<button class="menubtn" type="button" aria-label="Spielanleitung">?</button>');
   b.onclick = function(){
-    var sheet = el('<div class="sheet"><div class="panel scrollable"><div class="head">' + (S.game === "kniffel" ? "Kniffel" : S.game === "phase10" ? "Phase 10" : S.game === "skyjo" ? "Skyjo" : S.game === "quiz" ? "Quiz" : S.game === "bluff" ? "Bluff" : S.game === "dito" ? "Dito" : S.game === "skala" ? "Skala" : "Wizard") + ' in Kurzform</div>' +
-      '<div class="rules-body">' + (S.game === "kniffel" ? RULES_KNIFFEL : S.game === "phase10" ? RULES_PHASE : S.game === "skyjo" ? RULES_SKYJO : S.game === "quiz" ? RULES_QUIZ : S.game === "bluff" ? RULES_BLUFF : S.game === "dito" ? RULES_DITO : S.game === "skala" ? RULES_SKALA : RULES_WIZARD).map(function(r){
+    var sheet = el('<div class="sheet"><div class="panel scrollable"><div class="head">' + (S.game === "kniffel" ? "Kniffel" : S.game === "phase10" ? "Phase 10" : S.game === "skyjo" ? "Skyjo" : S.game === "quiz" ? "Quiz" : S.game === "bluff" ? "Bluff" : S.game === "dito" ? "Dito" : S.game === "skala" ? "Skala" : S.game === "spion" ? "Spion" : "Wizard") + ' in Kurzform</div>' +
+      '<div class="rules-body">' + (S.game === "kniffel" ? RULES_KNIFFEL : S.game === "phase10" ? RULES_PHASE : S.game === "skyjo" ? RULES_SKYJO : S.game === "quiz" ? RULES_QUIZ : S.game === "bluff" ? RULES_BLUFF : S.game === "dito" ? RULES_DITO : S.game === "skala" ? RULES_SKALA : S.game === "spion" ? RULES_SPION : RULES_WIZARD).map(function(r){
         return '<section><h3>' + r[0] + '</h3><p>' + r[1] + '</p></section>'; }).join("") + '</div></div></div>');
     var close = el('<button type="button">Schlie\u00dfen</button>');
     close.onclick = function(){ sheet.remove(); };
@@ -5930,11 +6265,11 @@ function openMenu(){
 
   // --- Neu anfangen und zurueck ---
   neueGruppe();
-  if (!gast && (S.game === "quiz" || S.game === "bluff" || S.game === "dito" || S.game === "skala")) {
+  if (!gast && (S.game === "quiz" || S.game === "bluff" || S.game === "dito" || S.game === "skala" || S.game === "spion")) {
     zeile("\u21bb", S.game === "bluff" ? "Neue Bluffrunde" : S.game === "dito" ? "Neue Dito-Partie" :
-      S.game === "skala" ? "Neue Skala-Partie" : "Neue Quizrunde",
+      S.game === "skala" ? "Neue Skala-Partie" : S.game === "spion" ? "Neue Spion-Partie" : "Neue Quizrunde",
       "Punkte zur\u00fccksetzen", "danger", function(){
-      if (confirm((S.game === "bluff" ? "Bluff" : S.game === "dito" ? "Dito" : S.game === "skala" ? "Skala" : "Quiz") +
+      if (confirm((S.game === "bluff" ? "Bluff" : S.game === "dito" ? "Dito" : S.game === "skala" ? "Skala" : S.game === "spion" ? "Spion" : "Quiz") +
         " f\u00fcr alle neu anfangen?")) quizNeustart();
     });
   } else if (!gast && S.game !== "kniffel") {
@@ -5962,7 +6297,7 @@ function tabs(){
   if (S.game === "kniffel") first = kniffelDone() ? "Ergebnis" : "Block";
   else if (S.game === "phase10") first = p10Done() ? "Ergebnis" : "Runde";
   else if (S.game === "skyjo") first = skyjoDone() ? "Ergebnis" : "Runde";
-  else if (S.game === "quiz" || S.game === "bluff" || S.game === "dito" || S.game === "skala") return el('<div></div>');
+  else if (S.game === "quiz" || S.game === "bluff" || S.game === "dito" || S.game === "skala" || S.game === "spion") return el('<div></div>');
   else first = S.rounds.length >= totalRounds() ? "Ergebnis" : "Runde";
   var node = el('<nav class="tabs"><div class="inner">' +
     '<button type="button">' + first + '</button>' +
@@ -5993,7 +6328,7 @@ function render(){
   if (!S && ALL.pendingJoin) return viewJoining();
   if (!S) return ALL.view === "stats" ? viewStats() : viewHome();
   if (S.setup || !S.names.length) return viewSetup();
-  if (S.game === "quiz" || S.game === "bluff" || S.game === "dito" || S.game === "skala") return viewQuiz();
+  if (S.game === "quiz" || S.game === "bluff" || S.game === "dito" || S.game === "skala" || S.game === "spion") return viewQuiz();
   if (S.game === "skyjo") {
     if (S.view === "table") return viewSkyjoTable();
     if (skyjoDone()) return viewSkyjoFinal();
