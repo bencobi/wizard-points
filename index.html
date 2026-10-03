@@ -572,6 +572,7 @@
   .hm-zeile b{display:block; font-size:15px; font-weight:800}
   .hm-zeile span{display:block; font-size:12px; color:var(--dim)}
   .hm-zeile.live span{color:var(--gold); font-weight:700}
+  .hm-zeile.fertig .tilenew{border-color:var(--hair); color:var(--dim)}
 
   /* Spion */
   .sp-karte{position:relative; min-height:150px; margin:8px 2px 16px; border-radius:22px; overflow:hidden;
@@ -908,7 +909,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-21.3";
+var VERSION = "2026-09-21.4";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -2115,7 +2116,7 @@ function statusOf(id){
     }
   } catch(e){ txt = ""; }
   S = prev;
-  return txt ? { txt:txt, who:st.names.join(", ") } : null;
+  return txt ? { txt:txt, who:st.names.join(", "), fertig: /^fertig/.test(txt) } : null;
 }
 
 var PARTYSPIELE = ["quiz", "bluff", "dito", "skala", "spion"];
@@ -2123,17 +2124,31 @@ var SPIELZEICHEN = { wizard: "\u2660", kniffel: "\u2684", phase10: "10", skyjo: 
                      quiz: "?", bluff: "!", dito: "=", skala: "\u2194", spion: "\u25C9" };
 var SPIELFARBE = { wizard: 3, kniffel: 0, phase10: 4, skyjo: 6, quiz: 5, bluff: 2, dito: 1, skala: 3, spion: 7 };
 
-// Bei Partyspielen zaehlt nicht der Punktestand, sondern ob gerade eine Partie offen ist
+// Laeuft eine Partie wirklich? Ein Code allein heisst nichts, er bleibt nach dem Spiel bestehen.
+// Entscheidend ist der letzte Stand vom Server: gestartet, noch nicht am Ende, und nicht zu alt.
+function partieMerken(z){
+  if (!S || PARTYSPIELE.indexOf(S.game) < 0) return;
+  var laeuft = !!(z && z.modus && z.phase && z.phase !== "ende" && z.phase !== "lobby");
+  if (!S.partie || S.partie.laeuft !== laeuft || Date.now() - (S.partie.zeit || 0) > 60000) {
+    S.partie = { laeuft: laeuft, zeit: Date.now(), runde: z && (z.runde || (z.idx !== undefined ? z.idx + 1 : null)) };
+    save();
+  }
+}
+
 function partyStatus(id){
   var st = ALL.games[id];
-  if (!st || !st.live || !st.names || !st.names.length) return null;
-  return { txt: "Partie l\u00e4uft \u00b7 Code " + st.live, who: st.names.join(", ") };
+  if (!st || !st.live || !st.partie || !st.partie.laeuft) return null;
+  // Nach sechs Stunden ohne Lebenszeichen gilt eine Partie als vergessen
+  if (Date.now() - (st.partie.zeit || 0) > 6 * 3600 * 1000) return null;
+  return { txt: "Partie l\u00e4uft \u00b7 Code " + st.live, who: (st.names || []).join(", ") };
 }
 function spielStatus(id){ return PARTYSPIELE.indexOf(id) >= 0 ? partyStatus(id) : statusOf(id); }
 
 function spielOeffnen(g){
-  var st = spielStatus(g.id);
-  if (st) { openGame(g.id); save(); render(); return; }
+  // Ein vorhandenes Spiel wird geoeffnet, auch wenn gerade nichts laeuft.
+  // Sonst ginge der Freigabecode der Gruppe verloren.
+  var vorhanden = ALL.games[g.id];
+  if (vorhanden && vorhanden.names && vorhanden.names.length) { openGame(g.id); save(); render(); return; }
   ALL.games[g.id] = newGame(g.id, lastNames()); openGame(g.id); save(); render();
 }
 
@@ -2146,7 +2161,7 @@ function viewHome(){
   // Weiterspielen: das zuletzt geoeffnete Spiel, wenn es noch laeuft
   var zuletzt = ALL.zuletzt && GAMES.filter(function(g){ return g.id === ALL.zuletzt; })[0];
   var zSt = zuletzt && spielStatus(zuletzt.id);
-  if (zSt) {
+  if (zSt && !zSt.fertig) {
     var weiter = el('<button class="hm-weiter" type="button"><span><b>Weiterspielen</b>' +
       '<span>' + esc(zuletzt.name) + ' \u00b7 ' + esc(zSt.txt) + '</span></span><i>\u203A</i></button>');
     bindTap(weiter, function(){ openGame(zuletzt.id); save(); render(); });
@@ -2177,9 +2192,11 @@ function viewHome(){
   var liste = el('<div class="hm-liste"></div>');
   GAMES.filter(function(g){ return PARTYSPIELE.indexOf(g.id) < 0; }).forEach(function(g){
     var st = statusOf(g.id);
-    var zeile = el('<div class="hm-zeile' + (st ? " live" : "") + '" style="--acc:' + hue(SPIELFARBE[g.id]) + '"></div>');
+    var klasse = st ? (st.fertig ? " fertig" : " live") : "";
+    var zeile = el('<div class="hm-zeile' + klasse + '" style="--acc:' + hue(SPIELFARBE[g.id]) + '"></div>');
     var haupt = el('<button class="tilemain" type="button" data-z="' + SPIELZEICHEN[g.id] + '">' +
-      '<b>' + g.name + '</b><span>' + esc(st ? st.txt : g.sub) + '</span></button>');
+      '<b>' + g.name + '</b><span>' + esc(st ? (st.fertig ? "Letzte Partie beendet, Ergebnis ansehen" : st.txt) : g.sub) +
+      '</span></button>');
     bindTap(haupt, function(){ spielOeffnen(g); });
     zeile.appendChild(haupt);
     if (st) {
@@ -2936,6 +2953,7 @@ function liveVerbinden(){
       if (n.zustand && n.zustand.jetzt) ZEITVERSATZ = n.zustand.jetzt - Date.now();
       var vorher = QUIZ;
       QUIZ = n.zustand;
+      partieMerken(QUIZ);
       if (nurFortschritt(vorher, QUIZ)) fortschrittAuffrischen();
       else render();
     } else if (n.type === "anwesend") {
