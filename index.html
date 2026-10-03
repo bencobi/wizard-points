@@ -615,6 +615,48 @@
   .sp-stimmen span.richtig{color:#2E9E5B} .sp-stimmen b{color:var(--text)}
   @media (prefers-reduced-motion:reduce){ .sp-enthuellung *{animation:none !important} }
 
+  /* Zeitstrahl */
+  .zs-plaetze{display:flex; flex-direction:column; gap:6px; margin:6px 2px 14px}
+  .zs-platz{display:flex; align-items:center; gap:10px; min-height:44px; padding:6px 12px; border-radius:14px;
+    border:1.5px dashed var(--hair); background:transparent}
+  .zs-platz.belegt{border-style:solid; border-color:var(--gold); background:var(--tint); cursor:pointer}
+  .zs-nr{flex:none; width:22px; height:22px; border-radius:50%; display:grid; place-items:center;
+    background:var(--glass-2); font-size:12px; font-weight:800; color:var(--dim)}
+  .zs-platz b{flex:none; width:24px; height:24px; border-radius:8px; display:grid; place-items:center;
+    background:var(--gold); color:#fff; font-size:13px}
+  .zs-platz span{font-size:14px; line-height:1.25}
+  .zs-platz .zs-leer{font-size:12px; color:var(--dim)}
+  .zs-karten{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:0 0 14px}
+  .zs-karte{display:flex; align-items:flex-start; gap:9px; text-align:left; padding:12px; border-radius:16px;
+    border:1px solid var(--hair); background:var(--glass-2); color:var(--text); font:inherit; min-height:74px;
+    transition:opacity .2s ease, transform .2s ease}
+  .zs-karte b{flex:none; width:26px; height:26px; border-radius:9px; display:grid; place-items:center;
+    background:var(--tint); color:var(--gold); font-size:14px}
+  .zs-karte span{font-size:13.5px; line-height:1.3}
+  .zs-karte.benutzt{opacity:.3; transform:scale(.97)}
+  .zs-strahl{position:relative; margin:6px 2px 16px; padding-left:4px}
+  .zs-strahl::before{content:""; position:absolute; left:88px; top:8px; bottom:8px; width:3px; border-radius:2px;
+    background:linear-gradient(#2D82C7, #D6414F); opacity:.7}
+  .zs-ereignis{position:relative; display:flex; align-items:center; gap:12px; min-height:52px; padding:6px 0}
+  .zs-ereignis.kommt{animation:ereignisfaellt .6s cubic-bezier(.2,.9,.3,1) both}
+  @keyframes ereignisfaellt{0%{opacity:0; transform:translateX(30px)}100%{opacity:1; transform:none}}
+  .zs-jahr{flex:none; width:70px; text-align:right; font-size:17px; font-weight:900; letter-spacing:-.02em}
+  .zs-punkt{flex:none; width:13px; height:13px; border-radius:50%; background:var(--gold);
+    border:2.5px solid var(--panel); position:relative; left:1px}
+  .zs-text{font-size:14px; line-height:1.3}
+  .zs-text b{color:var(--gold); margin-right:2px}
+  .zs-sieger{display:flex; align-items:center; gap:10px; justify-content:center; padding:12px; margin:4px 2px 12px;
+    border-radius:16px; background:var(--tint); border:1px solid var(--gold)}
+  .zs-sieger span{font-size:12.5px; color:var(--dim)}
+  .zs-sieger b{font-size:20px; font-weight:900; color:var(--acc)}
+  .zs-sieger i{font-style:normal; font-weight:800; color:var(--gold)}
+  .zs-rang .zs-zeit{margin-left:auto; margin-right:12px; font-size:13px; font-weight:800; color:var(--dim)}
+  .zs-rang.alles{border-color:rgba(46,158,91,.6); background:rgba(46,158,91,.13)}
+  .zs-rang.alles .pos{color:#2E9E5B; font-weight:900}
+  .zs-rang.alles .nm, .zs-rang.alles .zs-zeit{color:#2E9E5B}
+  .zs-rang.schnellster{box-shadow:0 0 0 2px #2E9E5B inset}
+  @media (prefers-reduced-motion:reduce){ .zs-ereignis.kommt{animation:none} }
+
   .lader{display:flex; flex-direction:column; align-items:center; gap:14px; padding:26px 0 10px}
   .lader .karten{position:relative; width:118px; height:74px}
   .lader .karten i{position:absolute; left:50%; top:0; width:50px; height:70px; margin-left:-25px;
@@ -909,7 +951,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-21.4";
+var VERSION = "2026-09-21.6";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -942,7 +984,8 @@ var GAMES = [
   { id:"bluff",   name:"Bluff",    sub:"Antworten erfinden, andere reinlegen", low:false },
   { id:"dito",    name:"Dito",     sub:"Dasselbe denken wie die anderen", low:false },
   { id:"skala",   name:"Skala",    sub:"Gedanken auf einer Leiste lesen", low:false },
-  { id:"spion",   name:"Spion",    sub:"Einer kennt den Ort nicht", low:false }
+  { id:"spion",   name:"Spion",    sub:"Einer kennt den Ort nicht", low:false },
+  { id:"zeitstrahl", name:"Zeitstrahl", sub:"Was kam zuerst? Schnell sortieren", low:false }
 ];
 function fresh(){ return { theme:"light", cur:null, games:{}, history:[] }; }
 function grenzen(id){
@@ -953,6 +996,7 @@ function grenzen(id){
   if (id === "dito")    return { min: 2, max: 7 };
   if (id === "skala")   return { min: 2, max: 10 };
   if (id === "spion")   return { min: 3, max: 10 };   // zu zweit gibt es niemanden zu verdaechtigen
+  if (id === "zeitstrahl") return { min: 2, max: 10 };
   if (id === "phase10") return { min: 2, max: 6 };
   return { min: 2, max: 6 };                          // Wizard, offiziell ab 3
 }
@@ -2119,10 +2163,10 @@ function statusOf(id){
   return txt ? { txt:txt, who:st.names.join(", "), fertig: /^fertig/.test(txt) } : null;
 }
 
-var PARTYSPIELE = ["quiz", "bluff", "dito", "skala", "spion"];
+var PARTYSPIELE = ["quiz", "bluff", "dito", "skala", "spion", "zeitstrahl"];
 var SPIELZEICHEN = { wizard: "\u2660", kniffel: "\u2684", phase10: "10", skyjo: "\u25A6",
-                     quiz: "?", bluff: "!", dito: "=", skala: "\u2194", spion: "\u25C9" };
-var SPIELFARBE = { wizard: 3, kniffel: 0, phase10: 4, skyjo: 6, quiz: 5, bluff: 2, dito: 1, skala: 3, spion: 7 };
+                     quiz: "?", bluff: "!", dito: "=", skala: "\u2194", spion: "\u25C9", zeitstrahl: "\u21C5" };
+var SPIELFARBE = { wizard: 3, kniffel: 0, phase10: 4, skyjo: 6, quiz: 5, bluff: 2, dito: 1, skala: 3, spion: 7, zeitstrahl: 9 };
 
 // Laeuft eine Partie wirklich? Ein Code allein heisst nichts, er bleibt nach dem Spiel bestehen.
 // Entscheidend ist der letzte Stand vom Server: gestartet, noch nicht am Ende, und nicht zu alt.
@@ -3287,6 +3331,12 @@ function quizNeustart(){
 // Sonst zerstoert das Neuzeichnen das Eingabefeld und iOS klappt die Tastatur weg.
 function nurFortschritt(alt, neu){
   if (!alt || !neu) return false;
+  if (neu.modus === "zeitstrahl") {
+    if (alt.modus !== "zeitstrahl" || alt.phase !== "sortieren" || neu.phase !== "sortieren") return false;
+    if (alt.runde !== neu.runde) return false;
+    var ich2 = meinName();
+    return ((alt.abgegeben || []).indexOf(ich2) >= 0) === ((neu.abgegeben || []).indexOf(ich2) >= 0);
+  }
   if (neu.modus === "skala") {
     if (alt.modus !== "skala" || alt.phase !== "raten" || neu.phase !== "raten") return false;
     if (alt.runde !== neu.runde) return false;
@@ -3546,6 +3596,7 @@ function fortschrittAuffrischen(){
     reihe.innerHTML = skalaPlaketten(QUIZ, S.names[(QUIZ.dran || 0) % S.names.length]).innerHTML;
     return;
   }
+  if (QUIZ && QUIZ.modus === "zeitstrahl") { reihe.innerHTML = zeitPlaketten(QUIZ).innerHTML; return; }
   var fertig = QUIZ.phase === "frage" ? QUIZ.geantwortet
              : (QUIZ.phase === "schreiben" ? QUIZ.geschrieben : QUIZ.gestimmt);
   var neu = QUIZ.phase === "frage" ? spielerPunkte(QUIZ) : bluffPlaketten(fertig || []);
@@ -3587,11 +3638,12 @@ function istBluff(){ return S && S.game === "bluff"; }
 function istDito(){ return S && S.game === "dito"; }
 function istSkala(){ return S && S.game === "skala"; }
 function istSpion(){ return S && S.game === "spion"; }
+function istZeitstrahl(){ return S && S.game === "zeitstrahl"; }
 
 function quizKopf(titel, unter){
   app.innerHTML = "";
   app.appendChild(el('<div class="top"><div class="brand"><span class="hat">\u25B2</span> ' +
-    (istBluff() ? "Bluff" : istDito() ? "Dito" : istSkala() ? "Skala" : istSpion() ? "Spion" : "Quiz") + '</div></div>'));
+    (istBluff() ? "Bluff" : istDito() ? "Dito" : istSkala() ? "Skala" : istSpion() ? "Spion" : istZeitstrahl() ? "Zeitstrahl" : "Quiz") + '</div></div>'));
   topBtns();
   if (titel) app.appendChild(el('<h1 class="headline">' + titel + '</h1>'));
   if (unter) app.appendChild(el('<p class="meta">' + unter + '</p>'));
@@ -3603,7 +3655,7 @@ function viewQuiz(){
   // Ohne Freigabe geht Quiz nicht
   if (!S.live) {
     quizKopf(S.game === "bluff" ? "Bluff zu mehreren" : S.game === "dito" ? "Dito zu mehreren" :
-      S.game === "skala" ? "Skala zu mehreren" : S.game === "spion" ? "Spion zu mehreren" : "Quiz zu mehreren",
+      S.game === "skala" ? "Skala zu mehreren" : S.game === "spion" ? "Spion zu mehreren" : S.game === "zeitstrahl" ? "Zeitstrahl zu mehreren" : "Quiz zu mehreren",
       "Hier spielt jeder auf dem eigenen Handy. Gib die Partie frei, damit die anderen beitreten k\u00f6nnen.");
     var frei = el('<button class="cta" type="button">Partie freigeben</button>');
     frei.onclick = function(){
@@ -3631,6 +3683,7 @@ function viewQuiz(){
   if (istDito()) return viewDito();
   if (istSkala()) return viewSkala();
   if (istSpion()) return viewSpion();
+  if (istZeitstrahl()) return viewZeit();
   if (istBluff() && (!z || z.phase === "lobby")) return viewBluffLobby();
   if (!z || z.phase === "lobby") return viewQuizLobby();
   if (z.modus === "bluff") return z.phase === "ende" ? viewQuizEnde() : viewBluff();
@@ -4166,6 +4219,246 @@ function aufholHinweis(nm, mehr, feld){
 
 
 
+
+
+/* ---------- Zeitstrahl: was kam zuerst? ---------- */
+var ZEIT_FOLGE = {};        // eigene Auswahl je Runde: Kartenpositionen in Reihenfolge
+var ZEIT_ABGABE = {};       // wann man eingeloggt hat, fuer die Anzeige
+var ZEIT_GESEHEN = null;
+var ZEIT_RUNDEN = 8;
+var BUCHSTABEN = ["A", "B", "C", "D"];
+
+function jahrText(j){ return j < 0 ? (-j) + " v. Chr." : String(j); }
+function sekunden(ms){ return (ms / 1000).toFixed(1).replace(".", ",") + " s"; }
+
+function viewZeit(){
+  var z = QUIZ;
+  if (quizTakt) { clearInterval(quizTakt); clearTimeout(quizTakt); quizTakt = null; }
+  if (!z || z.modus !== "zeitstrahl") return viewZeitLobby();
+  if (z.zeigenAb && serverJetzt() < z.zeigenAb && z.phase === "ansage")
+    return ditoAnsage("Runde " + z.runde, "Was kam zuerst? Vom \u00e4ltesten zum j\u00fcngsten", "start");
+  if (z.phase === "ansage" && S.hostet) {
+    setTimeout(function(){ if (QUIZ && QUIZ.phase === "ansage") quizSenden({ tat: "ansageVorbei" }); }, 0);
+  }
+  if (z.phase === "nachschub") return viewZeitNachschub(z);
+  if (z.phase === "sortieren" || z.phase === "ansage") return viewZeitSortieren(z);
+  if (z.phase === "auf") return viewZeitAuf(z);
+  if (z.phase === "ende") return viewZeitEnde(z);
+  return viewZeitSortieren(z);
+}
+
+function zeitKopf(z, unter){
+  quizKopf(null, null);
+  app.appendChild(el('<p class="meta">Runde ' + (z.runde || 1) + ' von ' + (z.gesamt || 1) +
+    (unter ? ' \u00b7 ' + unter : '') + '</p>'));
+}
+
+function zeitPlaketten(z){
+  var reihe = el('<div class="wersteht"></div>');
+  S.names.forEach(function(nm, i){
+    var da = (z.abgegeben || []).indexOf(nm) >= 0;
+    reihe.appendChild(el('<span class="wp' + (da ? " fertig" : "") + '" style="--acc:' + hue(i) + '">' +
+      '<b>' + esc(nm.charAt(0).toUpperCase()) + '</b><i>' + esc(nm) + '</i></span>'));
+  });
+  return reihe;
+}
+
+/* --- Sortieren: antippen in der richtigen Reihenfolge --- */
+function viewZeitSortieren(z){
+  var ich = meinName();
+  var eingeloggt = (z.abgegeben || []).indexOf(ich) >= 0;
+  var folge = ZEIT_FOLGE[z.runde] || (ZEIT_FOLGE[z.runde] = []);
+  zeitKopf(z, null);
+  app.appendChild(el('<h1 class="headline">Was kam zuerst?</h1>'));
+  uhr(z.endeZeit, 30000);
+  app.appendChild(zeitPlaketten(z));
+
+  // Die vier Plaetze, oben das aelteste
+  var plaetze = el('<div class="zs-plaetze"></div>');
+  for (var p = 0; p < 4; p++) {
+    var k = folge[p];
+    var platz = el('<div class="zs-platz' + (k !== undefined ? " belegt" : "") + '">' +
+      '<span class="zs-nr">' + (p + 1) + '</span>' +
+      (k !== undefined ? '<b>' + BUCHSTABEN[k] + '</b><span>' + esc((z.karten[k] || {}).text || "") + '</span>'
+                       : '<span class="zs-leer">' + (p === 0 ? "\u00e4ltestes" : p === 3 ? "j\u00fcngstes" : "") + '</span>') +
+      '</div>');
+    if (k !== undefined && !eingeloggt) {
+      (function(stelle){ bindTap(platz, function(){ folge.splice(stelle, 1); render(); }); })(p);
+    }
+    plaetze.appendChild(platz);
+  }
+  app.appendChild(plaetze);
+
+  if (eingeloggt) {
+    var zeit = ZEIT_ABGABE[z.runde];
+    app.appendChild(el('<p class="note">Eingeloggt' + (zeit ? ' nach <b>' + sekunden(zeit) + '</b>' : '') +
+      '. Warten auf die anderen.</p>'));
+  } else {
+    var karten = el('<div class="zs-karten"></div>');
+    (z.karten || []).forEach(function(kt, i){
+      var benutzt = folge.indexOf(i) >= 0;
+      var b = el('<button class="zs-karte' + (benutzt ? " benutzt" : "") + '" type="button">' +
+        '<b>' + BUCHSTABEN[i] + '</b><span>' + esc(kt.text) + '</span></button>');
+      if (!benutzt) bindTap(b, function(){ if (folge.length < 4) { folge.push(i); render(); } });
+      karten.appendChild(b);
+    });
+    app.appendChild(karten);
+    var los = el('<button class="cta" type="button"' + (folge.length < 4 ? " disabled" : "") + '>Einloggen</button>');
+    bindTap(los, function(){
+      if (folge.length < 4) return;
+      ZEIT_ABGABE[z.runde] = Math.max(0, serverJetzt() - (z.startZeit || serverJetzt()));
+      quizSenden({ tat: "sortiert", spieler: ich, folge: folge.slice() });
+    });
+    app.appendChild(los);
+  }
+  if (S.hostet) {
+    var auf = el('<button class="cta ghost" type="button">Jetzt aufl\u00f6sen</button>');
+    bindTap(auf, function(){ quizSenden({ tat: "aufloesen" }); });
+    app.appendChild(auf);
+  }
+  app.appendChild(tabs());
+}
+
+/* --- Aufloesung: die Ereignisse fallen nacheinander auf den Zeitstrahl --- */
+function viewZeitAuf(z){
+  var l = z.letzte || {};
+  var schon = ZEIT_GESEHEN === z.runde;
+  ZEIT_GESEHEN = z.runde;
+  zeitKopf(z, "Aufl\u00f6sung");
+  var strahl = el('<div class="zs-strahl"></div>');
+  (l.loesung || []).forEach(function(k, rang){
+    var e = el('<div class="zs-ereignis' + (schon ? "" : " kommt") + '">' +
+      '<span class="zs-jahr">' + jahrText((l.jahre || [])[k]) + '</span>' +
+      '<span class="zs-punkt"></span>' +
+      '<span class="zs-text"><b>' + BUCHSTABEN[k] + '</b> ' + esc((z.karten[k] || {}).text || "") + '</span></div>');
+    if (!schon) e.style.animationDelay = (300 + rang * 750) + "ms";
+    strahl.appendChild(e);
+  });
+  app.appendChild(strahl);
+
+  var rest = el('<div class="nachher' + (schon ? "" : " wartet") + '"></div>');
+  app.appendChild(rest);
+  var richtigFolge = (l.loesung || []).map(function(k){ return BUCHSTABEN[k]; }).join(" ");
+  rest.appendChild(el('<p class="hintline" style="text-align:center">Richtig: <b>' + richtigFolge + '</b></p>'));
+  if (l.schnellster) {
+    var e0 = (l.ergebnisse || {})[l.schnellster] || {};
+    rest.appendChild(el('<div class="zs-sieger" style="--acc:' + hue(Math.max(0, S.names.indexOf(l.schnellster))) + '">' +
+      '<span>Am schnellsten</span><b>' + esc(l.schnellster) + '</b><i>' + sekunden(e0.zeit || 0) + '</i></div>'));
+  } else {
+    rest.appendChild(el('<p class="note">Niemand hatte alles richtig.</p>'));
+  }
+  // Wie bei Jauch: wer alles richtig hat, steht oben und leuchtet gruen, der Schnellste zuerst.
+  // Danach die anderen nach Treffern, wer nicht eingeloggt hat, ganz unten.
+  var reihe = S.names.map(function(nm, i){
+    return { nm: nm, i: i, pt: z.punkte[nm] || 0, e: (l.ergebnisse || {})[nm] || {} };
+  }).sort(function(a, b){
+    var ea = a.e, eb = b.e;
+    if (!ea.folge !== !eb.folge) return ea.folge ? -1 : 1;
+    var allesA = ea.richtig === 4, allesB = eb.richtig === 4;
+    if (allesA !== allesB) return allesA ? -1 : 1;
+    if (!allesA && ea.richtig !== eb.richtig) return eb.richtig - ea.richtig;
+    return (ea.zeit || 0) - (eb.zeit || 0);
+  });
+  reihe.forEach(function(p, k){
+    var e = p.e, alles = e.richtig === 4;
+    var sub = e.folge ? e.folge.map(function(x){ return BUCHSTABEN[x]; }).join(" ") +
+      (alles ? "" : " \u00b7 " + e.richtig + " richtig") : "nicht eingeloggt";
+    rest.appendChild(el('<div class="rank zs-rang' + (alles ? ' alles' : '') + (e.schnellster ? ' schnellster' : '') +
+      '" data-nm="' + esc(p.nm) + '" style="--acc:' + hue(p.i) + '">' +
+      '<span class="pos num">' + (alles ? '\u2713' : (k + 1)) + '</span>' +
+      '<span class="nm">' + esc(p.nm) + '<span class="sub">' + sub + '</span></span>' +
+      (e.folge ? '<span class="zs-zeit num">' + sekunden(e.zeit || 0) + '</span>' : '') +
+      '<span class="pt num">' + p.pt + '<span class="sub">+' + (e.punkte || 0) + '</span></span></div>'));
+  });
+  if (S.hostet) {
+    var w = el('<button class="cta" type="button">' + (z.runde >= z.gesamt ? "Endergebnis zeigen" : "N\u00e4chste Runde") + '</button>');
+    bindTap(w, function(){ quizSenden({ tat: "weiter" }); });
+    rest.appendChild(w);
+  } else {
+    rest.appendChild(el('<p class="note">Der Gastgeber schaltet weiter.</p>'));
+  }
+  if (!schon) setTimeout(function(){ rest.classList.remove("wartet"); rangAnimieren("zeit"); }, 300 + 4 * 750 + 500);
+  else rangAnimieren("zeit");
+  app.appendChild(tabs());
+}
+
+function viewZeitEnde(z){
+  var reihe = S.names.map(function(nm, i){ return { nm: nm, i: i, pt: z.punkte[nm] || 0 }; })
+                     .sort(function(a, b){ return b.pt - a.pt; });
+  quizKopf(esc(reihe[0].nm) + " gewinnt", "Zeitstrahl, " + (z.gesamt || 0) + " Runden");
+  reihe.forEach(function(p, i){
+    app.appendChild(el('<div class="rank' + (i === 0 ? ' first' : '') + '" style="--acc:' + hue(p.i) + '">' +
+      '<span class="pos num">' + (i + 1) + '</span><span class="nm">' + esc(p.nm) + '</span>' +
+      '<span class="pt num">' + p.pt + '</span></div>'));
+  });
+  app.appendChild(logButton(reihe));
+  if (S.hostet) {
+    var neu = el('<button class="cta" type="button">Neue Partie</button>');
+    neu.onclick = quizNeustart;
+    app.appendChild(neu);
+  }
+  app.appendChild(tabs());
+}
+
+function zeitHolen(anzahl, wunsch, fertig){
+  fetch(API + "/zeitstrahl", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ wunsch: wunsch || "", anzahl: anzahl, vermeiden: (ALL && ALL.ereignisse) || [] }) })
+    .then(function(r){ return r.json().then(function(d){ if (!r.ok) throw new Error(d.message); return d; }); })
+    .then(function(d){
+      var neu = [];
+      d.runden.forEach(function(rd){ rd.forEach(function(e){ neu.push(e.text); }); });
+      ALL.ereignisse = ((ALL.ereignisse || []).concat(neu)).slice(-200); save();
+      quizLaedt = false; fertig(d.runden);
+    })
+    .catch(function(e){ quizLaedt = false; quizFehler = e.message || "Es hat nicht geklappt"; render(); });
+}
+
+function viewZeitNachschub(z){
+  zeitKopf(z, null);
+  app.appendChild(kartenLader("Neue Ereignisse werden gesucht"));
+  if (S.hostet && !quizLaedt) {
+    quizLaedt = true;
+    zeitHolen(4, "", function(runden){ quizSenden({ tat: "nachschub", runden: runden }); });
+  }
+  app.appendChild(tabs());
+}
+
+function viewZeitLobby(){
+  quizKopf(quizLaedt ? "Ereignisse werden gesucht" : "Zeitstrahl",
+    quizLaedt ? "Gleich geht es los." :
+    (S.hostet ? "Vier Ereignisse, so schnell wie m\u00f6glich in die richtige Reihenfolge."
+              : "Der Gastgeber startet gleich."));
+  app.appendChild(el('<p class="hintline" style="text-align:center">Du spielst als <b>' +
+    esc(meinName()) + '</b> \u00b7 ' + (sock && sock.readyState === 1 ? liveAnzahl + ' Ger\u00e4te verbunden'
+      : 'nicht verbunden') + '</p>'));
+  if (quizFehler) app.appendChild(el('<p class="note warn">' + esc(quizFehler) + '</p>'));
+  if (quizLaedt) { app.appendChild(kartenLader("Ereignisse werden gesucht")); return; }
+  if (!S.hostet) {
+    app.appendChild(el('<div class="qrbox">' + (qrSVG(beitrittsLink(S.live), 170) || "") + '</div>'));
+    app.appendChild(tabs());
+    return;
+  }
+  app.appendChild(el('<p class="group">Runden</p>'));
+  var wahl = el('<div class="modes">' + [5, 8, 12].map(function(n){
+    return '<button type="button" data-n="' + n + '"><b>' + n + ' Runden</b></button>'; }).join("") + '</div>');
+  [].forEach.call(wahl.children, function(b){
+    b.setAttribute("aria-current", Number(b.dataset.n) === ZEIT_RUNDEN ? "true" : "false");
+    b.onclick = function(){ ZEIT_RUNDEN = Number(b.dataset.n); render(); };
+  });
+  app.appendChild(wahl);
+  var feld = merkeEingabe(el('<div class="codeeingabe"><input type="text" maxlength="80" ' +
+    'placeholder="eigener Wunsch, etwa Musik oder Erfindungen"></div>'), "zeitwunsch");
+  app.appendChild(feld);
+  var los = el('<button class="cta" type="button">Ereignisse holen und starten</button>');
+  bindTap(los, function(){
+    var wunsch = feld.querySelector("input").value.trim();
+    quizLaedt = true; quizFehler = null; render();
+    zeitHolen(ZEIT_RUNDEN + 2, wunsch, function(runden){
+      quizSenden({ tat: "zeitneu", spieler: S.names, runden: runden, wunsch: wunsch, anzahl: ZEIT_RUNDEN });
+    });
+  });
+  app.appendChild(los);
+}
 
 /* ---------- Spion: einer kennt den Ort nicht ---------- */
 var SPION_GESEHEN = null;   // in welcher Runde die Aufdeckung schon gezeigt wurde
@@ -6166,6 +6459,13 @@ var RULES_DITO = [
   ["Ende", "Nach drei Runden gewinnt, wer die meisten Punkte hat. Bei Gleichstand z\u00e4hlt die beste einzelne Runde."]
 ];
 
+var RULES_ZEIT = [
+  ["Worum es geht", "Wie die Auswahlrunde bei Wer wird Million\u00e4r: Vier Ereignisse A bis D, ihr bringt sie so schnell wie m\u00f6glich in die zeitliche Reihenfolge, vom \u00e4ltesten zum j\u00fcngsten."],
+  ["Sortieren", "Tipp die Ereignisse nacheinander an, das \u00e4lteste zuerst. Ein Tipp auf einen belegten Platz nimmt ihn wieder heraus. Mit Einloggen ist die Antwort fest und die Zeit gestoppt. Je Runde 30 Sekunden."],
+  ["Punkte", "Ein Punkt je richtigem Platz. Alles richtig gibt zwei extra. Wer am schnellsten alles richtig hat, bekommt noch drei obendrauf."],
+  ["Mitspieler", "Zwei bis zehn, jeder am eigenen Handy. Die Ereignisse sucht die KI aus, \u00fcber das Wunschfeld k\u00f6nnt ihr sie steuern, etwa Musik oder Erfindungen."]
+];
+
 var RULES_SPION = [
   ["Worum es geht", "Alle kennen denselben geheimen Ort, etwa Flughafen, und haben dort eine Rolle. Nur einer kennt den Ort nicht: der Spion. Die anderen wollen ihn enttarnen, er will herausfinden, wo ihr seid."],
   ["Eine Runde", "Jeder schaut geheim auf sein Handy. Wer anf\u00e4ngt, stellt jemandem eine Frage zum Ort, etwa: Warst du hier schon mal im Urlaub? Wer gefragt wurde, antwortet und fragt den N\u00e4chsten. Die Fragen sollen den Ort nicht verraten, aber zeigen, dass man ihn kennt."],
@@ -6186,8 +6486,8 @@ var RULES_SKALA = [
 function helpButton(){
   var b = el('<button class="menubtn" type="button" aria-label="Spielanleitung">?</button>');
   b.onclick = function(){
-    var sheet = el('<div class="sheet"><div class="panel scrollable"><div class="head">' + (S.game === "kniffel" ? "Kniffel" : S.game === "phase10" ? "Phase 10" : S.game === "skyjo" ? "Skyjo" : S.game === "quiz" ? "Quiz" : S.game === "bluff" ? "Bluff" : S.game === "dito" ? "Dito" : S.game === "skala" ? "Skala" : S.game === "spion" ? "Spion" : "Wizard") + ' in Kurzform</div>' +
-      '<div class="rules-body">' + (S.game === "kniffel" ? RULES_KNIFFEL : S.game === "phase10" ? RULES_PHASE : S.game === "skyjo" ? RULES_SKYJO : S.game === "quiz" ? RULES_QUIZ : S.game === "bluff" ? RULES_BLUFF : S.game === "dito" ? RULES_DITO : S.game === "skala" ? RULES_SKALA : S.game === "spion" ? RULES_SPION : RULES_WIZARD).map(function(r){
+    var sheet = el('<div class="sheet"><div class="panel scrollable"><div class="head">' + (S.game === "kniffel" ? "Kniffel" : S.game === "phase10" ? "Phase 10" : S.game === "skyjo" ? "Skyjo" : S.game === "quiz" ? "Quiz" : S.game === "bluff" ? "Bluff" : S.game === "dito" ? "Dito" : S.game === "skala" ? "Skala" : S.game === "spion" ? "Spion" : S.game === "zeitstrahl" ? "Zeitstrahl" : "Wizard") + ' in Kurzform</div>' +
+      '<div class="rules-body">' + (S.game === "kniffel" ? RULES_KNIFFEL : S.game === "phase10" ? RULES_PHASE : S.game === "skyjo" ? RULES_SKYJO : S.game === "quiz" ? RULES_QUIZ : S.game === "bluff" ? RULES_BLUFF : S.game === "dito" ? RULES_DITO : S.game === "skala" ? RULES_SKALA : S.game === "spion" ? RULES_SPION : S.game === "zeitstrahl" ? RULES_ZEIT : RULES_WIZARD).map(function(r){
         return '<section><h3>' + r[0] + '</h3><p>' + r[1] + '</p></section>'; }).join("") + '</div></div></div>');
     var close = el('<button type="button">Schlie\u00dfen</button>');
     close.onclick = function(){ sheet.remove(); };
@@ -6283,11 +6583,11 @@ function openMenu(){
 
   // --- Neu anfangen und zurueck ---
   neueGruppe();
-  if (!gast && (S.game === "quiz" || S.game === "bluff" || S.game === "dito" || S.game === "skala" || S.game === "spion")) {
+  if (!gast && (S.game === "quiz" || S.game === "bluff" || S.game === "dito" || S.game === "skala" || S.game === "spion" || S.game === "zeitstrahl")) {
     zeile("\u21bb", S.game === "bluff" ? "Neue Bluffrunde" : S.game === "dito" ? "Neue Dito-Partie" :
-      S.game === "skala" ? "Neue Skala-Partie" : S.game === "spion" ? "Neue Spion-Partie" : "Neue Quizrunde",
+      S.game === "skala" ? "Neue Skala-Partie" : S.game === "spion" ? "Neue Spion-Partie" : S.game === "zeitstrahl" ? "Neuer Zeitstrahl" : "Neue Quizrunde",
       "Punkte zur\u00fccksetzen", "danger", function(){
-      if (confirm((S.game === "bluff" ? "Bluff" : S.game === "dito" ? "Dito" : S.game === "skala" ? "Skala" : S.game === "spion" ? "Spion" : "Quiz") +
+      if (confirm((S.game === "bluff" ? "Bluff" : S.game === "dito" ? "Dito" : S.game === "skala" ? "Skala" : S.game === "spion" ? "Spion" : S.game === "zeitstrahl" ? "Zeitstrahl" : "Quiz") +
         " f\u00fcr alle neu anfangen?")) quizNeustart();
     });
   } else if (!gast && S.game !== "kniffel") {
@@ -6315,7 +6615,7 @@ function tabs(){
   if (S.game === "kniffel") first = kniffelDone() ? "Ergebnis" : "Block";
   else if (S.game === "phase10") first = p10Done() ? "Ergebnis" : "Runde";
   else if (S.game === "skyjo") first = skyjoDone() ? "Ergebnis" : "Runde";
-  else if (S.game === "quiz" || S.game === "bluff" || S.game === "dito" || S.game === "skala" || S.game === "spion") return el('<div></div>');
+  else if (S.game === "quiz" || S.game === "bluff" || S.game === "dito" || S.game === "skala" || S.game === "spion" || S.game === "zeitstrahl") return el('<div></div>');
   else first = S.rounds.length >= totalRounds() ? "Ergebnis" : "Runde";
   var node = el('<nav class="tabs"><div class="inner">' +
     '<button type="button">' + first + '</button>' +
@@ -6346,7 +6646,7 @@ function render(){
   if (!S && ALL.pendingJoin) return viewJoining();
   if (!S) return ALL.view === "stats" ? viewStats() : viewHome();
   if (S.setup || !S.names.length) return viewSetup();
-  if (S.game === "quiz" || S.game === "bluff" || S.game === "dito" || S.game === "skala" || S.game === "spion") return viewQuiz();
+  if (S.game === "quiz" || S.game === "bluff" || S.game === "dito" || S.game === "skala" || S.game === "spion" || S.game === "zeitstrahl") return viewQuiz();
   if (S.game === "skyjo") {
     if (S.view === "table") return viewSkyjoTable();
     if (skyjoDone()) return viewSkyjoFinal();
