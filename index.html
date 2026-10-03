@@ -634,6 +634,8 @@
     background:var(--tint); color:var(--gold); font-size:14px}
   .zs-karte span{font-size:13.5px; line-height:1.3}
   .zs-karte.benutzt{opacity:.3; transform:scale(.97)}
+  .zs-frage{font-size:24px; line-height:1.2}
+  .zs-frage-klein{margin:-4px 2px 10px; font-size:15px; font-weight:700}
   .zs-strahl{position:relative; margin:6px 2px 16px; padding-left:4px}
   .zs-strahl::before{content:""; position:absolute; left:88px; top:8px; bottom:8px; width:3px; border-radius:2px;
     background:linear-gradient(#2D82C7, #D6414F); opacity:.7}
@@ -641,6 +643,9 @@
   .zs-ereignis.kommt{animation:ereignisfaellt .6s cubic-bezier(.2,.9,.3,1) both}
   @keyframes ereignisfaellt{0%{opacity:0; transform:translateX(30px)}100%{opacity:1; transform:none}}
   .zs-jahr{flex:none; width:70px; text-align:right; font-size:17px; font-weight:900; letter-spacing:-.02em}
+  .zs-jahr.zahl{font-size:13.5px; line-height:1.15}
+  .zs-strahl.zahl .zs-jahr{width:96px}
+  .zs-strahl.zahl::before{left:114px}
   .zs-punkt{flex:none; width:13px; height:13px; border-radius:50%; background:var(--gold);
     border:2.5px solid var(--panel); position:relative; left:1px}
   .zs-text{font-size:14px; line-height:1.3}
@@ -951,7 +956,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-21.6";
+var VERSION = "2026-09-21.7";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -985,7 +990,7 @@ var GAMES = [
   { id:"dito",    name:"Dito",     sub:"Dasselbe denken wie die anderen", low:false },
   { id:"skala",   name:"Skala",    sub:"Gedanken auf einer Leiste lesen", low:false },
   { id:"spion",   name:"Spion",    sub:"Einer kennt den Ort nicht", low:false },
-  { id:"zeitstrahl", name:"Zeitstrahl", sub:"Was kam zuerst? Schnell sortieren", low:false }
+  { id:"zeitstrahl", name:"Zeitstrahl", sub:"Schnell in die richtige Reihenfolge", low:false }
 ];
 function fresh(){ return { theme:"light", cur:null, games:{}, history:[] }; }
 function grenzen(id){
@@ -4229,6 +4234,13 @@ var ZEIT_RUNDEN = 8;
 var BUCHSTABEN = ["A", "B", "C", "D"];
 
 function jahrText(j){ return j < 0 ? (-j) + " v. Chr." : String(j); }
+// Eindeutig je Runde, auch ueber Partien hinweg. Die Rundennummer allein faengt in jeder Partie wieder bei 1 an.
+function rundenKey(z){ return z && (z.rundeId || ("r" + z.runde)); }
+function wertText(w, a){
+  if (!a || a.art === "zeit") return jahrText(w);
+  var zahl = Math.abs(w) >= 10000 ? Number(w).toLocaleString("de-DE") : String(w).replace(".", ",");
+  return zahl + (a.einheit ? " " + a.einheit : "");
+}
 function sekunden(ms){ return (ms / 1000).toFixed(1).replace(".", ",") + " s"; }
 
 function viewZeit(){
@@ -4236,7 +4248,7 @@ function viewZeit(){
   if (quizTakt) { clearInterval(quizTakt); clearTimeout(quizTakt); quizTakt = null; }
   if (!z || z.modus !== "zeitstrahl") return viewZeitLobby();
   if (z.zeigenAb && serverJetzt() < z.zeigenAb && z.phase === "ansage")
-    return ditoAnsage("Runde " + z.runde, "Was kam zuerst? Vom \u00e4ltesten zum j\u00fcngsten", "start");
+    return ditoAnsage("Runde " + z.runde, esc((z.aufgabe || {}).frage || "Was kam zuerst?"), "start");
   if (z.phase === "ansage" && S.hostet) {
     setTimeout(function(){ if (QUIZ && QUIZ.phase === "ansage") quizSenden({ tat: "ansageVorbei" }); }, 0);
   }
@@ -4267,9 +4279,10 @@ function zeitPlaketten(z){
 function viewZeitSortieren(z){
   var ich = meinName();
   var eingeloggt = (z.abgegeben || []).indexOf(ich) >= 0;
-  var folge = ZEIT_FOLGE[z.runde] || (ZEIT_FOLGE[z.runde] = []);
+  var key = rundenKey(z), auf = z.aufgabe || {};
+  var folge = ZEIT_FOLGE[key] || (ZEIT_FOLGE[key] = []);
   zeitKopf(z, null);
-  app.appendChild(el('<h1 class="headline">Was kam zuerst?</h1>'));
+  app.appendChild(el('<h1 class="headline zs-frage">' + esc(auf.frage || "Was kam zuerst?") + '</h1>'));
   uhr(z.endeZeit, 30000);
   app.appendChild(zeitPlaketten(z));
 
@@ -4280,7 +4293,7 @@ function viewZeitSortieren(z){
     var platz = el('<div class="zs-platz' + (k !== undefined ? " belegt" : "") + '">' +
       '<span class="zs-nr">' + (p + 1) + '</span>' +
       (k !== undefined ? '<b>' + BUCHSTABEN[k] + '</b><span>' + esc((z.karten[k] || {}).text || "") + '</span>'
-                       : '<span class="zs-leer">' + (p === 0 ? "\u00e4ltestes" : p === 3 ? "j\u00fcngstes" : "") + '</span>') +
+                       : '<span class="zs-leer">' + (p === 0 ? esc(auf.oben || "zuerst") : p === 3 ? esc(auf.unten || "zuletzt") : "") + '</span>') +
       '</div>');
     if (k !== undefined && !eingeloggt) {
       (function(stelle){ bindTap(platz, function(){ folge.splice(stelle, 1); render(); }); })(p);
@@ -4290,7 +4303,7 @@ function viewZeitSortieren(z){
   app.appendChild(plaetze);
 
   if (eingeloggt) {
-    var zeit = ZEIT_ABGABE[z.runde];
+    var zeit = ZEIT_ABGABE[key];
     app.appendChild(el('<p class="note">Eingeloggt' + (zeit ? ' nach <b>' + sekunden(zeit) + '</b>' : '') +
       '. Warten auf die anderen.</p>'));
   } else {
@@ -4306,7 +4319,7 @@ function viewZeitSortieren(z){
     var los = el('<button class="cta" type="button"' + (folge.length < 4 ? " disabled" : "") + '>Einloggen</button>');
     bindTap(los, function(){
       if (folge.length < 4) return;
-      ZEIT_ABGABE[z.runde] = Math.max(0, serverJetzt() - (z.startZeit || serverJetzt()));
+      ZEIT_ABGABE[key] = Math.max(0, serverJetzt() - (z.startZeit || serverJetzt()));
       quizSenden({ tat: "sortiert", spieler: ich, folge: folge.slice() });
     });
     app.appendChild(los);
@@ -4322,13 +4335,16 @@ function viewZeitSortieren(z){
 /* --- Aufloesung: die Ereignisse fallen nacheinander auf den Zeitstrahl --- */
 function viewZeitAuf(z){
   var l = z.letzte || {};
-  var schon = ZEIT_GESEHEN === z.runde;
-  ZEIT_GESEHEN = z.runde;
+  var schon = ZEIT_GESEHEN === rundenKey(z);
+  ZEIT_GESEHEN = rundenKey(z);
   zeitKopf(z, "Aufl\u00f6sung");
-  var strahl = el('<div class="zs-strahl"></div>');
+  var aufg = z.aufgabe || {};
+  app.appendChild(el('<p class="zs-frage-klein">' + esc(aufg.frage || "Was kam zuerst?") + '</p>'));
+  var strahl = el('<div class="zs-strahl' + (aufg.art === "zahl" ? " zahl" : "") + '"></div>');
   (l.loesung || []).forEach(function(k, rang){
     var e = el('<div class="zs-ereignis' + (schon ? "" : " kommt") + '">' +
-      '<span class="zs-jahr">' + jahrText((l.jahre || [])[k]) + '</span>' +
+      '<span class="zs-jahr' + (aufg.art === "zahl" ? " zahl" : "") + '">' +
+        wertText((l.werte || l.jahre || [])[k], aufg) + '</span>' +
       '<span class="zs-punkt"></span>' +
       '<span class="zs-text"><b>' + BUCHSTABEN[k] + '</b> ' + esc((z.karten[k] || {}).text || "") + '</span></div>');
     if (!schon) e.style.animationDelay = (300 + rang * 750) + "ms";
@@ -4406,7 +4422,7 @@ function zeitHolen(anzahl, wunsch, fertig){
     .then(function(r){ return r.json().then(function(d){ if (!r.ok) throw new Error(d.message); return d; }); })
     .then(function(d){
       var neu = [];
-      d.runden.forEach(function(rd){ rd.forEach(function(e){ neu.push(e.text); }); });
+      d.runden.forEach(function(rd){ (rd.eintraege || rd || []).forEach(function(e){ neu.push(e.text); }); });
       ALL.ereignisse = ((ALL.ereignisse || []).concat(neu)).slice(-200); save();
       quizLaedt = false; fertig(d.runden);
     })
@@ -4567,7 +4583,7 @@ function viewSpionSpiel(z){
 /* --- Abstimmung --- */
 function viewSpionAbstimmung(z){
   var ich = meinName();
-  var meine = SPION_STIMME && SPION_STIMME.runde === z.runde ? SPION_STIMME.wahl : null;
+  var meine = SPION_STIMME && SPION_STIMME.runde === rundenKey(z) ? SPION_STIMME.wahl : null;
   var fertig = (z.abgestimmt || []).indexOf(ich) >= 0;
   spionKopf(z, "Abstimmung");
   app.appendChild(el('<h1 class="headline">Wer ist der Spion?</h1>'));
@@ -4590,7 +4606,7 @@ function viewSpionAbstimmung(z){
       var b = el('<button class="rank tap" type="button" style="--acc:' + hue(i) + '">' +
         '<span class="nm">' + esc(nm) + '</span><span class="pt">\u203A</span></button>');
       bindTap(b, function(){
-        SPION_STIMME = { runde: z.runde, wahl: nm };
+        SPION_STIMME = { runde: rundenKey(z), wahl: nm };
         quizSenden({ tat: "stimme", spieler: ich, wahl: nm });
       });
       app.appendChild(b);
@@ -4614,8 +4630,8 @@ var SPION_STIMME = null;
 /* --- Aufloesung: erst Trommelwirbel, dann der Name --- */
 function viewSpionAuf(z){
   var l = z.letzte || {};
-  var schon = SPION_GESEHEN === z.runde;
-  SPION_GESEHEN = z.runde;
+  var schon = SPION_GESEHEN === rundenKey(z);
+  SPION_GESEHEN = rundenKey(z);
   spionKopf(z, "Aufl\u00f6sung");
   var spIdx = S.names.indexOf(l.spion);
   var titel = { enttarnt: "Erwischt!", falsch: "Daneben!", gleichstand: "Keine Mehrheit",
@@ -4798,10 +4814,10 @@ function skalaLeiste(z, o){
       '<i class="b2"></i><i class="b3"></i><i class="b4"></i></div>'));
   }
   if (o.regler) {
-    var start = typeof SKALA_TIPP[z.runde] === "number" ? SKALA_TIPP[z.runde] : 50;
+    var start = typeof SKALA_TIPP[rundenKey(z)] === "number" ? SKALA_TIPP[rundenKey(z)] : 50;
     var r = el('<input class="skregler" type="range" min="0" max="100" step="1" value="' + start + '"' +
       (o.gesperrt ? " disabled" : "") + '>');
-    r.addEventListener("input", function(){ SKALA_TIPP[z.runde] = Number(r.value); });
+    r.addEventListener("input", function(){ SKALA_TIPP[rundenKey(z)] = Number(r.value); });
     balken.appendChild(r);
   }
   return box;
@@ -4827,12 +4843,12 @@ function viewSkalaHinweis(z, geber, ichGebe){
     app.appendChild(el('<p class="hintline" style="text-align:center">Nur du siehst den Bereich. ' +
       'Nenn einen Begriff, der genau dort liegt. Ein Wort oder ein kurzer Ausdruck.</p>'));
     var feld = merkeEingabe(el('<div class="codeeingabe"><input type="text" maxlength="60" ' +
-      'autocomplete="off" placeholder="dein Hinweis"></div>'), "skalahinweis" + z.runde);
+      'autocomplete="off" placeholder="dein Hinweis"></div>'), "skalahinweis" + rundenKey(z));
     app.appendChild(feld);
     app.appendChild(absenden("Hinweis geben", feld, function(){
       var t = feld.querySelector("input").value.trim();
       if (!t) return;
-      entwurfWeg("skalahinweis" + z.runde);
+      entwurfWeg("skalahinweis" + rundenKey(z));
       quizSenden({ tat: "hinweis", spieler: meinName(), text: t });
     }));
   } else {
@@ -4871,8 +4887,8 @@ function viewSkalaRaten(z, geber, ichGebe){
     var ab = el('<button class="cta" type="button">Tipp abgeben</button>');
     bindTap(ab, function(){
       var r = app.querySelector(".skregler");
-      var wert = r ? Number(r.value) : (SKALA_TIPP[z.runde] || 50);
-      SKALA_TIPP[z.runde] = wert;
+      var wert = r ? Number(r.value) : (SKALA_TIPP[rundenKey(z)] || 50);
+      SKALA_TIPP[rundenKey(z)] = wert;
       quizSenden({ tat: "tipp", spieler: ich, wert: wert });
     });
     app.appendChild(ab);
@@ -4892,8 +4908,8 @@ function viewSkalaAuf(z, geber){
   app.appendChild(el('<div class="vorgelesen"><span>' + esc(l.geber || geber) + ' sagte</span><b>' +
     esc(l.hinweis || "") + '</b></div>'));
 
-  var schon = SKALA_GESEHEN === z.runde;
-  SKALA_GESEHEN = z.runde;
+  var schon = SKALA_GESEHEN === rundenKey(z);
+  SKALA_GESEHEN = rundenKey(z);
   var box = skalaLeiste({ skala: l.skala }, { ziel: l.ziel, aufklappen: !schon });
   var balken = box.querySelector(".skbalken");
   var ruf = el('<div class="ruf"><b></b><span></span></div>');
@@ -6460,8 +6476,8 @@ var RULES_DITO = [
 ];
 
 var RULES_ZEIT = [
-  ["Worum es geht", "Wie die Auswahlrunde bei Wer wird Million\u00e4r: Vier Ereignisse A bis D, ihr bringt sie so schnell wie m\u00f6glich in die zeitliche Reihenfolge, vom \u00e4ltesten zum j\u00fcngsten."],
-  ["Sortieren", "Tipp die Ereignisse nacheinander an, das \u00e4lteste zuerst. Ein Tipp auf einen belegten Platz nimmt ihn wieder heraus. Mit Einloggen ist die Antwort fest und die Zeit gestoppt. Je Runde 30 Sekunden."],
+  ["Worum es geht", "Wie die Auswahlrunde bei Wer wird Million\u00e4r: eine Frage, vier Antworten A bis D, und ihr bringt sie so schnell wie m\u00f6glich in die richtige Reihenfolge. Mal nach der Zeit, was kam zuerst, mal nach einer Gr\u00f6\u00dfe, etwa wer die meisten Champions-League-Titel hat."],
+  ["Sortieren", "Tipp die Antworten nacheinander an, oben f\u00e4ngst du an. Was oben und unten bedeutet, steht in den leeren Pl\u00e4tzen. Ein Tipp auf einen belegten Platz nimmt ihn wieder heraus. Mit Einloggen ist die Antwort fest und die Zeit gestoppt. Je Runde 30 Sekunden."],
   ["Punkte", "Ein Punkt je richtigem Platz. Alles richtig gibt zwei extra. Wer am schnellsten alles richtig hat, bekommt noch drei obendrauf."],
   ["Mitspieler", "Zwei bis zehn, jeder am eigenen Handy. Die Ereignisse sucht die KI aus, \u00fcber das Wunschfeld k\u00f6nnt ihr sie steuern, etwa Musik oder Erfindungen."]
 ];
