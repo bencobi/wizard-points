@@ -531,6 +531,46 @@
   .skbalken .ruf{top:-28px}
   @media (prefers-reduced-motion:reduce){ .skzone.klappt, .skpunkt{animation:none; transition:none} }
 
+  /* Hauptmenue: Partyspiele oben als Karten, Spielblock unten als Liste */
+  .hm-weiter{display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:16px; margin:14px 0 4px;
+    background:var(--tint); border:1px solid var(--gold); color:var(--text); font:inherit; text-align:left; width:100%}
+  .hm-weiter b{font-size:14.5px} .hm-weiter span{font-size:12px; color:var(--dim); display:block}
+  .hm-weiter i{margin-left:auto; font-style:normal; font-size:20px; font-weight:800; color:var(--gold)}
+  .hm-kopf{display:flex; align-items:flex-end; justify-content:space-between; gap:10px; margin:22px 2px 10px}
+  .hm-kopf b{font-size:19px; font-weight:800; letter-spacing:-.02em}
+  .hm-kopf span{display:block; font-size:12.5px; color:var(--dim); margin-top:2px}
+  .hm-join{flex:none; padding:8px 14px; border-radius:999px; border:1px solid var(--gold);
+    background:var(--tint); color:var(--text); font:inherit; font-size:13px; font-weight:700}
+  .hm-raster{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+  .hm-karte{position:relative; text-align:left; padding:56px 13px 13px; border-radius:20px;
+    border:1px solid var(--hair); background:var(--glass-2); color:var(--text); font:inherit;
+    min-height:122px; display:flex; flex-direction:column; justify-content:flex-end; gap:3px; width:100%}
+  @supports (background:color-mix(in srgb, red 50%, blue)){
+    .hm-karte{background:linear-gradient(150deg, color-mix(in srgb, var(--acc) 22%, var(--glass-2)), var(--glass-2))} }
+  .hm-karte::before{content:attr(data-z); position:absolute; top:13px; left:13px; width:34px; height:34px;
+    border-radius:11px; background:var(--acc); color:#fff; display:grid; place-items:center;
+    font-weight:900; font-size:17px}
+  .hm-karte b{font-size:16px; font-weight:800}
+  .hm-karte span{font-size:12px; color:var(--dim); line-height:1.3}
+  .hm-karte .hm-zahl{position:absolute; top:14px; right:13px; font-style:normal; font-size:11px;
+    font-weight:700; color:var(--dim)}
+  .hm-karte.live{border-color:var(--gold)}
+  .hm-karte.live::after{content:"l\00e4uft"; position:absolute; top:13px; right:12px; padding:2px 8px;
+    border-radius:999px; background:var(--gold); color:#fff; font-size:10.5px; font-weight:800}
+  .hm-liste{display:flex; flex-direction:column; gap:8px}
+  .hm-zeile{display:flex; align-items:center; gap:8px; padding:4px 6px 4px 4px; border-radius:16px;
+    border:1px solid var(--hair); background:var(--glass-2)}
+  .hm-zeile.live{border-color:var(--gold)}
+  .hm-zeile .tilemain{flex:1; display:flex; flex-direction:column; justify-content:center; position:relative;
+    min-height:50px; padding:8px 8px 8px 50px; border:0; background:transparent; color:var(--text);
+    font:inherit; text-align:left}
+  .hm-zeile .tilemain::before{content:attr(data-z); position:absolute; left:9px; top:50%; transform:translateY(-50%);
+    width:30px; height:30px; border-radius:9px; background:var(--glass-2); border:1px solid var(--hair);
+    display:grid; place-items:center; font-weight:900; font-size:14px; color:var(--acc)}
+  .hm-zeile b{display:block; font-size:15px; font-weight:800}
+  .hm-zeile span{display:block; font-size:12px; color:var(--dim)}
+  .hm-zeile.live span{color:var(--gold); font-weight:700}
+
   .lader{display:flex; flex-direction:column; align-items:center; gap:14px; padding:26px 0 10px}
   .lader .karten{position:relative; width:118px; height:74px}
   .lader .karten i{position:absolute; left:50%; top:0; width:50px; height:70px; margin-left:-25px;
@@ -825,7 +865,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-21.1";
+var VERSION = "2026-09-21.2";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -854,8 +894,8 @@ var GAMES = [
   { id:"kniffel", name:"Kniffel",  sub:"Dreizehn Felder, ein Block je Spieler", low:false },
   { id:"phase10", name:"Phase 10", sub:"Zehn Phasen, Restpunkte je Runde", low:true },
   { id:"skyjo",   name:"Skyjo",    sub:"Punkte sammeln bis 100, wenigste gewinnen", low:true },
-  { id:"quiz",    name:"Quiz",     sub:"Sch\u00e4tz- und Wissensfragen, jeder am eigenen Handy", low:false },
-  { id:"bluff",   name:"Bluff",    sub:"Antworten erfinden und andere hereinlegen", low:false },
+  { id:"quiz",    name:"Quiz",     sub:"Wissen, Bilder und Sch\u00e4tzfragen", low:false },
+  { id:"bluff",   name:"Bluff",    sub:"Antworten erfinden, andere reinlegen", low:false },
   { id:"dito",    name:"Dito",     sub:"Dasselbe denken wie die anderen", low:false },
   { id:"skala",   name:"Skala",    sub:"Gedanken auf einer Leiste lesen", low:false }
 ];
@@ -884,7 +924,7 @@ function lastNames(){
   });
   return out;
 }
-function openGame(id){ ALL.cur = id; S = ALL.games[id]; }
+function openGame(id){ ALL.cur = id; ALL.zuletzt = id; S = ALL.games[id]; }
 function toHome(){ ALL.cur = null; S = null; }
 function baseRounds(count){
   count = count || (S.names ? S.names.length : 0);
@@ -2033,42 +2073,85 @@ function statusOf(id){
   return txt ? { txt:txt, who:st.names.join(", ") } : null;
 }
 
+var PARTYSPIELE = ["quiz", "bluff", "dito", "skala"];
+var SPIELZEICHEN = { wizard: "\u2660", kniffel: "\u2684", phase10: "10", skyjo: "\u25A6",
+                     quiz: "?", bluff: "!", dito: "=", skala: "\u2194" };
+var SPIELFARBE = { wizard: 3, kniffel: 0, phase10: 4, skyjo: 6, quiz: 5, bluff: 2, dito: 1, skala: 3 };
+
+// Bei Partyspielen zaehlt nicht der Punktestand, sondern ob gerade eine Partie offen ist
+function partyStatus(id){
+  var st = ALL.games[id];
+  if (!st || !st.live || !st.names || !st.names.length) return null;
+  return { txt: "Partie l\u00e4uft \u00b7 Code " + st.live, who: st.names.join(", ") };
+}
+function spielStatus(id){ return PARTYSPIELE.indexOf(id) >= 0 ? partyStatus(id) : statusOf(id); }
+
+function spielOeffnen(g){
+  var st = spielStatus(g.id);
+  if (st) { openGame(g.id); save(); render(); return; }
+  ALL.games[g.id] = newGame(g.id, lastNames()); openGame(g.id); save(); render();
+}
+
 function viewHome(){
   app.innerHTML = "";
   app.appendChild(el('<div class="top"><div class="brand"><span class="hat">\u25B2</span> Spielblock</div></div>'));
   app.querySelector(".top").appendChild(helpButton());
   app.appendChild(el('<h1 class="headline">Was spielt ihr?</h1>'));
-  app.appendChild(el('<p class="lead-in">Jedes Spiel hat seinen eigenen Stand, du kannst also mehrere nebeneinander laufen lassen.</p>'));
 
-  GAMES.forEach(function(g){
+  // Weiterspielen: das zuletzt geoeffnete Spiel, wenn es noch laeuft
+  var zuletzt = ALL.zuletzt && GAMES.filter(function(g){ return g.id === ALL.zuletzt; })[0];
+  var zSt = zuletzt && spielStatus(zuletzt.id);
+  if (zSt) {
+    var weiter = el('<button class="hm-weiter" type="button"><span><b>Weiterspielen</b>' +
+      '<span>' + esc(zuletzt.name) + ' \u00b7 ' + esc(zSt.txt) + '</span></span><i>\u203A</i></button>');
+    bindTap(weiter, function(){ openGame(zuletzt.id); save(); render(); });
+    app.appendChild(weiter);
+  }
+
+  // --- Partyspiele: jeder am eigenen Handy ---
+  var kopfP = el('<div class="hm-kopf"><div><b>Partyspiele</b><span>Jeder spielt auf dem eigenen Handy</span></div></div>');
+  var join = el('<button class="hm-join" type="button">Beitreten</button>');
+  join.onclick = beitreten;
+  kopfP.appendChild(join);
+  app.appendChild(kopfP);
+  var raster = el('<div class="hm-raster"></div>');
+  GAMES.filter(function(g){ return PARTYSPIELE.indexOf(g.id) >= 0; }).forEach(function(g){
+    var st = partyStatus(g.id), gr = grenzen(g.id);
+    var karte = el('<button class="tilemain hm-karte' + (st ? " live" : "") + '" type="button" ' +
+      'data-z="' + SPIELZEICHEN[g.id] + '" style="--acc:' + hue(SPIELFARBE[g.id]) + '">' +
+      '<b>' + g.name + '</b><span>' + esc(st ? st.txt : g.sub) + '</span>' +
+      (st ? '' : '<em class="hm-zahl">' + gr.min + '\u2013' + gr.max + '</em>') + '</button>');
+    bindTap(karte, function(){ spielOeffnen(g); });
+    raster.appendChild(karte);
+  });
+  app.appendChild(raster);
+
+  // --- Spielblock: Karten auf dem Tisch, die App zaehlt ---
+  app.appendChild(el('<div class="hm-kopf"><div><b>Spielblock</b><span>Ihr spielt mit Karten, ' +
+    'die App z\u00e4hlt mit</span></div></div>'));
+  var liste = el('<div class="hm-liste"></div>');
+  GAMES.filter(function(g){ return PARTYSPIELE.indexOf(g.id) < 0; }).forEach(function(g){
     var st = statusOf(g.id);
-    var tile = el('<div class="tile' + (st ? ' live' : '') + '"></div>');
-    var main = el('<button class="tilemain" type="button"><b>' + g.name + '</b>' +
-      '<span>' + (st ? esc(st.who) : g.sub) + '</span>' +
-      (st ? '<span class="live-txt">' + st.txt + '</span>' : '') + '</button>');
-    bindTap(main, function(){
-      if (st) { openGame(g.id); save(); render(); }
-      else { ALL.games[g.id] = newGame(g.id, lastNames()); openGame(g.id); save(); render(); }
-    });
-    tile.appendChild(main);
+    var zeile = el('<div class="hm-zeile' + (st ? " live" : "") + '" style="--acc:' + hue(SPIELFARBE[g.id]) + '"></div>');
+    var haupt = el('<button class="tilemain" type="button" data-z="' + SPIELZEICHEN[g.id] + '">' +
+      '<b>' + g.name + '</b><span>' + esc(st ? st.txt : g.sub) + '</span></button>');
+    bindTap(haupt, function(){ spielOeffnen(g); });
+    zeile.appendChild(haupt);
     if (st) {
-      var fresh2 = el('<button class="tilenew" type="button">Neu</button>');
-      bindTap(fresh2, function(){
+      var frisch = el('<button class="tilenew" type="button">Neu</button>');
+      bindTap(frisch, function(){
         if (confirm(g.name + " neu anfangen? Der laufende Stand geht verloren.")) {
           ALL.games[g.id] = newGame(g.id, ALL.games[g.id].names.slice());
           openGame(g.id); save(); render();
         }
       });
-      tile.appendChild(fresh2);
+      zeile.appendChild(frisch);
     }
-    app.appendChild(tile);
+    liste.appendChild(zeile);
   });
+  app.appendChild(liste);
 
-  var join = el('<button class="cta ghost" type="button">Partie beitreten</button>');
-  join.onclick = beitreten;
-  app.appendChild(join);
-
-  var stats = el('<button class="cta ghost" type="button">Ewige Tabelle' +
+  var stats = el('<button class="cta ghost" type="button" style="margin-top:20px">Ewige Tabelle' +
     (ALL.history.length ? ' \u00b7 ' + ALL.history.length +
       (ALL.history.length === 1 ? ' Partie' : ' Partien') : '') + '</button>');
   stats.onclick = function(){ ALL.view = "stats"; save(); render(); };
@@ -2769,7 +2852,13 @@ function liveVerbinden(){
   var url = API.replace(/^http/, "ws") + "/live/" + encodeURIComponent(sockCode);
   try { sock = new WebSocket(url); } catch (e) { sock = null; verbindet = false; spaeterNeu(); return; }
 
-  sock.onopen = function(){ verbindet = false; render(); };
+  sock.onopen = function(){
+    verbindet = false;
+    // Wer ein persoenliches Spiel spielt, meldet sich bei jeder neuen Verbindung sofort an.
+    // Sonst kennt der Server das Handy nach dem Sperren nicht mehr.
+    skalaAnmelden();
+    render();
+  };
   sock.onclose = function(){
     verbindet = false; sock = null; liveAnzahl = 1;
     spaeterNeu();
@@ -4014,7 +4103,15 @@ function aufholHinweis(nm, mehr, feld){
 
 /* ---------- Skala: Gedanken auf einer Leiste lesen ---------- */
 var SKALA_TIPP = {};        // eigener Reglerstand je Runde, ueberlebt das Neuzeichnen
-var skalaGemeldet = null;   // an welches Handy wir zuletzt "ich bin" geschickt haben
+var skalaGemeldet = null;   // ueber welche Verbindung wir zuletzt "ich bin" geschickt haben
+
+function skalaAnmelden(){
+  if (!S || S.game !== "skala" || !meinName()) return;
+  // Nur als erledigt merken, wenn die Verbindung offen ist und die Nachricht wirklich rausging
+  if (!sock || sock.readyState !== 1) return;
+  quizSenden({ tat: "ichbin", spieler: meinName() });
+  skalaGemeldet = sock;
+}
 
 function viewSkala(){
   var z = QUIZ;
@@ -4022,10 +4119,7 @@ function viewSkala(){
   if (!z || z.modus !== "skala") return viewSkalaLobby();
 
   // Der Server zeigt jedem Handy seinen eigenen Stand. Dazu muss er wissen, wer wir sind.
-  if (sock && skalaGemeldet !== sock && meinName()) {
-    skalaGemeldet = sock;
-    setTimeout(function(){ quizSenden({ tat: "ichbin", spieler: meinName() }); }, 0);
-  }
+  if (skalaGemeldet !== sock) setTimeout(skalaAnmelden, 0);
 
   var geber = S.names[(z.dran || 0) % S.names.length];
   var ichGebe = geber === meinName();
