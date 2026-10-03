@@ -961,7 +961,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-21.8";
+var VERSION = "2026-09-21.9";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -2202,7 +2202,13 @@ function spielOeffnen(g){
   // Ein vorhandenes Spiel wird geoeffnet, auch wenn gerade nichts laeuft.
   // Sonst ginge der Freigabecode der Gruppe verloren.
   var vorhanden = ALL.games[g.id];
-  if (vorhanden && vorhanden.names && vorhanden.names.length) { openGame(g.id); save(); render(); return; }
+  if (vorhanden && vorhanden.names && vorhanden.names.length) {
+    // Partyspiel ohne laufende Partie: erst die Spielerliste zeigen, vorausgefuellt.
+    // Der Freigabecode bleibt dabei erhalten. Gaeste aendern keine fremde Spielerliste.
+    var gastHier = vorhanden.live && !vorhanden.hostet;
+    if (PARTYSPIELE.indexOf(g.id) >= 0 && !partyStatus(g.id) && !gastHier) vorhanden.setup = true;
+    openGame(g.id); save(); render(); return;
+  }
   ALL.games[g.id] = newGame(g.id, lastNames()); openGame(g.id); save(); render();
 }
 
@@ -3073,7 +3079,9 @@ function uebernehmen(stand){
     S.setup = false;
   }
   LIVE_KEYS.forEach(function(k){ if (k !== "game") S[k] = stand[k]; });
-  S.setup = false;
+  // Gaeste sehen immer das laufende Spiel. Der Gastgeber darf seine Spielerliste offen lassen,
+  // sonst schliesst das Echo vom Server sie sofort wieder.
+  if (!S.hostet) S.setup = false;
   if (S.at >= S.names.length) S.at = 0;
   letzterStand = standVon(S);
   wendetAn = false;
@@ -6646,6 +6654,11 @@ function openMenu(){
       "Punkte zur\u00fccksetzen", "danger", function(){
       if (confirm((S.game === "bluff" ? "Bluff" : S.game === "dito" ? "Dito" : S.game === "skala" ? "Skala" : S.game === "spion" ? "Spion" : S.game === "zeitstrahl" ? "Zeitstrahl" : "Quiz") +
         " f\u00fcr alle neu anfangen?")) quizNeustart();
+    });
+    zeile("\u270E", "Spieler \u00e4ndern", "Namen und Reihenfolge, der Code bleibt", "", function(){
+      if (partyStatus(S.game) && !confirm("Die laufende Partie wird dabei beendet. Trotzdem?")) return;
+      if (partyStatus(S.game)) quizNeustart();
+      S.setup = true; save(); render();
     });
   } else if (!gast && S.game !== "kniffel") {
     var lost = ALL.zufallStart && (S.game === "wizard" || S.game === "phase10");
