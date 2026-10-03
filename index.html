@@ -489,6 +489,48 @@
     .vorgelesen, .trefferkarte, .bonus.erreicht{animation:none}
     .tkreis ellipse, .tkreuz path{stroke-dashoffset:0; opacity:1}}
 
+  /* Skala */
+  .skala{margin:6px 2px 16px}
+  .skala .pole{display:flex; justify-content:space-between; gap:10px; margin:0 2px 8px;
+    font-size:13.5px; font-weight:800}
+  .skala .pole span:first-child{color:#2D82C7}
+  .skala .pole span:last-child{color:#D6414F; text-align:right}
+  .skbalken{position:relative; height:74px; margin-top:34px}
+  .skbalken::before{content:""; position:absolute; left:0; right:0; top:26px; height:8px; border-radius:4px;
+    background:linear-gradient(90deg, #2D82C7, #8a7fb0 50%, #D6414F); opacity:.85}
+  .skzone{position:absolute; top:16px; height:28px; transform:translateX(-50%); width:32%;
+    pointer-events:none}
+  .skzone i{position:absolute; top:0; bottom:0; left:50%; transform:translateX(-50%); border-radius:6px}
+  .skzone .b2{width:100%; background:rgba(242,185,75,.30)}
+  .skzone .b3{width:62.5%; background:rgba(242,185,75,.55)}
+  .skzone .b4{width:25%; background:var(--gold)}
+  .skzone.klappt{animation:zoneauf .9s cubic-bezier(.2,.9,.3,1) both}
+  @keyframes zoneauf{0%{transform:translateX(-50%) scaleX(0); opacity:.2}100%{transform:translateX(-50%) scaleX(1); opacity:1}}
+  .skregler{position:absolute; left:-12px; right:-12px; top:16px; width:calc(100% + 24px); height:28px;
+    margin:0; background:transparent; -webkit-appearance:none; appearance:none}
+  .skregler::-webkit-slider-runnable-track{height:28px; background:transparent}
+  .skregler::-moz-range-track{height:28px; background:transparent}
+  .skregler::-webkit-slider-thumb{-webkit-appearance:none; width:30px; height:30px; margin-top:-1px;
+    border-radius:50%; background:var(--panel); border:4px solid var(--gold); box-shadow:0 3px 10px rgba(0,0,0,.25)}
+  .skregler::-moz-range-thumb{width:22px; height:22px; border-radius:50%; background:var(--panel);
+    border:4px solid var(--gold)}
+  .skregler:disabled::-webkit-slider-thumb{border-color:var(--dim)}
+  .skpunkt{position:absolute; top:24px; width:12px; height:12px; margin-left:-6px; border-radius:50%;
+    background:var(--acc); border:2px solid var(--panel); transition:left .8s cubic-bezier(.2,.8,.25,1),
+    opacity .3s ease}
+  .skpunkt.kommt{opacity:0}
+  .skbalken .faeden{position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible;
+    pointer-events:none}
+  .skbalken .faeden line{stroke-width:1.2; opacity:.55; transition:opacity .3s ease}
+  .skbalken .faeden line.kommt{opacity:0}
+  .skbalken .marke{position:absolute; top:46px; transform:translateX(-50%); width:19px; height:19px;
+    border-radius:50%; background:var(--acc); color:#fff; font-size:10.5px; font-weight:800;
+    line-height:19px; text-align:center; border:1.5px solid var(--panel);
+    transition:opacity .3s ease, transform .3s ease}
+  .skbalken .marke.kommt{opacity:0; transform:translate(-50%, -6px) scale(.6)}
+  .skbalken .ruf{top:-28px}
+  @media (prefers-reduced-motion:reduce){ .skzone.klappt, .skpunkt{animation:none; transition:none} }
+
   .lader{display:flex; flex-direction:column; align-items:center; gap:14px; padding:26px 0 10px}
   .lader .karten{position:relative; width:118px; height:74px}
   .lader .karten i{position:absolute; left:50%; top:0; width:50px; height:70px; margin-left:-25px;
@@ -783,7 +825,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-20.8";
+var VERSION = "2026-09-21.1";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -814,7 +856,8 @@ var GAMES = [
   { id:"skyjo",   name:"Skyjo",    sub:"Punkte sammeln bis 100, wenigste gewinnen", low:true },
   { id:"quiz",    name:"Quiz",     sub:"Sch\u00e4tz- und Wissensfragen, jeder am eigenen Handy", low:false },
   { id:"bluff",   name:"Bluff",    sub:"Antworten erfinden und andere hereinlegen", low:false },
-  { id:"dito",    name:"Dito",     sub:"Dasselbe denken wie die anderen", low:false }
+  { id:"dito",    name:"Dito",     sub:"Dasselbe denken wie die anderen", low:false },
+  { id:"skala",   name:"Skala",    sub:"Gedanken auf einer Leiste lesen", low:false }
 ];
 function fresh(){ return { theme:"light", cur:null, games:{}, history:[] }; }
 function grenzen(id){
@@ -823,6 +866,7 @@ function grenzen(id){
   if (id === "quiz")    return { min: 2, max: 10 };
   if (id === "bluff")   return { min: 3, max: 8 };   // unter drei lohnt das Bluffen nicht
   if (id === "dito")    return { min: 2, max: 7 };
+  if (id === "skala")   return { min: 2, max: 10 };
   if (id === "phase10") return { min: 2, max: 6 };
   return { min: 2, max: 6 };                          // Wizard, offiziell ab 3
 }
@@ -3091,6 +3135,12 @@ function quizNeustart(){
 // Sonst zerstoert das Neuzeichnen das Eingabefeld und iOS klappt die Tastatur weg.
 function nurFortschritt(alt, neu){
   if (!alt || !neu) return false;
+  if (neu.modus === "skala") {
+    if (alt.modus !== "skala" || alt.phase !== "raten" || neu.phase !== "raten") return false;
+    if (alt.runde !== neu.runde) return false;
+    var wer = meinName();
+    return ((alt.abgegeben || []).indexOf(wer) >= 0) === ((neu.abgegeben || []).indexOf(wer) >= 0);
+  }
   if (alt.phase !== neu.phase) return false;
   if (neu.zeigenAb && serverJetzt() < neu.zeigenAb) return false;
   var ich = meinName();
@@ -3340,6 +3390,10 @@ function spielerPunkte(z){
 function fortschrittAuffrischen(){
   var reihe = app.querySelector(".wersteht");
   if (!reihe) { render(); return; }
+  if (QUIZ && QUIZ.modus === "skala") {
+    reihe.innerHTML = skalaPlaketten(QUIZ, S.names[(QUIZ.dran || 0) % S.names.length]).innerHTML;
+    return;
+  }
   var fertig = QUIZ.phase === "frage" ? QUIZ.geantwortet
              : (QUIZ.phase === "schreiben" ? QUIZ.geschrieben : QUIZ.gestimmt);
   var neu = QUIZ.phase === "frage" ? spielerPunkte(QUIZ) : bluffPlaketten(fertig || []);
@@ -3379,11 +3433,12 @@ function quizFragenHolen(thema, anzahl){
 
 function istBluff(){ return S && S.game === "bluff"; }
 function istDito(){ return S && S.game === "dito"; }
+function istSkala(){ return S && S.game === "skala"; }
 
 function quizKopf(titel, unter){
   app.innerHTML = "";
   app.appendChild(el('<div class="top"><div class="brand"><span class="hat">\u25B2</span> ' +
-    (istBluff() ? "Bluff" : istDito() ? "Dito" : "Quiz") + '</div></div>'));
+    (istBluff() ? "Bluff" : istDito() ? "Dito" : istSkala() ? "Skala" : "Quiz") + '</div></div>'));
   topBtns();
   if (titel) app.appendChild(el('<h1 class="headline">' + titel + '</h1>'));
   if (unter) app.appendChild(el('<p class="meta">' + unter + '</p>'));
@@ -3394,7 +3449,8 @@ function viewQuiz(){
 
   // Ohne Freigabe geht Quiz nicht
   if (!S.live) {
-    quizKopf(S.game === "bluff" ? "Bluff zu mehreren" : S.game === "dito" ? "Dito zu mehreren" : "Quiz zu mehreren",
+    quizKopf(S.game === "bluff" ? "Bluff zu mehreren" : S.game === "dito" ? "Dito zu mehreren" :
+      S.game === "skala" ? "Skala zu mehreren" : "Quiz zu mehreren",
       "Hier spielt jeder auf dem eigenen Handy. Gib die Partie frei, damit die anderen beitreten k\u00f6nnen.");
     var frei = el('<button class="cta" type="button">Partie freigeben</button>');
     frei.onclick = function(){
@@ -3420,6 +3476,7 @@ function viewQuiz(){
 
   var z = QUIZ;
   if (istDito()) return viewDito();
+  if (istSkala()) return viewSkala();
   if (istBluff() && (!z || z.phase === "lobby")) return viewBluffLobby();
   if (!z || z.phase === "lobby") return viewQuizLobby();
   if (z.modus === "bluff") return z.phase === "ende" ? viewQuizEnde() : viewBluff();
@@ -3953,6 +4010,346 @@ function aufholHinweis(nm, mehr, feld){
   setTimeout(function(){ zeile.remove(); }, 2600);
 }
 
+
+
+/* ---------- Skala: Gedanken auf einer Leiste lesen ---------- */
+var SKALA_TIPP = {};        // eigener Reglerstand je Runde, ueberlebt das Neuzeichnen
+var skalaGemeldet = null;   // an welches Handy wir zuletzt "ich bin" geschickt haben
+
+function viewSkala(){
+  var z = QUIZ;
+  if (quizTakt) { clearInterval(quizTakt); clearTimeout(quizTakt); quizTakt = null; }
+  if (!z || z.modus !== "skala") return viewSkalaLobby();
+
+  // Der Server zeigt jedem Handy seinen eigenen Stand. Dazu muss er wissen, wer wir sind.
+  if (sock && skalaGemeldet !== sock && meinName()) {
+    skalaGemeldet = sock;
+    setTimeout(function(){ quizSenden({ tat: "ichbin", spieler: meinName() }); }, 0);
+  }
+
+  var geber = S.names[(z.dran || 0) % S.names.length];
+  var ichGebe = geber === meinName();
+
+  if (z.zeigenAb && serverJetzt() < z.zeigenAb) {
+    if (z.phase === "ansage") return ditoAnsage(ichGebe ? "Du bist dran" : esc(geber) + " ist dran",
+      "Runde " + z.runde + " von " + z.gesamt + (ichGebe ? " \u00b7 du gibst den Hinweis" : ""), "start");
+    if (z.phase === "hinweisAnsage") return ditoAnsage("\u201e" + esc(z.hinweis) + "\u201c",
+      "Hinweis von " + esc(geber), "auf");
+  }
+  if ((z.phase === "ansage" || z.phase === "hinweisAnsage") && S.hostet) {
+    var jetzige = z.phase;
+    setTimeout(function(){ if (QUIZ && QUIZ.phase === jetzige) quizSenden({ tat: "ansageVorbei" }); }, 0);
+  }
+
+  if (z.phase === "nachschub") return viewSkalaNachschub(z);
+  if (z.phase === "ansage" || z.phase === "hinweis") return viewSkalaHinweis(z, geber, ichGebe);
+  if (z.phase === "hinweisAnsage" || z.phase === "raten") return viewSkalaRaten(z, geber, ichGebe);
+  if (z.phase === "auf") return viewSkalaAuf(z, geber);
+  if (z.phase === "ende") return viewSkalaEnde(z);
+  return viewSkalaHinweis(z, geber, ichGebe);
+}
+
+function skalaKopf(z, unter){
+  quizKopf(null, null);
+  app.appendChild(el('<p class="meta">Runde ' + (z.runde || 1) + ' von ' + (z.gesamt || 1) +
+    (unter ? ' \u00b7 ' + unter : '') + '</p>'));
+}
+
+// Die Leiste mit den beiden Gegensaetzen. Optional mit Zielbereich und Regler.
+function skalaLeiste(z, o){
+  o = o || {};
+  var box = el('<div class="skala"><div class="pole"><span>' + esc((z.skala || {}).links || "") +
+    '</span><span>' + esc((z.skala || {}).rechts || "") + '</span></div>' +
+    '<div class="skbalken"></div></div>');
+  var balken = box.querySelector(".skbalken");
+  if (typeof o.ziel === "number") {
+    balken.appendChild(el('<div class="skzone' + (o.aufklappen ? " klappt" : "") + '" style="left:' + o.ziel + '%">' +
+      '<i class="b2"></i><i class="b3"></i><i class="b4"></i></div>'));
+  }
+  if (o.regler) {
+    var start = typeof SKALA_TIPP[z.runde] === "number" ? SKALA_TIPP[z.runde] : 50;
+    var r = el('<input class="skregler" type="range" min="0" max="100" step="1" value="' + start + '"' +
+      (o.gesperrt ? " disabled" : "") + '>');
+    r.addEventListener("input", function(){ SKALA_TIPP[z.runde] = Number(r.value); });
+    balken.appendChild(r);
+  }
+  return box;
+}
+
+function skalaPlaketten(z, geber){
+  var reihe = el('<div class="wersteht"></div>');
+  S.names.forEach(function(nm, i){
+    if (nm === geber) return;
+    var da = (z.abgegeben || []).indexOf(nm) >= 0;
+    reihe.appendChild(el('<span class="wp' + (da ? " fertig" : "") + '" style="--acc:' + hue(i) + '">' +
+      '<b>' + esc(nm.charAt(0).toUpperCase()) + '</b><i>' + esc(nm) + '</i></span>'));
+  });
+  return reihe;
+}
+
+/* --- Hinweis geben --- */
+function viewSkalaHinweis(z, geber, ichGebe){
+  skalaKopf(z, ichGebe ? "du gibst den Hinweis" : esc(geber) + " gibt den Hinweis");
+  if (ichGebe) {
+    app.appendChild(el('<h1 class="headline">Wo liegt das Ziel?</h1>'));
+    app.appendChild(skalaLeiste(z, { ziel: z.ziel }));
+    app.appendChild(el('<p class="hintline" style="text-align:center">Nur du siehst den Bereich. ' +
+      'Nenn einen Begriff, der genau dort liegt. Ein Wort oder ein kurzer Ausdruck.</p>'));
+    var feld = merkeEingabe(el('<div class="codeeingabe"><input type="text" maxlength="60" ' +
+      'autocomplete="off" placeholder="dein Hinweis"></div>'), "skalahinweis" + z.runde);
+    app.appendChild(feld);
+    app.appendChild(absenden("Hinweis geben", feld, function(){
+      var t = feld.querySelector("input").value.trim();
+      if (!t) return;
+      entwurfWeg("skalahinweis" + z.runde);
+      quizSenden({ tat: "hinweis", spieler: meinName(), text: t });
+    }));
+  } else {
+    app.appendChild(el('<h1 class="headline">' + esc(geber) + ' \u00fcberlegt</h1>'));
+    app.appendChild(skalaLeiste(z, {}));
+    app.appendChild(el('<p class="note">Gleich kommt ein Hinweis. Dann sch\u00e4tzt du, wo auf der ' +
+      'Leiste das Ziel liegt.</p>'));
+  }
+  app.appendChild(skalaStand(z));
+  app.appendChild(tabs());
+}
+
+/* --- Raten --- */
+function viewSkalaRaten(z, geber, ichGebe){
+  var ich = meinName();
+  var abgegeben = (z.abgegeben || []).indexOf(ich) >= 0;
+  skalaKopf(z, "Hinweis von " + esc(geber));
+  app.appendChild(el('<div class="vorgelesen"><span>' + esc(geber) + ' sagt</span><b>' +
+    esc(z.hinweis) + '</b></div>'));
+  uhr(z.endeZeit, 90000);
+  app.appendChild(skalaPlaketten(z, geber));
+
+  if (ichGebe) {
+    app.appendChild(skalaLeiste(z, { ziel: z.ziel }));
+    app.appendChild(el('<p class="note">Die anderen sch\u00e4tzen gerade.</p>'));
+  } else if (abgegeben) {
+    app.appendChild(skalaLeiste(z, { regler: true, gesperrt: true }));
+    app.appendChild(el('<p class="note">Abgegeben. Warten auf die anderen.</p>'));
+    var zurueck = el('<button class="cta ghost" type="button">Doch noch \u00e4ndern</button>');
+    bindTap(zurueck, function(){ quizSenden({ tat: "zuruecknehmen", spieler: ich }); });
+    app.appendChild(zurueck);
+  } else {
+    app.appendChild(skalaLeiste(z, { regler: true }));
+    app.appendChild(el('<p class="hintline" style="text-align:center">Schieb den Regler dorthin, ' +
+      'wo der Hinweis deiner Meinung nach liegt.</p>'));
+    var ab = el('<button class="cta" type="button">Tipp abgeben</button>');
+    bindTap(ab, function(){
+      var r = app.querySelector(".skregler");
+      var wert = r ? Number(r.value) : (SKALA_TIPP[z.runde] || 50);
+      SKALA_TIPP[z.runde] = wert;
+      quizSenden({ tat: "tipp", spieler: ich, wert: wert });
+    });
+    app.appendChild(ab);
+  }
+  if (S.hostet) {
+    var auf = el('<button class="cta ghost" type="button">Jetzt aufl\u00f6sen</button>');
+    bindTap(auf, function(){ quizSenden({ tat: "aufloesen" }); });
+    app.appendChild(auf);
+  }
+  app.appendChild(tabs());
+}
+
+/* --- Aufloesung: erst der Zielbereich, dann fliegen die Tipps ein --- */
+function viewSkalaAuf(z, geber){
+  var l = z.letzte || {};
+  skalaKopf(z, "Aufl\u00f6sung");
+  app.appendChild(el('<div class="vorgelesen"><span>' + esc(l.geber || geber) + ' sagte</span><b>' +
+    esc(l.hinweis || "") + '</b></div>'));
+
+  var schon = SKALA_GESEHEN === z.runde;
+  SKALA_GESEHEN = z.runde;
+  var box = skalaLeiste({ skala: l.skala }, { ziel: l.ziel, aufklappen: !schon });
+  var balken = box.querySelector(".skbalken");
+  var ruf = el('<div class="ruf"><b></b><span></span></div>');
+  balken.appendChild(ruf);
+  app.appendChild(box);
+
+  var tipps = [];
+  S.names.forEach(function(nm, i){
+    var e = (l.ergebnis || {})[nm];
+    if (e && typeof e.wert === "number") tipps.push({ nm: nm, i: i, w: e.wert, p: e.punkte });
+  });
+  tipps.sort(function(a, b){ return a.w - b.w; });
+
+  // Marken in einer Reihe unter der Leiste, bei Gedraenge seitlich aufgefaechert
+  var abstand = 6.5, rand = 3, lx = [];
+  tipps.forEach(function(t, k){ lx[k] = Math.max(t.w, rand, k ? lx[k - 1] + abstand : rand); });
+  for (var k = lx.length - 1; k >= 0; k--) {
+    var grenze = k === lx.length - 1 ? 100 - rand : lx[k + 1] - abstand;
+    if (lx[k] > grenze) lx[k] = grenze;
+  }
+  var ns = "http://www.w3.org/2000/svg";
+  var svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("class", "faeden");
+  balken.appendChild(svg);
+
+  var takt = tipps.length > 5 ? 1250 : 1000, vorlauf = schon ? 0 : 1300;
+  tipps.forEach(function(t, k){
+    var punkt = el('<div class="skpunkt' + (schon ? "" : " kommt") + '" style="--acc:' + hue(t.i) +
+      ';left:' + (schon ? t.w : 0) + '%"></div>');
+    balken.appendChild(punkt);
+    var linie = document.createElementNS(ns, "line");
+    linie.setAttribute("x1", t.w + "%"); linie.setAttribute("y1", "30");
+    linie.setAttribute("x2", lx[k].toFixed(2) + "%"); linie.setAttribute("y2", "46");
+    linie.setAttribute("class", schon ? "" : "kommt");
+    linie.style.stroke = hue(t.i);
+    svg.appendChild(linie);
+    var marke = el('<b class="marke' + (schon ? "" : " kommt") + '" style="--acc:' + hue(t.i) +
+      ';left:' + lx[k].toFixed(2) + '%">' + esc(t.nm.charAt(0).toUpperCase()) + '</b>');
+    balken.appendChild(marke);
+    if (schon) return;
+    setTimeout(function(){
+      punkt.classList.remove("kommt");
+      punkt.style.left = t.w + "%";
+    }, vorlauf + k * takt);
+    setTimeout(function(){
+      ruf.querySelector("b").textContent = t.nm;
+      ruf.querySelector("span").textContent = "+" + t.p;
+      ruf.style.setProperty("--acc", hue(t.i));
+      var breite = balken.offsetWidth || 1, halb = (ruf.offsetWidth || 0) / 2;
+      var raender = Math.min(50, (halb / breite) * 100 + 1);
+      var mitte = Math.max(raender, Math.min(100 - raender, t.w));
+      ruf.style.left = mitte + "%";
+      ruf.style.setProperty("--zeiger", Math.max(-halb + 10, Math.min(halb - 10, ((t.w - mitte) / 100) * breite)) + "px");
+      ruf.classList.remove("an"); void ruf.offsetWidth; ruf.classList.add("an");
+      marke.classList.remove("kommt");
+      linie.setAttribute("class", "");
+    }, vorlauf + k * takt + 650);
+  });
+
+  // Ergebnis der Runde, erscheint nach dem letzten Tipp
+  var rest = el('<div class="nachher' + (schon ? "" : " wartet") + '"></div>');
+  app.appendChild(rest);
+  var reihe = S.names.map(function(nm, i){
+    var e = (l.ergebnis || {})[nm] || { punkte: 0 };
+    return { nm: nm, i: i, e: e, pt: z.gemeinsam ? null : (z.punkte[nm] || 0) };
+  });
+  if (z.gemeinsam) {
+    rest.appendChild(el('<p class="note">Zusammen: <b>' + (z.teamPunkte || 0) + '</b> Punkte</p>'));
+  } else {
+    reihe.sort(function(a, b){ return b.pt - a.pt; });
+  }
+  reihe.forEach(function(p, k){
+    rest.appendChild(el('<div class="rank' + (!z.gemeinsam && k === 0 ? ' first' : '') + '" data-nm="' + esc(p.nm) +
+      '" style="--acc:' + hue(p.i) + '"><span class="nm">' + esc(p.nm) + '<span class="sub">' +
+      (p.e.geber ? "Hinweisgeber, Schnitt der anderen" : (typeof p.e.wert === "number" ? "Tipp " + p.e.wert : "kein Tipp")) +
+      '</span></span><span class="pt num">' + (z.gemeinsam ? "+" + p.e.punkte : p.pt +
+      '<span class="sub">+' + p.e.punkte + '</span>') + '</span></div>'));
+  });
+  if (S.hostet) {
+    var w = el('<button class="cta" type="button">' + (z.runde >= z.gesamt ? "Endergebnis zeigen" : "N\u00e4chste Runde") + '</button>');
+    bindTap(w, function(){ quizSenden({ tat: "weiter" }); });
+    rest.appendChild(w);
+  } else {
+    rest.appendChild(el('<p class="note">Der Gastgeber schaltet weiter.</p>'));
+  }
+  if (!schon) setTimeout(function(){ rest.classList.remove("wartet"); rangAnimieren("skala"); },
+    vorlauf + tipps.length * takt + 900);
+  else rangAnimieren("skala");
+  app.appendChild(tabs());
+}
+var SKALA_GESEHEN = null;
+
+/* --- Ende --- */
+function viewSkalaEnde(z){
+  if (z.gemeinsam) {
+    var moeglich = (z.gesamt || 1) * 4, t = z.teamPunkte || 0, anteil = t / moeglich;
+    var urteil = anteil >= .8 ? "Gedankenleser" : anteil >= .6 ? "Ein eingespieltes Team" :
+                 anteil >= .4 ? "Ihr versteht euch meistens" : anteil >= .2 ? "Da geht noch was" : "Ihr kennt euch kaum";
+    quizKopf(urteil, t + " von " + moeglich + " m\u00f6glichen Punkten");
+  } else {
+    var reihe = S.names.map(function(nm, i){ return { nm: nm, i: i, pt: z.punkte[nm] || 0 }; })
+                       .sort(function(a, b){ return b.pt - a.pt; });
+    quizKopf(esc(reihe[0].nm) + " gewinnt", "Skala, " + (z.gesamt || 0) + " Runden");
+    reihe.forEach(function(p, i){
+      app.appendChild(el('<div class="rank' + (i === 0 ? ' first' : '') + '" style="--acc:' + hue(p.i) + '">' +
+        '<span class="pos num">' + (i + 1) + '</span><span class="nm">' + esc(p.nm) + '</span>' +
+        '<span class="pt num">' + p.pt + '</span></div>'));
+    });
+    app.appendChild(logButton(reihe));
+  }
+  if (S.hostet) {
+    var neu = el('<button class="cta" type="button">Neue Partie</button>');
+    neu.onclick = quizNeustart;
+    app.appendChild(neu);
+  }
+  app.appendChild(tabs());
+}
+
+function skalaStand(z){
+  if (z.gemeinsam) return el('<p class="hintline" style="text-align:center">Zusammen bisher: ' +
+    (z.teamPunkte || 0) + ' Punkte</p>');
+  var box = el('<div class="ministand"></div>');
+  S.names.map(function(nm, i){ return { nm: nm, i: i, pt: z.punkte[nm] || 0 }; })
+    .sort(function(a, b){ return b.pt - a.pt; })
+    .forEach(function(p){
+      box.appendChild(el('<span style="--acc:' + hue(p.i) + '"><b>' + esc(p.nm) + '</b> ' + p.pt + '</span>'));
+    });
+  return box;
+}
+
+/* --- Lobby und Nachschub --- */
+function viewSkalaLobby(){
+  quizKopf(quizLaedt ? "Skalen werden ausgedacht" : "Skala",
+    quizLaedt ? "Gleich geht es los." :
+    (S.hostet ? (S.names.length === 2 ? "Zu zweit spielt ihr zusammen. Jeder gibt zweimal einen Hinweis."
+                                      : "Jeder gibt zweimal einen Hinweis, die anderen sch\u00e4tzen.")
+              : "Der Gastgeber startet gleich."));
+  app.appendChild(el('<p class="hintline" style="text-align:center">Du spielst als <b>' +
+    esc(meinName()) + '</b> \u00b7 ' + (sock && sock.readyState === 1 ? liveAnzahl + ' Ger\u00e4te verbunden'
+      : 'nicht verbunden') + '</p>'));
+  if (quizFehler) app.appendChild(el('<p class="note warn">' + esc(quizFehler) + '</p>'));
+  if (quizLaedt) { app.appendChild(kartenLader("Skalen werden ausgedacht")); return; }
+  if (!S.hostet) {
+    app.appendChild(el('<div class="qrbox">' + (qrSVG(beitrittsLink(S.live), 170) || "") + '</div>'));
+    app.appendChild(tabs());
+    return;
+  }
+  var feld = merkeEingabe(el('<div class="codeeingabe"><input type="text" maxlength="80" ' +
+    'placeholder="eigener Wunsch, etwa Essen oder fies"></div>'), "skalawunsch");
+  app.appendChild(feld);
+  var los = el('<button class="cta" type="button">Skalen holen und starten</button>');
+  bindTap(los, function(){
+    var wunsch = feld.querySelector("input").value.trim();
+    quizLaedt = true; quizFehler = null; render();
+    fetch(API + "/skalen", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ wunsch: wunsch, anzahl: S.names.length * 2 + 2, vermeiden: skalaGespielte() }) })
+      .then(function(r){ return r.json().then(function(d){ if (!r.ok) throw new Error(d.message); return d; }); })
+      .then(function(d){
+        quizLaedt = false; skalaMerken(d.skalen);
+        quizSenden({ tat: "skalaneu", spieler: S.names, skalen: d.skalen, wunsch: wunsch });
+      })
+      .catch(function(e){ quizLaedt = false; quizFehler = e.message || "Es hat nicht geklappt"; render(); });
+  });
+  app.appendChild(los);
+}
+
+function viewSkalaNachschub(z){
+  skalaKopf(z, null);
+  app.appendChild(kartenLader("Neue Skalen werden ausgedacht"));
+  if (S.hostet && !quizLaedt) {
+    quizLaedt = true;
+    fetch(API + "/skalen", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ wunsch: z.wunsch || "", anzahl: 4, vermeiden: skalaGespielte() }) })
+      .then(function(r){ return r.json().then(function(d){ if (!r.ok) throw new Error(d.message); return d; }); })
+      .then(function(d){ quizLaedt = false; skalaMerken(d.skalen); quizSenden({ tat: "nachschub", skalen: d.skalen }); })
+      .catch(function(e){ quizLaedt = false; quizFehler = e.message; render(); });
+  }
+  app.appendChild(tabs());
+}
+
+function skalaGespielte(){ return (ALL && ALL.skalen) || []; }
+function skalaMerken(liste){
+  if (!ALL || !liste) return;
+  var alle = (ALL.skalen || []).concat(liste.map(function(k){ return k.links + " / " + k.rechts; }));
+  ALL.skalen = alle.filter(function(t, i, a){ return a.indexOf(t) === i; }).slice(-80);
+  save();
+}
 
 /* ---------- Dito: dasselbe denken wie die anderen ---------- */
 var ditoEntwurf = {};      // getippter Text je Feld, ueberlebt das Neuzeichnen
@@ -5331,11 +5728,19 @@ var RULES_DITO = [
   ["Ende", "Nach drei Runden gewinnt, wer die meisten Punkte hat. Bei Gleichstand z\u00e4hlt die beste einzelne Runde."]
 ];
 
+var RULES_SKALA = [
+  ["Worum es geht", "Auf einer Leiste zwischen zwei Gegens\u00e4tzen, etwa ungesund und gesund, liegt eine geheime Stelle. Nur einer sieht sie und gibt einen einzigen Hinweis. Alle anderen sch\u00e4tzen, wo die Stelle liegt."],
+  ["Eine Runde", "Wer dran ist, sieht das Ziel als farbigen Bereich und schreibt einen Begriff, der seiner Meinung nach genau dort liegt. Liegt das Ziel bei gesund weit rechts, w\u00e4re Brokkoli gut, bei knapp \u00fcber der Mitte vielleicht Vollkornpizza. Danach schiebt jeder andere seinen Regler an die vermutete Stelle."],
+  ["Punkte", "Volltreffer vier Punkte, knapp daneben drei, in der N\u00e4he zwei, sonst nichts. Wer den Hinweis gegeben hat, bekommt den Schnitt der anderen. Ein Hinweis lohnt sich also nur, wenn ihn alle verstehen."],
+  ["Zu zweit", "Ihr spielt zusammen und sammelt Punkte als Team. Am Ende gibt es eine Wertung, wie gut ihr euch kennt."],
+  ["L\u00e4nge", "Jeder ist zweimal dran. Die Gegensatzpaare erfindet die KI, \u00fcber das Wunschfeld k\u00f6nnt ihr sie steuern."]
+];
+
 function helpButton(){
   var b = el('<button class="menubtn" type="button" aria-label="Spielanleitung">?</button>');
   b.onclick = function(){
-    var sheet = el('<div class="sheet"><div class="panel scrollable"><div class="head">' + (S.game === "kniffel" ? "Kniffel" : S.game === "phase10" ? "Phase 10" : S.game === "skyjo" ? "Skyjo" : S.game === "quiz" ? "Quiz" : S.game === "bluff" ? "Bluff" : S.game === "dito" ? "Dito" : "Wizard") + ' in Kurzform</div>' +
-      '<div class="rules-body">' + (S.game === "kniffel" ? RULES_KNIFFEL : S.game === "phase10" ? RULES_PHASE : S.game === "skyjo" ? RULES_SKYJO : S.game === "quiz" ? RULES_QUIZ : S.game === "bluff" ? RULES_BLUFF : S.game === "dito" ? RULES_DITO : RULES_WIZARD).map(function(r){
+    var sheet = el('<div class="sheet"><div class="panel scrollable"><div class="head">' + (S.game === "kniffel" ? "Kniffel" : S.game === "phase10" ? "Phase 10" : S.game === "skyjo" ? "Skyjo" : S.game === "quiz" ? "Quiz" : S.game === "bluff" ? "Bluff" : S.game === "dito" ? "Dito" : S.game === "skala" ? "Skala" : "Wizard") + ' in Kurzform</div>' +
+      '<div class="rules-body">' + (S.game === "kniffel" ? RULES_KNIFFEL : S.game === "phase10" ? RULES_PHASE : S.game === "skyjo" ? RULES_SKYJO : S.game === "quiz" ? RULES_QUIZ : S.game === "bluff" ? RULES_BLUFF : S.game === "dito" ? RULES_DITO : S.game === "skala" ? RULES_SKALA : RULES_WIZARD).map(function(r){
         return '<section><h3>' + r[0] + '</h3><p>' + r[1] + '</p></section>'; }).join("") + '</div></div></div>');
     var close = el('<button type="button">Schlie\u00dfen</button>');
     close.onclick = function(){ sheet.remove(); };
@@ -5431,10 +5836,11 @@ function openMenu(){
 
   // --- Neu anfangen und zurueck ---
   neueGruppe();
-  if (!gast && (S.game === "quiz" || S.game === "bluff" || S.game === "dito")) {
-    zeile("\u21bb", S.game === "bluff" ? "Neue Bluffrunde" : S.game === "dito" ? "Neue Dito-Partie" : "Neue Quizrunde",
+  if (!gast && (S.game === "quiz" || S.game === "bluff" || S.game === "dito" || S.game === "skala")) {
+    zeile("\u21bb", S.game === "bluff" ? "Neue Bluffrunde" : S.game === "dito" ? "Neue Dito-Partie" :
+      S.game === "skala" ? "Neue Skala-Partie" : "Neue Quizrunde",
       "Punkte zur\u00fccksetzen", "danger", function(){
-      if (confirm((S.game === "bluff" ? "Bluff" : S.game === "dito" ? "Dito" : "Quiz") +
+      if (confirm((S.game === "bluff" ? "Bluff" : S.game === "dito" ? "Dito" : S.game === "skala" ? "Skala" : "Quiz") +
         " f\u00fcr alle neu anfangen?")) quizNeustart();
     });
   } else if (!gast && S.game !== "kniffel") {
@@ -5462,7 +5868,7 @@ function tabs(){
   if (S.game === "kniffel") first = kniffelDone() ? "Ergebnis" : "Block";
   else if (S.game === "phase10") first = p10Done() ? "Ergebnis" : "Runde";
   else if (S.game === "skyjo") first = skyjoDone() ? "Ergebnis" : "Runde";
-  else if (S.game === "quiz" || S.game === "bluff" || S.game === "dito") return el('<div></div>');
+  else if (S.game === "quiz" || S.game === "bluff" || S.game === "dito" || S.game === "skala") return el('<div></div>');
   else first = S.rounds.length >= totalRounds() ? "Ergebnis" : "Runde";
   var node = el('<nav class="tabs"><div class="inner">' +
     '<button type="button">' + first + '</button>' +
@@ -5493,7 +5899,7 @@ function render(){
   if (!S && ALL.pendingJoin) return viewJoining();
   if (!S) return ALL.view === "stats" ? viewStats() : viewHome();
   if (S.setup || !S.names.length) return viewSetup();
-  if (S.game === "quiz" || S.game === "bluff" || S.game === "dito") return viewQuiz();
+  if (S.game === "quiz" || S.game === "bluff" || S.game === "dito" || S.game === "skala") return viewQuiz();
   if (S.game === "skyjo") {
     if (S.view === "table") return viewSkyjoTable();
     if (skyjoDone()) return viewSkyjoFinal();
