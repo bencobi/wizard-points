@@ -1505,7 +1505,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-10-11.7";
+var VERSION = "2026-10-11.8";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -4216,6 +4216,10 @@ function nurFortschritt(alt, neu){
   }
   return false;
 }
+// Abstand zwischen zwei Einfluegen: bei wenigen Spielern gemaechlich, bei vielen zuegig,
+// damit die ganze Aufloesung auch zu zehnt nur etwa vier Sekunden dauert
+function aufTakt(anzahl, basis){ return Math.round(Math.max(300, Math.min(basis, 3800 / Math.max(1, anzahl)))); }
+
 function zahlenstrahl(a, sofort, loesungsfeld){
   var werte = [], namen = [];
   S.names.forEach(function(nm, i){
@@ -4240,7 +4244,7 @@ function zahlenstrahl(a, sofort, loesungsfeld){
   // Dann traegt die Linie nur noch die Punkte, die Werte stehen darunter in einer Liste.
   var alsListe = namen.length > 5;
   var huelle = el('<div class="strahlbox"></div>');
-  var takt = alsListe ? 1250 : 900;          // Abstand zwischen zwei einfliegenden Tipps
+  var takt = aufTakt(namen.length, alsListe ? 1250 : 900);   // Abstand zwischen zwei einfliegenden Tipps
   var landung = alsListe ? 620 : 420;        // wann der Tipp ankommt, gemessen ab seinem Start
   var box = el('<div class="strahl' + (laufen ? " laeuft" : "") +
     (alsListe ? " nurpunkte" : "") + '"></div>');
@@ -4385,6 +4389,7 @@ function zahlenstrahl(a, sofort, loesungsfeld){
     });
   });
   setTimeout(aufdecken, 900 + punkte.length * takt);
+  huelle.setAttribute("data-takt", takt);
   return huelle;
 }
 
@@ -4850,7 +4855,7 @@ function viewQuizAuf(){
       if (wahl === undefined || !felder[wahl]) return;
       var marke = el('<span class="flieger" style="--acc:' + hue(i) + '" title="' + esc(nm) + '">' +
         esc(nm.charAt(0).toUpperCase()) + '</span>');
-      if (!sofort) marke.style.animationDelay = (300 + flieger * 900) + "ms";
+      if (!sofort) marke.style.animationDelay = (300 + flieger * aufTakt(tippZahl, 900)) + "ms";
       else marke.classList.add("still");
       felder[wahl].querySelector(".tipper").appendChild(marke);
       flieger++;
@@ -4859,7 +4864,8 @@ function viewQuizAuf(){
     var lo = el('<div class="loesung' + (sofort ? "" : " verdeckt") + '">' +
       esc(fmtZahl(a.loesung) + (a.einheit ? " " + a.einheit : "")) + '</div>');
     app.appendChild(lo);
-    app.appendChild(zahlenstrahl(a, sofort, lo));
+    var strahlEl = zahlenstrahl(a, sofort, lo);
+    app.appendChild(strahlEl);
   }
 
   var rest = el('<div class="nachher' + (sofort ? "" : " wartet") + '"></div>');
@@ -4901,8 +4907,8 @@ function viewQuizAuf(){
       rest.classList.remove("wartet");
       aufGezeigt = z.idx;
       rangAnimieren("frage");
-    }, a.typ === "mc" ? 300 + Math.max(1, flieger) * 900 + 500
-                      : 900 + Math.max(1, tippZahl) * 900 + 1400);
+    }, a.typ === "mc" ? 300 + Math.max(1, flieger) * aufTakt(tippZahl, 900) + 500
+                      : 900 + Math.max(1, tippZahl) * (Number(strahlEl && strahlEl.getAttribute("data-takt")) || 900) + 1400);
   } else {
     rangAnimieren("frage");
   }
