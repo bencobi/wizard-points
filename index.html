@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#FFF7F7" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -531,49 +531,6 @@
   .skbalken .ruf{top:-28px}
   @media (prefers-reduced-motion:reduce){ .skzone.klappt, .skpunkt{animation:none; transition:none} }
 
-  /* Hauptmenue: Partyspiele oben als Karten, Spielblock unten als Liste */
-  .hm-weiter{display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:16px; margin:14px 0 4px;
-    background:var(--tint); border:1px solid var(--gold); color:var(--text); font:inherit; text-align:left; width:100%}
-  .hm-weiter b{font-size:14.5px} .hm-weiter span{font-size:12px; color:var(--dim); display:block}
-  .hm-weiter i{margin-left:auto; font-style:normal; font-size:20px; font-weight:800; color:var(--gold)}
-  .hm-kopf{display:flex; align-items:flex-end; justify-content:space-between; gap:10px; margin:22px 2px 10px}
-  .hm-kopf b{font-size:19px; font-weight:800; letter-spacing:-.02em}
-  .hm-kopf span{display:block; font-size:12.5px; color:var(--dim); margin-top:2px}
-  .hm-join{flex:none; padding:8px 14px; border-radius:999px; border:1px solid var(--gold);
-    background:var(--tint); color:var(--text); font:inherit; font-size:13px; font-weight:700}
-  .hm-raster{display:grid; grid-template-columns:1fr 1fr; gap:10px}
-  /* Bei ungerader Anzahl nimmt die letzte Karte die ganze Breite */
-  .hm-raster .hm-karte:last-child:nth-child(odd){grid-column:1 / -1; min-height:96px}
-  .hm-karte{position:relative; text-align:left; padding:56px 13px 13px; border-radius:20px;
-    border:1px solid var(--hair); background:var(--glass-2); color:var(--text); font:inherit;
-    min-height:122px; display:flex; flex-direction:column; justify-content:flex-end; gap:3px; width:100%}
-  @supports (background:color-mix(in srgb, red 50%, blue)){
-    .hm-karte{background:linear-gradient(150deg, color-mix(in srgb, var(--acc) 22%, var(--glass-2)), var(--glass-2))} }
-  .hm-karte::before{content:attr(data-z); position:absolute; top:13px; left:13px; width:34px; height:34px;
-    border-radius:11px; background:var(--acc); color:#fff; display:grid; place-items:center;
-    font-weight:900; font-size:17px}
-  .hm-karte b{font-size:16px; font-weight:800}
-  .hm-karte span{font-size:12px; color:var(--dim); line-height:1.3}
-  .hm-karte .hm-zahl{position:absolute; top:14px; right:13px; font-style:normal; font-size:11px;
-    font-weight:700; color:var(--dim)}
-  .hm-karte.live{border-color:var(--gold)}
-  .hm-karte.live::after{content:"l\00e4uft"; position:absolute; top:13px; right:12px; padding:2px 8px;
-    border-radius:999px; background:var(--gold); color:#fff; font-size:10.5px; font-weight:800}
-  .hm-liste{display:flex; flex-direction:column; gap:8px}
-  .hm-zeile{display:flex; align-items:center; gap:8px; padding:4px 6px 4px 4px; border-radius:16px;
-    border:1px solid var(--hair); background:var(--glass-2)}
-  .hm-zeile.live{border-color:var(--gold)}
-  .hm-zeile .tilemain{flex:1; display:flex; flex-direction:column; justify-content:center; position:relative;
-    min-height:50px; padding:8px 8px 8px 50px; border:0; background:transparent; color:var(--text);
-    font:inherit; text-align:left}
-  .hm-zeile .tilemain::before{content:attr(data-z); position:absolute; left:9px; top:50%; transform:translateY(-50%);
-    width:30px; height:30px; border-radius:9px; background:var(--glass-2); border:1px solid var(--hair);
-    display:grid; place-items:center; font-weight:900; font-size:14px; color:var(--acc)}
-  .hm-zeile b{display:block; font-size:15px; font-weight:800}
-  .hm-zeile span{display:block; font-size:12px; color:var(--dim)}
-  .hm-zeile.live span{color:var(--gold); font-weight:700}
-  .hm-zeile.fertig .tilenew{border-color:var(--hair); color:var(--dim)}
-
   /* Spion */
   .sp-karte{position:relative; min-height:150px; margin:8px 2px 16px; border-radius:22px; overflow:hidden;
     border:1px solid var(--hair); background:var(--glass-2); user-select:none; -webkit-user-select:none;
@@ -967,6 +924,577 @@
     -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px)}
   .tabs button{flex:1; padding:11px; border-radius:11px; font-size:15px; font-weight:600; color:var(--dim)}
   .tabs button[aria-current="true"]{background:var(--glass-2); color:var(--text)}
+
+  /* =====================================================================
+     Designschicht 2026: Apple-Look. Ueberschreibt Farben, Schrift und Bausteine.
+     Die Spiellogik und das Markup bleiben, nur das Erscheinungsbild wechselt.
+     ===================================================================== */
+  :root{
+    --akzent:#007AFF;
+    --bg-0:#F2F2F7; --bg-1:#F2F2F7; --glow:transparent;
+    --panel:#FFFFFF; --head:#FFFFFF; --foot:#F2F2F7;
+    --gold:var(--akzent); --gold-2:var(--akzent);
+    --tint:rgba(0,122,255,.12);
+    --text:#000000; --dim:rgba(60,60,67,.62);
+    --glass:rgba(120,120,128,.08); --glass-2:rgba(120,120,128,.16); --hair:rgba(60,60,67,.2);
+    --hit:#248A3D; --miss:#FF3B30; --well:rgba(120,120,128,.12); --on-gold:#FFFFFF;
+    --glas:rgba(249,249,249,.82); --wahl:#FFFFFF;
+    --ui:-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Helvetica Neue", Arial, sans-serif;
+    --rund:ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --r:14px;
+    --ios:cubic-bezier(.32,.72,0,1);
+    --feder:cubic-bezier(.32,.72,0,1);
+    --hupf:cubic-bezier(.34,1.4,.64,1);
+  }
+  @supports (transition-timing-function:linear(0, 1)){
+    :root{
+      --feder:linear(0, 0.029, 0.097, 0.184, 0.28, 0.374, 0.463, 0.544, 0.616, 0.679, 0.733, 0.78, 0.819, 0.852, 0.879, 0.901, 0.92, 0.935, 0.948, 0.958, 0.966, 0.973, 0.979, 0.984, 0.987, 0.99, 0.993, 0.995, 0.996, 0.997, 0.998, 0.999, 1);
+      --hupf:linear(0, 0.024, 0.085, 0.172, 0.272, 0.379, 0.485, 0.586, 0.678, 0.76, 0.831, 0.891, 0.939, 0.978, 1.006, 1.027, 1.041, 1.05, 1.054, 1.054, 1.052, 1.048, 1.04, 1.032, 1.024, 1.017, 1.011, 1.006, 1.003, 1.001, 1);
+    }
+  }
+  @supports (color:color-mix(in srgb, red 50%, blue)){
+    :root{ --tint:color-mix(in srgb, var(--akzent) 13%, transparent);
+           --gold-2:color-mix(in srgb, var(--akzent) 82%, #000); }
+  }
+  [data-theme="dark"]{
+    --bg-0:#000000; --bg-1:#000000; --glow:transparent;
+    --panel:#1C1C1E; --head:#1C1C1E; --foot:#2C2C2E;
+    --text:#FFFFFF; --dim:rgba(235,235,245,.62);
+    --glass:rgba(120,120,128,.16); --glass-2:rgba(120,120,128,.26); --hair:rgba(84,84,88,.62);
+    --hit:#30D158; --miss:#FF453A; --well:rgba(120,120,128,.2); --on-gold:#FFFFFF;
+    --glas:rgba(30,30,32,.8); --wahl:#636366;
+  }
+
+  body{background:var(--bg-0); background-image:none; font-family:var(--ui); font-size:17px; line-height:1.3;
+    letter-spacing:-.41px; -webkit-font-smoothing:antialiased}
+  .num, .rank .pt, .rank .pos, .bigcode, .zs-jahr, .zs-zeit, td.num, th.num{font-family:var(--rund)}
+  #app{padding:0 16px calc(env(safe-area-inset-bottom, 0px) + 110px)}
+
+  /* ---------- Kopfleiste: Glas, klebt oben, Zurueck links ---------- */
+  .top{position:sticky; top:0; z-index:15; margin:0 -16px 8px; padding:calc(env(safe-area-inset-top, 0px) + 8px) 12px 8px 14px;
+    background:var(--glas); -webkit-backdrop-filter:saturate(180%) blur(24px); backdrop-filter:saturate(180%) blur(24px);
+    border-bottom:.5px solid var(--hair); gap:8px; min-height:52px}
+  .brand{font-size:17px; font-weight:600; letter-spacing:-.41px; gap:6px}
+  .brand .hat{display:none}
+  .imspiel .top .brand{color:var(--akzent)}
+  .imspiel .top .brand::before{content:""; width:12px; height:20px; margin-right:2px; position:static;
+    background:currentColor; -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 13 21'%3E%3Cpath d='M11 2L2.5 10.5 11 19' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat;
+    mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 13 21'%3E%3Cpath d='M11 2L2.5 10.5 11 19' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat}
+  .menubtn{width:34px; height:34px; border-radius:50%; background:var(--glass-2); border:0; color:var(--akzent);
+    font-size:16px; font-weight:600; display:grid; place-items:center}
+  .menubtn:active{opacity:.6}
+
+  /* ---------- Typografie ---------- */
+  .headline{margin:14px 0 6px; font-size:34px; line-height:41px; font-weight:700; letter-spacing:.37px}
+  .headline em{font-size:17px; font-weight:400; color:var(--dim); letter-spacing:-.41px}
+  .lead-in{font-size:17px; line-height:22px; color:var(--dim); margin:0 0 20px}
+  .meta{font-size:15px; color:var(--dim); margin:10px 0 14px}
+  .note{font-size:15px; color:var(--dim); margin-top:12px}
+  .note.warn, .warn{color:var(--miss)}
+  .hintline{font-size:13px; line-height:18px; color:var(--dim); margin:4px 4px 12px}
+  .group{margin:28px 0 10px; font-size:20px; font-weight:700; letter-spacing:.38px; color:var(--text)}
+
+  /* ---------- Knoepfe ---------- */
+  .cta{display:flex; align-items:center; justify-content:center; gap:8px; min-height:54px; padding:14px 18px; margin-top:12px;
+    border:0; border-radius:16px; background:var(--akzent); box-shadow:none; color:#fff; font-size:17px; font-weight:600;
+    letter-spacing:-.41px; transition:transform .45s var(--feder), opacity .2s ease}
+  .cta:active:not(:disabled){transform:scale(.97); transition-duration:90ms; transition-timing-function:ease-out}
+  .cta:disabled{opacity:.35}
+  .cta.ghost{background:var(--glass-2); color:var(--akzent); border:0; font-size:17px; font-weight:600; padding:14px 18px; min-height:50px}
+  .linkknopf{color:var(--akzent)}
+
+  /* ---------- Zeilen und Ranglisten ---------- */
+  .rank{background:var(--panel); border:0; border-radius:14px; padding:12px 16px; margin-bottom:8px; gap:12px}
+  .rank.first{box-shadow:inset 0 0 0 2px var(--akzent)}
+  .rank .pos{font-size:17px; font-weight:700; width:20px; text-align:center}
+  .rank .nm{font-weight:600; font-size:17px}
+  .rank .nm .sub{font-size:13px; font-weight:400; margin-top:1px}
+  .rank .pt{font-size:22px; font-weight:800}
+  .rank .pt .sub{font-size:12px; font-weight:600}
+  .rank.tap:active{opacity:.7}
+
+  /* ---------- Auswahl wie Segmente ---------- */
+  .modes{gap:2px; padding:2px; border-radius:10px; background:var(--glass-2); margin:4px 0 16px}
+  .modes button{border:0; border-radius:8px; background:transparent; padding:9px 8px; text-align:center;
+    transition:background .3s ease, box-shadow .3s ease}
+  .modes button[aria-current="true"]{background:var(--wahl); border:0; box-shadow:0 3px 8px rgba(0,0,0,.12)}
+  .modes button b{font-size:14px; font-weight:600}
+  .modes button span{font-size:11.5px}
+
+  /* ---------- Eingaben und Schalter ---------- */
+  .pinput{background:var(--panel); border:0; border-radius:12px; padding:2px 6px 2px 14px; margin-bottom:6px}
+  .pinput i{width:10px; height:10px}
+  .pinput input{font-size:17px; font-weight:400; padding:13px 0}
+  .pinput input::placeholder{color:var(--dim)}
+  .pinput .rm{border-radius:50%; width:32px; height:32px; background:var(--glass-2); color:var(--dim); font-size:16px}
+  .codeeingabe input{background:var(--panel); border:0; border-radius:12px; font-size:17px; color:var(--text)}
+  .toggle{background:var(--panel); border:0; border-radius:12px; padding:12px 16px}
+  .toggle .box{width:51px; height:31px; border-radius:16px; border:0; background:var(--glass-2); position:relative;
+    font-size:0; transition:background .25s ease; order:2; margin-left:auto}
+  .toggle .box::after{content:""; position:absolute; top:2px; left:2px; width:27px; height:27px; border-radius:50%;
+    background:#fff; box-shadow:0 3px 8px rgba(0,0,0,.18); transition:transform .45s var(--feder)}
+  .toggle[aria-pressed="true"] .box{background:#34C759}
+  .toggle[aria-pressed="true"] .box::after{transform:translateX(20px)}
+  .toggle b{font-size:17px; font-weight:400}
+  .toggle span{font-size:13px}
+
+  /* ---------- Blaetter von unten ---------- */
+  .sheet{background:rgba(0,0,0,.4); -webkit-backdrop-filter:none; backdrop-filter:none}
+  .sheet .panel{margin:0; max-width:560px; border:0; border-radius:14px 14px 0 0; padding:8px 12px calc(env(safe-area-inset-bottom, 0px) + 16px);
+    background:var(--panel); animation:blatthoch .5s var(--ios) both}
+  .sheet .panel::before{content:""; display:block; width:36px; height:5px; border-radius:3px; background:var(--glass-2);
+    margin:0 auto 10px}
+  .sheet .panel .griff{display:none}
+  @keyframes blatthoch{0%{transform:translateY(100%)}100%{transform:none}}
+  .sheet .panel button{border-radius:12px}
+  .mzeile{border-top:.5px solid var(--hair); padding:12px 8px; font-size:17px}
+  .mzeile:first-of-type{border-top:0}
+  .mzeile:active{background:var(--glass)}
+  .mkopf b{font-size:20px; font-weight:700; letter-spacing:.38px}
+
+  /* ---------- Plaketten, Tabellen, Kleinteile ---------- */
+  .wp{background:var(--panel); border:0; opacity:.55}
+  .wp.fertig{opacity:1; background:var(--tint)}
+  .scroller{background:var(--panel); border:0; border-radius:14px}
+  .badge{background:var(--tint); color:var(--akzent); border-radius:20px}
+  .einladung{border:0; background:var(--panel); border-radius:20px; padding:16px}
+  .einladung b{font-family:var(--rund); letter-spacing:.22em; color:var(--akzent)}
+  .einladung i{color:var(--akzent)}
+
+  /* ---------- Grosse Ansagen: die Flaeche faerbt sich in der Spielfarbe ---------- */
+  .ansage{min-height:62vh}
+  .ansage b{font-size:44px; font-weight:800; letter-spacing:.2px; animation:ansageauf .6s var(--hupf) both}
+  .ansage.start b{font-size:52px; color:var(--akzent)}
+  .ansage.auf b{color:var(--akzent)}
+  .ansage i{height:5px; width:64px; border-radius:3px; background:var(--akzent)}
+
+  /* Uebergang zwischen Ansichten, wie beim Wechsel zwischen Bildschirmen */
+  @keyframes ansichtrein{0%{opacity:0; transform:translateX(26px)}100%{opacity:1; transform:none}}
+  @keyframes ansichtzurueck{0%{opacity:0; transform:translateX(-26px)}100%{opacity:1; transform:none}}
+  #app.rein > *:not(.top){animation:ansichtrein .42s var(--ios) both}
+  #app.zurueck > *:not(.top){animation:ansichtzurueck .42s var(--ios) both}
+
+  @media (prefers-reduced-motion:reduce){
+    #app.rein > *, #app.zurueck > *{animation:none !important}
+    .sheet .panel{animation:none}
+  }
+
+
+  /* ---------- Startseite ---------- */
+  .hm-top .brand{opacity:0}
+  .hm-top{border-bottom-color:transparent; background:transparent; -webkit-backdrop-filter:none; backdrop-filter:none}
+  .hm-profil{background:var(--akzent); color:#fff; font-family:var(--rund); font-weight:700}
+  .hm-unter{margin-top:-6px}
+  .hm-weiter{display:flex; align-items:center; gap:12px; width:100%; margin:6px 0 2px; padding:12px 14px; border:0; border-radius:18px;
+    background:color-mix(in srgb, var(--c) 18%, var(--panel)); color:var(--text); text-align:left; font:inherit}
+  .hm-weiter b{display:block; font-size:15px; font-weight:600}
+  .hm-weiter span span{display:block; font-size:13px; color:var(--dim)}
+  .hm-weiter em{margin-left:auto; font-style:normal; font-size:22px; color:var(--dim)}
+  .hm-puls{flex:none; width:10px; height:10px; border-radius:50%; background:var(--c); position:relative}
+  .hm-puls::after{content:""; position:absolute; inset:-5px; border-radius:50%; border:2px solid var(--c); animation:hmpuls 1.8s ease-out 3}
+  @keyframes hmpuls{0%{transform:scale(.6); opacity:1}100%{transform:scale(1.6); opacity:0}}
+  .hm-raster{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  .hm-karte{position:relative; display:flex; flex-direction:column; justify-content:space-between; align-items:flex-start;
+    min-height:164px; padding:14px; border:0; border-radius:22px; background:var(--panel); text-align:left; color:var(--text);
+    font:inherit; overflow:hidden; transition:transform .5s var(--feder)}
+  .hm-karte:active{transform:scale(.97); transition-duration:90ms; transition-timing-function:ease-out}
+  .hm-karte::before, .hm-karte::after{content:none !important}
+  .hm-icon{display:grid; place-items:center; width:52px; height:52px; border-radius:14px; background:var(--c); color:#fff}
+  .hm-icon svg{width:30px; height:30px}
+  .hm-icon.klein{width:36px; height:36px; border-radius:10px; flex:none}
+  .hm-icon.klein svg{width:21px; height:21px}
+  .hm-karte .hm-text b{display:block; font-size:17px; font-weight:600; letter-spacing:-.41px}
+  .hm-karte .hm-text span{display:block; font-size:13px; color:var(--dim); line-height:17px; margin-top:2px; white-space:normal}
+  .hm-zahl, .hm-live{position:absolute; top:16px; right:14px; font-style:normal; font-family:var(--rund); font-size:13px;
+    font-weight:600; color:var(--dim)}
+  .hm-live{padding:2px 9px; border-radius:20px; background:var(--c); color:#fff}
+  .hm-karte.live{box-shadow:inset 0 0 0 2px var(--c)}
+  .hm-held{grid-column:1 / -1; min-height:230px; background:var(--c); color:#fff}
+  .hm-held .hm-icon{background:rgba(255,255,255,.22)}
+  .hm-held .hm-text b{font-size:30px; font-weight:800; letter-spacing:.2px}
+  .hm-held .hm-text span{color:rgba(255,255,255,.88); font-size:15px}
+  .hm-held .hm-zahl{color:rgba(255,255,255,.8)}
+  .hm-held .hm-live{background:#fff; color:var(--c)}
+  .hm-held .hm-text{position:relative; z-index:1}
+  .hm-kunst{position:absolute; inset:0; pointer-events:none}
+  .hm-kunst i{position:absolute; bottom:-60px; color:rgba(255,255,255,.2); font-weight:900; font-family:var(--rund); font-style:normal;
+    animation:hmaufsteig 7.8s linear infinite}
+  @keyframes hmaufsteig{0%{transform:translateY(0) rotate(-8deg)}100%{transform:translateY(-420px) rotate(14deg)}}
+  .hm-liste{background:var(--panel); border-radius:14px; overflow:hidden}
+  .hm-zeile{display:flex; align-items:center; gap:8px; padding:0 12px 0 0; border:0; border-radius:0; background:transparent; position:relative}
+  .hm-zeile + .hm-zeile::before{content:""; position:absolute; top:0; left:64px; right:0; border-top:.5px solid var(--hair)}
+  .hm-zeile .tilemain{flex:1; display:flex; align-items:center; gap:14px; min-height:60px; padding:10px 0 10px 14px; border:0;
+    background:transparent; color:var(--text); font:inherit; text-align:left}
+  .hm-zeile .tilemain::before{content:none !important}
+  .hm-zeile .hm-text b{display:block; font-size:17px; font-weight:400}
+  .hm-zeile .hm-text span{display:block; font-size:13px; color:var(--dim)}
+  .hm-zeile.live .hm-text span{color:var(--c); font-weight:600}
+  .hm-chevron{color:var(--dim); font-size:22px; opacity:.6}
+  .hm-zeile .tilenew{width:auto; padding:6px 13px; border:0; border-radius:20px; background:var(--glass-2); color:var(--akzent);
+    font-size:15px; font-weight:600}
+  .hm-tabelle{justify-content:space-between; margin-top:22px; background:var(--panel); color:var(--text); font-weight:400}
+  .hm-tabelle span{color:var(--dim)}
+  .hm-join{position:fixed; z-index:16; left:50%; bottom:calc(env(safe-area-inset-bottom, 0px) + 18px); transform:translateX(-50%);
+    display:flex; align-items:center; gap:8px; height:50px; padding:0 22px; border:0; border-radius:25px; white-space:nowrap;
+    background:var(--glas); -webkit-backdrop-filter:blur(24px) saturate(180%); backdrop-filter:blur(24px) saturate(180%);
+    box-shadow:0 10px 30px rgba(0,0,0,.25), inset 0 0 0 .5px var(--hair); color:var(--text); font:inherit; font-size:17px; font-weight:600;
+    transition:transform .5s var(--feder)}
+  .hm-join:active{transform:translateX(-50%) scale(.95); transition-duration:90ms}
+  .hm-join svg{width:20px; height:20px; color:var(--akzent)}
+  @media (prefers-reduced-motion:reduce){ .hm-kunst i{animation:none} }
+
+  /* Darstellung als Segmente, Kopfleiste der Startseite bekommt beim Scrollen Glas */
+  .swatches{display:flex; flex-wrap:nowrap; gap:2px}
+  .swatches button{flex:1 1 0; height:auto; min-height:36px; border:0; border-radius:8px; background:transparent; box-shadow:none;
+    text-shadow:none; color:var(--text)}
+  .swatches button[aria-current="true"]{background:var(--wahl); box-shadow:0 3px 8px rgba(0,0,0,.12)}
+  .hm-top .brand{position:absolute; left:50%; transform:translateX(-50%); transition:opacity .2s ease; margin:0}
+  .hm-top{transition:background .25s ease, border-color .25s ease}
+  .gescrollt .hm-top{background:var(--glas); -webkit-backdrop-filter:saturate(180%) blur(24px); backdrop-filter:saturate(180%) blur(24px);
+    border-bottom-color:var(--hair)}
+  .gescrollt .hm-top .brand{opacity:1}
+  .hm-top .menubtn:first-of-type{margin-left:auto}
+
+  /* Alte Kachelregeln (.tilemain span) neutralisieren */
+  .tilemain .hm-icon{display:grid; place-items:center; margin:0; overflow:visible; white-space:normal; color:#fff; font-size:0}
+  .tilemain .hm-text{display:block; margin:0; overflow:visible; white-space:normal; color:inherit; font-size:inherit}
+  .tilemain .hm-text span{color:var(--dim)}
+  .hm-held .hm-text span{color:rgba(255,255,255,.88)}
+  .hm-zeile.live .tilemain .hm-text span{color:var(--c)}
+  .hm-raster > .hm-karte:last-child:nth-child(even){grid-column:1 / -1; min-height:120px}
+
+  .hm-kunst{z-index:0}
+  .hm-kunst i::before{content:"?"}
+  .hm-held .hm-icon, .hm-held .hm-text{position:relative; z-index:1}
+  .hm-held em{z-index:1}
+
+  /* Eingaben: normale Schrift, nur der Beitrittscode ist gesperrt */
+  .codeeingabe{padding:4px 0 8px}
+  .codeeingabe input{background:var(--panel); border:0; border-radius:12px; padding:14px 16px; font-family:var(--ui);
+    font-size:17px; font-weight:400; letter-spacing:-.41px; text-align:left; color:var(--text)}
+  .codeeingabe input::placeholder{color:var(--dim); letter-spacing:-.41px}
+  .sheet .codeeingabe input{background:var(--glass-2)}
+  .codeeingabe.code input, .codeeingabe input[maxlength="6"], .codeeingabe input[maxlength="8"]{font-family:var(--rund); font-size:28px;
+    font-weight:700; letter-spacing:.3em; text-align:center; text-transform:uppercase}
+  /* Themen als Kapseln */
+  .themen{gap:8px; margin:4px 0 14px}
+  .themen button{padding:8px 14px; border:0; border-radius:18px; background:var(--panel); color:var(--text); font-size:15px; font-weight:500}
+  .themen button[aria-current="true"], .themen button.an{background:var(--akzent); color:#fff}
+  /* Blaetter: Aktionen wie bei iOS mittig in der Akzentfarbe */
+  .sheet .panel > button{text-align:center; color:var(--akzent); font-size:17px; font-weight:400; padding:15px; border-radius:0;
+    background:transparent; border-top:.5px solid var(--hair)}
+  .sheet .panel > button:first-of-type{border-top:0}
+  .sheet .panel > button:last-child{color:var(--akzent); font-weight:600; border-top:.5px solid var(--hair)}
+  .sheet .panel > button.cta{background:var(--akzent); color:#fff; border-radius:16px; border:0; margin-top:10px; font-weight:600}
+  .sheet .panel .mkopf{padding:4px 8px 10px}
+  .sheet .panel .mkopf span{display:block; font-size:13px; color:var(--dim); margin-top:4px; line-height:18px}
+
+  .sheet .panel .head{font-size:20px; font-weight:700; letter-spacing:.38px; padding:2px 8px 6px; border:0; background:none; text-align:left}
+
+  /* Antwortkarten und Zellen ohne alte Rahmen */
+  .antwort{border:0; background:var(--panel); border-radius:16px}
+  .antwort.richtig{box-shadow:inset 0 0 0 2px var(--hit)}
+
+  /* Zielbereich bei Skala immer gelb, unabhaengig von der Spielfarbe */
+  .skzone .b2{background:rgba(255,204,0,.32)} .skzone .b3{background:rgba(255,204,0,.6)} .skzone .b4{background:#FFCC00}
+  .zs-karte{border:0}
+  .zs-platz{border-color:var(--hair)}
+  .rasterknopf{width:34px; height:34px; border-radius:50%; border:0; background:var(--glass-2); color:var(--akzent); font-size:15px}
+
+  /* Dito: Boni und Sterne bleiben golden, die Kreise gruen, unabhaengig von der Spielfarbe */
+  .bonus.erreicht{background:#FFB800; border-color:#FFB800; color:#fff}
+  .tstern{color:#FFB800}
+
+  /* Siegerpodest */
+  .podest{display:flex; align-items:flex-end; justify-content:center; gap:10px; height:270px; margin:8px 0 18px}
+  .saeule{width:30%; display:flex; flex-direction:column; align-items:center; gap:6px}
+  .saeule b{font-size:16px; font-weight:600; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .saeule small{font-family:var(--rund); font-weight:700; color:var(--dim); font-size:14px}
+  .podest-av{width:54px; height:54px; border-radius:50%; background:var(--c); color:#fff; display:grid; place-items:center;
+    font-family:var(--rund); font-weight:800; font-size:22px; animation:podestav .6s calc(var(--v) + .55s) var(--hupf) both}
+  .saeule .block{width:100%; border-radius:16px 16px 6px 6px; background:var(--c); color:#fff; display:flex;
+    justify-content:center; padding-top:10px; font-family:var(--rund); font-weight:800; font-size:28px;
+    transform-origin:bottom; animation:podesthoch .9s var(--v) var(--hupf) both}
+  @keyframes podesthoch{0%{transform:scaleY(0)}100%{transform:none}}
+  @keyframes podestav{0%{opacity:0; transform:translateY(-12px) scale(.8)}100%{opacity:1; transform:none}}
+  canvas.konfetti{position:fixed; inset:0; width:100vw; height:100vh; z-index:60; pointer-events:none}
+  @media (prefers-reduced-motion:reduce){ .saeule .block, .podest-av{animation:none} }
+
+  /* Spion: die Karte dreht sich, solange man sie gedrueckt haelt */
+  .sp-karte{perspective:1100px; background:transparent; border:0; overflow:visible}
+  .sp-deckel, .sp-innen{border-radius:22px; backface-visibility:hidden; -webkit-backface-visibility:hidden;
+    transition:transform .6s var(--hupf); opacity:1 !important}
+  .sp-deckel{background:var(--panel); transform:rotateY(0deg)}
+  .sp-innen{background:var(--akzent); color:#fff; transform:rotateY(180deg)}
+  .sp-innen span{color:rgba(255,255,255,.82)}
+  .sp-karte.spion .sp-innen{background:#FF3B30}
+  .sp-karte.offen .sp-deckel{transform:rotateY(-180deg)}
+  .sp-karte.offen .sp-innen{transform:rotateY(0deg)}
+  @media (prefers-reduced-motion:reduce){
+    .sp-deckel, .sp-innen{transition:opacity .2s ease; transform:none !important}
+    .sp-innen{opacity:0 !important} .sp-karte.offen .sp-innen{opacity:1 !important} .sp-karte.offen .sp-deckel{opacity:0 !important}
+  }
+
+  .aufzieher{position:fixed; inset:0; z-index:50; pointer-events:none}
+
+  /* Skala als Halbkreis */
+  .skdial{margin:8px auto 16px; max-width:360px; touch-action:none; user-select:none; -webkit-user-select:none}
+  .skflaeche{position:relative}
+  .skbogen{width:100%; display:block; overflow:visible}
+  .skbogen .strich{stroke:var(--dim); opacity:.55; transition:stroke .15s ease, opacity .15s ease}
+  .skbogen .strich.nah{stroke:var(--text); opacity:1}
+  .sknadel line{stroke:var(--text)} .sknadel circle{fill:var(--text)}
+  .skdial.gesperrt .sknadel line, .skdial.gesperrt .sknadel circle{stroke:var(--dim); fill:var(--dim)}
+  .skzone path{fill:none; stroke-width:26}
+  .skzone .b2{stroke:rgba(255,204,0,.42)} .skzone .b3{stroke:rgba(255,204,0,.72)} .skzone .b4{stroke:#FFCC00}
+  .skzone.klappt{transform-origin:170px 170px; animation:skzoneauf .9s var(--hupf) both}
+  @keyframes skzoneauf{0%{opacity:0; transform:scale(.4) rotate(-40deg)}100%{opacity:1; transform:none}}
+  .skwert{position:absolute; left:0; right:0; bottom:6px; text-align:center; font-weight:800; font-size:40px; line-height:1}
+  .skwert span{font-size:22px} .skwert em{font-style:normal; font-size:22px; color:#FFB800}
+  .skdial .pole{display:flex; justify-content:space-between; margin-top:4px; font-size:15px; font-weight:600}
+  .skdial .pole span:first-child{color:#0A84FF} .skdial .pole span:last-child{color:#FF453A; text-align:right}
+  .skregler{position:absolute; width:1px; height:1px; opacity:0; pointer-events:none}
+  .skpunkt circle{stroke:var(--bg-0); stroke-width:3}
+  .skpunkt text{fill:#fff; font-family:var(--rund); font-weight:800; font-size:12px}
+  .skpunkt{transition:transform .65s var(--hupf), opacity .3s ease}
+  .skpunkt.kommt{opacity:0; transform:translate(var(--dx), var(--dy)) scale(.3)}
+  @media (prefers-reduced-motion:reduce){ .skzone.klappt{animation:none} .skpunkt{transition:opacity .2s} }
+
+  /* Alte Leistenregeln nicht auf den Halbkreis anwenden */
+  g.skzone{position:static; top:auto; height:auto; width:auto; transform:none}
+  g.skzone.klappt{transform-origin:170px 170px}
+  .skdial .skwert{bottom:-30px; font-size:28px}
+  .skdial .skwert span, .skdial .skwert em{font-size:20px}
+  .skdial .pole{min-height:26px; align-items:center}
+
+  /* ===================== Block 1: Lobby, Beitreten, Ansagen wie im Entwurf ===================== */
+  .codekarte{background:var(--panel); border-radius:22px; padding:18px; text-align:center; margin:4px 0 4px}
+  .codekarte small{display:block; font-size:13px; color:var(--dim); margin-bottom:12px}
+  .codekarte .einladung{display:flex; justify-content:center; gap:7px; width:auto; margin:0 auto; padding:0; border:0; background:none}
+  .codekarte .einladung span{width:42px; height:56px; border-radius:12px; background:var(--glass-2); display:grid; place-items:center;
+    font-family:var(--rund); font-size:30px; font-weight:700; color:var(--akzent); animation:codefall .5s var(--hupf) both}
+  .codekarte .einladung span:nth-child(2){animation-delay:.07s} .codekarte .einladung span:nth-child(3){animation-delay:.14s}
+  .codekarte .einladung span:nth-child(4){animation-delay:.21s} .codekarte .einladung span:nth-child(5){animation-delay:.28s}
+  .codekarte .einladung span:nth-child(6){animation-delay:.35s}
+  @keyframes codefall{0%{opacity:0; transform:translateY(-14px) scale(.7)}100%{opacity:1; transform:none}}
+  .qrklein{display:flex; justify-content:center; margin:16px auto 0}
+  .qrklein svg, .qrklein img, .qrklein canvas{width:150px; height:150px; padding:10px; border-radius:16px; background:#fff}
+  .codereihe{display:flex; gap:10px; margin-top:16px}
+  .codereihe .cta{flex:1; margin:0; min-height:44px; padding:10px; font-size:15px; border-radius:12px}
+  .spielerliste{background:var(--panel); border-radius:14px; overflow:hidden}
+  .lobbyleute .wp.spielerzeile{display:flex; align-items:center; gap:12px; padding:10px 12px 10px 16px; margin:0; border-radius:0;
+    background:transparent; opacity:1; position:relative; width:100%}
+  .lobbyleute .wp.spielerzeile + .wp.spielerzeile::before{content:""; position:absolute; top:0; left:68px; right:0; border-top:.5px solid var(--hair)}
+  .lobbyleute .wp.spielerzeile.neu{animation:reinpoppen .6s var(--hupf) both}
+  @keyframes reinpoppen{0%{opacity:0; transform:translateY(-10px) scale(.94)}100%{opacity:1; transform:none}}
+  .av{flex:none; position:relative; width:40px; height:40px; border-radius:50%; display:grid; place-items:center; color:#fff;
+    font-family:var(--rund); font-weight:700; font-size:17px; background:var(--acc, var(--akzent))}
+  .av.klein{width:26px; height:26px; font-size:12px}
+  .av.gross{width:84px; height:84px; font-size:36px}
+  .av .punkt{position:absolute; right:-1px; bottom:-1px; width:12px; height:12px; border-radius:50%; background:#30D158;
+    box-shadow:0 0 0 2.5px var(--panel)}
+  .spielerzeile:not(.fertig) .av{opacity:.45}
+  .szname b{display:block; font-size:17px; font-weight:500; letter-spacing:-.41px}
+  .szname small{display:block; font-size:13px; color:var(--dim)}
+  .spielerzeile.fertig .szname small{color:var(--dim)}
+  .lobbyleute .wp-weg{margin-left:auto; width:28px; height:28px; border-radius:50%; border:0; background:var(--glass-2);
+    color:var(--dim); font-size:16px; line-height:28px; padding:0}
+  .lobbyfehlt{display:flex; align-items:center; justify-content:center; gap:8px; margin:12px 0 4px; font-size:15px; color:var(--dim)}
+  .lobbyfehlt.ok{color:var(--hit); font-weight:600}
+  .punkte3{display:inline-flex; gap:4px}
+  .punkte3 i{width:6px; height:6px; border-radius:50%; background:var(--dim); animation:hupfpunkt 1.2s infinite}
+  .punkte3 i:nth-child(2){animation-delay:.15s} .punkte3 i:nth-child(3){animation-delay:.3s}
+  @keyframes hupfpunkt{0%,60%,100%{transform:none; opacity:.4}30%{transform:translateY(-5px); opacity:1}}
+  .lobbyheld{text-align:center; padding:18px 0 4px}
+  .lobbyheld .av{margin:0 auto 12px; animation:reinpoppen .6s var(--hupf) both}
+  .lobbyheld .headline{margin:0 0 6px}
+  .lobbyheld .lead-in{margin-bottom:8px}
+  /* Startknopf klebt unten und pulsiert, sobald alle da sind */
+  #app.lobby > .cta:not(.ghost){position:sticky; bottom:calc(env(safe-area-inset-bottom, 0px) + 14px); z-index:6;
+    box-shadow:0 12px 30px rgba(0,0,0,.28)}
+  #app.lobby.bereit > .cta:not(.ghost){animation:startbereit 2.4s ease-in-out infinite}
+  @keyframes startbereit{0%,100%{box-shadow:0 12px 30px rgba(0,0,0,.28), 0 0 0 0 color-mix(in srgb, var(--akzent) 55%, transparent)}
+    50%{box-shadow:0 12px 30px rgba(0,0,0,.28), 0 0 0 9px transparent}}
+  /* Meldung unten */
+  .toast{position:fixed; z-index:70; left:50%; bottom:calc(env(safe-area-inset-bottom, 0px) + 86px); transform:translate(-50%, 200%); opacity:0;
+    display:flex; align-items:center; gap:10px; padding:8px 16px 8px 8px; border-radius:30px; background:rgba(58,58,60,.94);
+    color:#fff; box-shadow:0 10px 30px rgba(0,0,0,.3); font-size:15px; font-weight:600; white-space:nowrap;
+    transition:transform .5s var(--feder), opacity .3s ease}
+  [data-theme="light"] .toast{background:rgba(255,255,255,.97); color:#000}
+  .toast.an{transform:translate(-50%, 0); opacity:1}
+  /* Wie heisst du? */
+  .namenwahl{display:flex; flex-wrap:wrap; gap:8px; margin:6px 0 10px}
+  .rank.tap.namechip{width:auto; display:inline-flex; align-items:center; gap:8px; padding:6px 14px 6px 6px; margin:0; border-radius:22px;
+    background:var(--panel); box-shadow:none}
+  .rank.tap.namechip .nm{flex:none; font-size:16px; font-weight:500}
+  .rank.tap.namechip.da{opacity:.45}
+  .namenhinweis{margin-top:22px}
+  /* Beitreten: sechs Codefelder ueber einem unsichtbaren Eingabefeld */
+  .otp{position:relative; display:flex; gap:8px; justify-content:center; margin:16px 0 12px; cursor:text}
+  .otp > span:not(.codeeingabe){width:44px; height:58px; border-radius:12px; background:var(--glass-2); display:grid; place-items:center;
+    font-family:var(--rund); font-size:30px; font-weight:700; color:var(--text); transition:box-shadow .2s ease}
+  .otp > span.akt{box-shadow:0 0 0 2px var(--akzent)}
+  .otp > span.voll{animation:codetipp .3s var(--hupf)}
+  @keyframes codetipp{0%{transform:scale(.8)}100%{transform:none}}
+  .otp .codeeingabe{position:absolute; inset:0; padding:0; margin:0}
+  .otp .codeeingabe input{position:absolute; inset:0; width:100%; height:100%; opacity:0; font-size:16px; padding:0}
+  /* Ansagen und Countdown: die ganze Flaeche in der Spielfarbe */
+  .ansage{position:fixed; inset:0; z-index:30; min-height:0; margin:0; background:var(--akzent); color:#fff; padding:24px}
+  .ansage b, .ansage.start b, .ansage.auf b, .ansage.wert b, .ansage.uebergang b{color:#fff}
+  .ansage span{color:rgba(255,255,255,.85); font-size:17px}
+  .ansage i{background:rgba(255,255,255,.85)}
+  .vollflaeche{position:fixed; inset:0; z-index:30; background:var(--akzent); color:#fff; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:10px; animation:vollrein .3s ease-out both}
+  @keyframes vollrein{0%{opacity:0}100%{opacity:1}}
+  .vollflaeche .countdown{width:min(64vw,240px)}
+  .vollflaeche .countdown .bahn{stroke:rgba(255,255,255,.25)}
+  .vollflaeche .countdown .lauf{stroke:#fff}
+  .vollflaeche .countdown .zahl{color:#fff; font-size:96px; font-family:var(--rund); font-weight:800}
+  .vollflaeche .note{color:rgba(255,255,255,.9); font-size:17px; font-weight:600}
+  @media (prefers-reduced-motion:reduce){
+    .codekarte .einladung span, .lobbyleute .wp.spielerzeile.neu, .lobbyheld .av, .punkte3 i, #app.lobby.bereit > .cta{animation:none !important}
+  }
+
+  .codekarte .einladung{flex-direction:row; align-items:center}
+
+  /* ===================== Block 2: Quiz wie im Entwurf ===================== */
+  .uhr.ring{position:relative; flex:none; width:38px; height:38px; margin:0; background:none; border:0; border-radius:50%; order:0}
+  .uhr.ring svg{width:38px; height:38px; transform:rotate(-90deg)}
+  .uhr.ring circle{fill:none; stroke-width:4; stroke-linecap:round}
+  .uhr.ring .r1{stroke:var(--glass-2)} .uhr.ring .r2{stroke:var(--akzent); stroke-dasharray:125.7; transition:stroke-dashoffset .2s linear}
+  .uhr.ring.knapp .r2{stroke:var(--miss)}
+  .uhr.ring > i{display:none}
+  .uhr.ring > span{position:absolute; inset:0; display:grid; place-items:center; font-family:var(--rund); font-weight:700; font-size:13px;
+    color:var(--text); background:none; padding:0}
+  .uhr.pille{display:inline-flex; align-items:center; gap:6px; height:32px; padding:0 12px; margin:0; border-radius:16px; background:var(--glass-2);
+    border:0; position:relative; overflow:hidden; flex:none}
+  .uhr.pille > i{position:absolute; left:0; top:auto; bottom:0; height:3px; background:var(--akzent); border-radius:0}
+  .uhr.pille > span{position:static; font-family:var(--rund); font-weight:700; font-size:15px; color:var(--text); background:none; padding:0}
+  .top .uhr{margin-left:auto}
+  .top .uhr + .livechip, .top .uhr + .menubtn{margin-left:0}
+  .segfortschritt{display:flex; gap:4px; margin:-6px 0 18px}
+  .segfortschritt i{flex:1; height:4px; border-radius:2px; background:var(--glass-2)}
+  .segfortschritt i.da{background:var(--akzent)}
+  .segfortschritt i.jetzt{background:linear-gradient(90deg, var(--akzent) 50%, var(--glass-2) 50%)}
+  /* Wer hat geantwortet: Profilkreise uebereinander, Zaehler daneben */
+  .antwortreihe{display:flex; flex-wrap:nowrap; align-items:center; justify-content:flex-start; gap:0; margin:14px 0 6px; padding-left:8px}
+  .antwortreihe .wp{display:grid; place-items:center; width:28px; height:28px; padding:0; margin-left:-8px; border-radius:50%;
+    background:var(--acc); opacity:.28; box-shadow:0 0 0 2px var(--bg-0); transition:opacity .3s ease, transform .4s var(--hupf)}
+  .antwortreihe .wp b{width:auto; height:auto; background:none; color:#fff; font-family:var(--rund); font-size:12px; font-weight:800}
+  .antwortreihe .wp i{display:none}
+  .antwortreihe .wp.fertig{opacity:1; background:var(--acc); transform:scale(1.04)}
+  .antwortstand{margin-left:12px; font-style:normal; font-size:15px; color:var(--dim)}
+  /* Antwortkarten */
+  .antwort{display:flex; align-items:center; gap:14px; min-height:60px; padding:10px 14px; border:0; border-radius:16px; background:var(--panel);
+    font-size:17px; font-weight:500; letter-spacing:-.41px; margin-bottom:10px; transition:transform .45s var(--feder), background .3s ease, opacity .3s ease}
+  .antwort:active{transform:scale(.98); transition-duration:90ms}
+  .antwort .buchstabe{flex:none; width:32px; height:32px; border-radius:50%; background:var(--glass-2); display:grid; place-items:center;
+    font-family:var(--rund); font-weight:700; font-size:15px; color:var(--text); transition:background .3s, color .3s}
+  .antwort.gewaehlt{background:var(--tint); box-shadow:inset 0 0 0 2px var(--akzent)}
+  .antwort.gewaehlt .buchstabe{background:var(--akzent); color:#fff}
+  .antwort.ruhig{opacity:.42}
+  .antwort.richtig{background:color-mix(in srgb, var(--hit) 22%, var(--panel)); box-shadow:inset 0 0 0 2px var(--hit); opacity:1}
+  .antwort.richtig .buchstabe{background:var(--hit); color:#fff; animation:hakenhupf .6s var(--hupf)}
+  .antwort.falsch{background:color-mix(in srgb, var(--miss) 20%, var(--panel)); box-shadow:inset 0 0 0 2px var(--miss); opacity:1; animation:schuettel .45s}
+  .antwort.falsch .buchstabe{background:var(--miss); color:#fff}
+  @keyframes hakenhupf{0%{transform:scale(.4)}100%{transform:none}}
+  @keyframes schuettel{20%,60%{transform:translateX(-7px)}40%,80%{transform:translateX(7px)}}
+  .antwort .marke{font-size:11px; font-weight:700; padding:3px 9px; border-radius:20px; background:var(--glass-2); color:var(--dim);
+    letter-spacing:0; text-transform:none}
+  .antwort.richtig .marke{background:var(--hit); color:#fff}
+  .antwort.falsch .marke{background:var(--miss); color:#fff}
+  .frage{font-size:28px; line-height:34px; font-weight:700; letter-spacing:.36px; margin:0 0 20px}
+  /* Rangliste mit Balken */
+  .rank.mitbalken{position:relative; overflow:hidden}
+  .rank.mitbalken .balken{position:absolute; left:0; top:0; bottom:0; background:color-mix(in srgb, var(--acc) 20%, transparent);
+    transition:width 1.1s var(--ios); z-index:0}
+  .rank.mitbalken > *:not(.balken){position:relative; z-index:1}
+  .rank .pt .sub.plus{color:var(--hit)}
+  @media (prefers-reduced-motion:reduce){ .antwort.richtig .buchstabe, .antwort.falsch{animation:none} }
+
+  /* ===================== Block 3: Spion wie im Entwurf ===================== */
+  .stimmraster{display:grid; grid-template-columns:repeat(3, 1fr); gap:18px 10px; margin:10px 0 18px}
+  .stimme{border:0; background:none; display:flex; flex-direction:column; align-items:center; gap:8px; padding:0; color:var(--text);
+    font:inherit; animation:stimmerein .5s var(--hupf) both}
+  .stimme:nth-child(2){animation-delay:.06s} .stimme:nth-child(3){animation-delay:.12s} .stimme:nth-child(4){animation-delay:.18s}
+  .stimme:nth-child(5){animation-delay:.24s} .stimme:nth-child(6){animation-delay:.3s} .stimme:nth-child(n+7){animation-delay:.36s}
+  @keyframes stimmerein{0%{opacity:0; transform:scale(.6)}100%{opacity:1; transform:none}}
+  .stimme .av.gross{width:68px; height:68px; font-size:28px; transition:transform .35s var(--hupf), box-shadow .3s ease}
+  .stimme.an .av.gross{transform:scale(1.08); box-shadow:0 0 0 4px var(--bg-0), 0 0 0 7px var(--akzent)}
+  .stimmname{font-size:15px; font-weight:600; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .stimmfertig{text-align:center; padding:12px 0 4px}
+  .stimmfertig .av{margin:0 auto 12px; animation:reinpoppen .6s var(--hupf) both}
+  .stimmfertig .headline{font-size:28px; line-height:34px; margin:0 0 4px}
+  .sp-enthuellung .sp-av{display:grid; width:110px; height:110px; font-size:46px; margin:16px auto 10px;
+    animation:spionav 1s 1.3s var(--hupf) both}
+  @keyframes spionav{0%{transform:scale(0) rotate(-30deg); filter:blur(10px); opacity:0}100%{transform:none; filter:none; opacity:1}}
+  .sp-enthuellung .sp-name{color:var(--text); font-size:34px; animation:reinpoppen .6s 1.9s var(--hupf) both}
+  .sp-enthuellung .sp-wo{animation:reinpoppen .5s 2.3s both}
+  .sp-enthuellung .sp-urteil{animation:reinpoppen .5s 2.6s both}
+  .sp-enthuellung.trommel{animation:trommelwirbel .12s 10 alternate}
+  @keyframes trommelwirbel{to{transform:translateX(3px) rotate(.6deg)}}
+  .sp-enthuellung.fertig .sp-av{animation:none}
+  @media (prefers-reduced-motion:reduce){
+    .stimme, .sp-enthuellung .sp-av, .sp-enthuellung.trommel, .stimmfertig .av{animation:none}
+  }
+
+  /* ===================== Block 4: Zeitstrahl wie im Entwurf ===================== */
+  .zs-platz{border:0; box-shadow:inset 0 0 0 1.5px var(--hair); background:transparent; min-height:56px; border-radius:16px;
+    transition:background .3s ease, box-shadow .3s ease}
+  .zs-platz.belegt{background:var(--panel); box-shadow:none}
+  .zs-platz.ankunft > *:not(.zs-nr){opacity:0}
+  .zs-platz.gelandet{animation:landung .38s var(--hupf)}
+  @keyframes landung{0%{transform:scale(.96)}100%{transform:none}}
+  .zs-platz b{background:var(--akzent)}
+  .zs-karte{border:0; background:var(--panel); min-height:80px; border-radius:16px}
+  .zs-karte.benutzt{background:transparent; box-shadow:inset 0 0 0 1.5px var(--hair); opacity:1; transform:none; pointer-events:none}
+  .zs-karte.benutzt > *{opacity:0}
+  .zs-karte.zurueckgeholt{animation:zurueckpop .45s var(--hupf)}
+  @keyframes zurueckpop{0%{transform:scale(.8); opacity:0}100%{transform:none; opacity:1}}
+  .zs-karte b{background:var(--akzent); color:#fff}
+  .zsflieger{position:fixed; z-index:40; pointer-events:none; display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:16px;
+    background:var(--panel); color:var(--text); font-size:15px; font-weight:500; box-shadow:0 14px 34px rgba(0,0,0,.35); overflow:hidden}
+  .zsflieger b{flex:none; width:26px; height:26px; border-radius:8px; display:grid; place-items:center; background:var(--akzent); color:#fff;
+    font-family:var(--rund); font-size:14px}
+  /* Aufloesung als Plaetze: richtige Reihenfolge, eigene Treffer gruen umrandet */
+  .zs-loesung::before{display:none}
+  .zs-loesung .zs-ereignis{background:var(--panel); border-radius:16px; padding:10px 14px; margin-bottom:8px; min-height:56px; gap:12px}
+  .zs-loesung .zs-ereignis .zs-punkt{display:none}
+  .zs-loesung .zs-nr{flex:none; width:24px; height:24px; border-radius:50%; background:var(--glass-2); display:grid; place-items:center;
+    font-family:var(--rund); font-size:13px; font-weight:700; color:var(--dim)}
+  .zs-loesung .zs-text{flex:1}
+  .zs-loesung .zs-jahr{order:3; width:auto; min-width:56px; text-align:right; color:var(--akzent)}
+  .zs-loesung.zahl .zs-jahr{width:auto; min-width:80px}
+  .zs-loesung .zs-ereignis.ok{box-shadow:inset 0 0 0 2px var(--hit)}
+  .zs-loesung .zs-ereignis.nein{box-shadow:inset 0 0 0 2px var(--miss)}
+  @media (prefers-reduced-motion:reduce){ .zs-platz.gelandet, .zs-karte.zurueckgeholt{animation:none} }
+
+  /* ===================== Block 5: Bluff und Dito wie im Entwurf ===================== */
+  .bluffanweisung{margin:2px 0 10px; font-size:20px; font-weight:700; letter-spacing:.38px}
+  .bluffeingabe input{font-size:19px; padding:18px 16px; border-radius:16px}
+  /* Dito: Felder ruhig, leere gestrichelt, Treffer gruen eingekreist */
+  .tfeld{border:0; box-shadow:none; background:var(--panel); border-radius:16px}
+  .tfeld.leer{background:transparent; box-shadow:inset 0 0 0 1.5px var(--hair)}
+  .tfeld.waehlbar{box-shadow:inset 0 0 0 2px var(--akzent)}
+  .tfeld.gewaehlt{background:var(--tint); box-shadow:inset 0 0 0 2px var(--akzent)}
+  .tfeld.kreis{background:color-mix(in srgb, var(--hit) 12%, var(--panel)); box-shadow:none}
+  .tkreis ellipse{stroke:var(--hit)}
+  .kategorie{border:0; background:var(--panel); border-radius:16px}
+  .kategorie.waehlbar{box-shadow:inset 0 0 0 2px var(--akzent)}
+  .bonus{border:0; background:var(--glass-2); color:var(--dim); border-radius:8px}
+
+  .tfeld.leer.waehlbar{box-shadow:inset 0 0 0 1.5px var(--hair)}
+  .tfeld.leer.waehlbar:active{background:var(--glass)}
+  .tfeld.leer.gewaehlt{background:var(--tint); box-shadow:inset 0 0 0 2px var(--akzent)}
+
+  /* Breite Karte am Ende des Rasters: Symbol links neben dem Text statt darueber */
+  .hm-raster > .hm-karte:last-child:nth-child(even){flex-direction:row; align-items:center; justify-content:flex-start;
+    gap:14px; min-height:96px; padding-right:56px}
+  .hm-raster > .hm-karte:last-child:nth-child(even) .hm-text{flex:1; min-width:0}
+
+  .hm-zeile .tilemain{min-width:0}
+  .hm-zeile .hm-text{min-width:0; flex:1}
+  .hm-zeile .hm-text span{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 </style>
 </head>
 <body>
@@ -977,7 +1505,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-09-22.2";
+var VERSION = "2026-10-11.7";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -1013,7 +1541,7 @@ var GAMES = [
   { id:"spion",   name:"Spion",    sub:"Einer kennt den Ort nicht", low:false },
   { id:"zeitstrahl", name:"Zeitstrahl", sub:"Schnell in die richtige Reihenfolge", low:false }
 ];
-function fresh(){ return { theme:"light", cur:null, games:{}, history:[] }; }
+function fresh(){ return { theme:"auto", cur:null, games:{}, history:[] }; }
 function grenzen(id){
   if (id === "kniffel") return { min: 1, max: 8 };   // allein spielbar
   if (id === "skyjo")   return { min: 2, max: 8 };
@@ -2179,6 +2707,57 @@ function viewSkyjoFinal(){
 
 
 /* ---------- Hauptmen\u00fc ---------- */
+window.addEventListener("scroll", function(){
+  document.body.classList.toggle("gescrollt", (window.scrollY || 0) > 34);
+}, { passive: true });
+
+// Wischen vom linken Rand fuehrt zurueck ins Hauptmenue, wie bei iOS
+(function(){
+  var start = null;
+  document.addEventListener("touchstart", function(e){
+    if (!S || document.querySelector(".sheet") || !e.touches || e.touches.length !== 1) return;
+    var t = e.touches[0];
+    if (t.clientX > 22) return;
+    start = { x: t.clientX, y: t.clientY };
+  }, { passive: true });
+  document.addEventListener("touchmove", function(e){
+    if (!start) return;
+    var t = e.touches[0], dx = t.clientX - start.x, dy = Math.abs(t.clientY - start.y);
+    if (dy > 60 && dy > dx) { start = null; app.style.transform = ""; app.style.opacity = ""; return; }
+    if (dx > 0) { var d = Math.min(dx, 180); app.style.transform = "translateX(" + (d * .55) + "px)"; app.style.opacity = String(1 - d / 450); }
+  }, { passive: true });
+  function ende(e){
+    if (!start) return;
+    var t = (e.changedTouches && e.changedTouches[0]) || { clientX: start.x };
+    var dx = t.clientX - start.x; start = null;
+    app.style.transition = "transform .3s cubic-bezier(.32,.72,0,1), opacity .3s ease";
+    app.style.transform = ""; app.style.opacity = "";
+    setTimeout(function(){ app.style.transition = ""; }, 320);
+    if (dx > 80) { toHome(); save(); render(); }
+  }
+  document.addEventListener("touchend", ende);
+  document.addEventListener("touchcancel", ende);
+})();
+
+// Karte waechst zum Vollbild wie im App Store, dann erscheint das Spiel
+function kartenAufziehen(karte, farbe, weiter){
+  var ruhig = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!karte || !karte.getBoundingClientRect || ruhig) { weiter(); return; }
+  var r = karte.getBoundingClientRect(), w = window.innerWidth, h = window.innerHeight;
+  var deck = document.createElement("div");
+  deck.className = "aufzieher";
+  deck.style.background = farbe;
+  document.body.appendChild(deck);
+  if (!deck.animate) { deck.remove(); weiter(); return; }
+  var von = "inset(" + r.top + "px " + (w - r.right) + "px " + (h - r.bottom) + "px " + r.left + "px round 22px)";
+  var a = deck.animate([{ clipPath: von }, { clipPath: "inset(0px 0px 0px 0px round 0px)" }],
+    { duration: 380, easing: "cubic-bezier(.32,.72,0,1)", fill: "forwards" });
+  a.onfinish = function(){
+    weiter();
+    var b = deck.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 260, easing: "ease-out", fill: "forwards" });
+    b.onfinish = function(){ deck.remove(); };
+  };
+}
 // Das Logo oben links fuehrt aus jedem Spiel zurueck. Der Spielstand bleibt erhalten.
 document.addEventListener("click", function(e){
   var marke = e.target.closest && e.target.closest(".top .brand");
@@ -2253,51 +2832,87 @@ function spielOeffnen(g){
   ALL.games[g.id] = newGame(g.id, lastNames()); openGame(g.id); save(); render();
 }
 
+// Symbole der Spiele, schlicht gezeichnet
+var SPIELSYMBOL = {
+  quiz:'<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8.5C6 6 8 4 10.5 4h11C24 4 26 6 26 8.5v8c0 2.5-2 4.5-4.5 4.5H15l-6 5v-5.3C7.3 20 6 18.4 6 16.5z"/><path d="M13.4 10.2a2.8 2.8 0 1 1 3.9 2.6c-.8.4-1.3 1-1.3 1.9"/><circle cx="16" cy="17.4" r=".6" fill="currentColor"/></svg>',
+  bluff:'<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7c4-1.6 7.4-1.6 11 0v8c0 5-3 8-5.5 9C8 23 5 20 5 15z"/><path d="M16 9c3.6-1.6 7-1.6 11 0v8c0 5-3 8-5.5 9-1.2-.4-2.4-1.3-3.4-2.5"/><path d="M8.3 12.3h1.4M12 12.3h1.4M19.3 14.3h1.4M23 14.3h1.4M9 17c1 .9 2.6.9 3.6 0M20 20.5c1-.9 2.6-.9 3.6 0"/></svg>',
+  dito:'<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.6"><circle cx="12" cy="16" r="7.5"/><circle cx="20" cy="16" r="7.5"/></svg>',
+  skala:'<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M4.5 22a11.5 11.5 0 0 1 23 0"/><path d="M16 22l5.5-7.5"/><circle cx="16" cy="22" r="1.6" fill="currentColor"/></svg>',
+  spion:'<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 16S8 8.5 16 8.5 28.5 16 28.5 16 24 23.5 16 23.5 3.5 16 3.5 16z"/><circle cx="16" cy="16" r="4"/></svg>',
+  zeitstrahl:'<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M9 4.5h14M9 27.5h14"/><path d="M10.5 4.5c0 6 11 7 11 11.5S10.5 21.5 10.5 27.5M21.5 4.5c0 6-11 7-11 11.5s11 5.5 11 11.5"/></svg>',
+  wizard:'<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4l3 7 7 .6-5.4 4.6 1.7 7L16 19.6 9.7 23.2l1.7-7L6 11.6l7-.6z"/></svg>',
+  kniffel:'<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.6"><rect x="5" y="5" width="22" height="22" rx="5"/><circle cx="11" cy="11" r="1.7" fill="currentColor"/><circle cx="21" cy="21" r="1.7" fill="currentColor"/><circle cx="16" cy="16" r="1.7" fill="currentColor"/></svg>',
+  phase10:'<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 10l3-2v16"/><rect x="15" y="8" width="9" height="16" rx="4.5"/></svg>',
+  skyjo:'<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.6"><rect x="5" y="6" width="9" height="9" rx="2.5"/><rect x="18" y="6" width="9" height="9" rx="2.5"/><rect x="5" y="18" width="9" height="9" rx="2.5"/><rect x="18" y="18" width="9" height="9" rx="2.5"/></svg>'
+};
+var CODESYMBOL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 14h3v3M21 14v.01M17 21h4v-4M14 21v-3"/></svg>';
+function spielFarbe(id){ var p = AKZENTE[id] || ["#007AFF", "#0A84FF"]; return p[istDunkel() ? 1 : 0]; }
+
+function profilBlatt(){
+  var sheet = el('<div class="sheet"><div class="panel"><div class="mkopf"><b>Auf diesem Handy</b>' +
+    '<span>So hei\u00dft du in jeder Partie. Die anderen sehen diesen Namen.</span></div>' +
+    '<div class="codeeingabe"><input type="text" maxlength="24" autocomplete="off" placeholder="Dein Name" value="' +
+    esc(ALL.meinName || "") + '"></div><button class="cta" type="button">Fertig</button></div></div>');
+  sheet.onclick = function(e){ if (e.target === sheet) sheet.remove(); };
+  sheet.querySelector(".cta").onclick = function(){
+    var v = sheet.querySelector("input").value.replace(/\s+/g, " ").trim();
+    ALL.meinName = v || null; save(); sheet.remove(); render();
+  };
+  document.body.appendChild(sheet);
+}
+
 function viewHome(){
   app.innerHTML = "";
-  app.appendChild(el('<div class="top"><div class="brand"><span class="hat">\u25B2</span> Spielblock</div></div>'));
-  app.querySelector(".top").appendChild(helpButton());
-  app.appendChild(el('<h1 class="headline">Was spielt ihr?</h1>'));
+  var kopf = el('<div class="top hm-top"><div class="brand">Spielen</div></div>');
+  var profil = el('<button class="menubtn hm-profil" type="button" aria-label="Dein Name">' +
+    esc(ALL.meinName ? ALL.meinName.charAt(0).toUpperCase() : "?") + '</button>');
+  profil.onclick = profilBlatt;
+  kopf.appendChild(profil);
+  kopf.appendChild(helpButton());
+  app.appendChild(kopf);
+  app.appendChild(el('<h1 class="headline">Spielen</h1>'));
 
   // Weiterspielen: das zuletzt geoeffnete Spiel, wenn es noch laeuft
   var zuletzt = ALL.zuletzt && GAMES.filter(function(g){ return g.id === ALL.zuletzt; })[0];
   var zSt = zuletzt && spielStatus(zuletzt.id);
   if (zSt && !zSt.fertig) {
-    var weiter = el('<button class="hm-weiter" type="button"><span><b>Weiterspielen</b>' +
-      '<span>' + esc(zuletzt.name) + ' \u00b7 ' + esc(zSt.txt) + '</span></span><i>\u203A</i></button>');
+    var weiter = el('<button class="hm-weiter" type="button" style="--c:' + spielFarbe(zuletzt.id) + '">' +
+      '<i class="hm-puls"></i><span><b>' + esc(zuletzt.name) + ' l\u00e4uft noch</b><span>' + esc(zSt.txt) + '</span></span>' +
+      '<em>\u203A</em></button>');
     bindTap(weiter, function(){ openGame(zuletzt.id); save(); render(); });
     app.appendChild(weiter);
   }
 
-  // --- Partyspiele: jeder am eigenen Handy ---
-  var kopfP = el('<div class="hm-kopf"><div><b>Partyspiele</b><span>Jeder spielt auf dem eigenen Handy</span></div></div>');
-  var join = el('<button class="hm-join" type="button">Beitreten</button>');
-  join.onclick = beitreten;
-  kopfP.appendChild(join);
-  app.appendChild(kopfP);
+  // --- Partyspiele: grosse Karte fuer das erste, Kacheln fuer die anderen ---
+  app.appendChild(el('<h2 class="group">Partyspiele</h2>'));
+  app.appendChild(el('<p class="hintline hm-unter">Jeder spielt auf dem eigenen Handy</p>'));
   var raster = el('<div class="hm-raster"></div>');
-  GAMES.filter(function(g){ return PARTYSPIELE.indexOf(g.id) >= 0; }).forEach(function(g){
-    var st = partyStatus(g.id), gr = grenzen(g.id);
-    var karte = el('<button class="tilemain hm-karte' + (st ? " live" : "") + '" type="button" ' +
-      'data-z="' + SPIELZEICHEN[g.id] + '" style="--acc:' + hue(SPIELFARBE[g.id]) + '">' +
-      '<b>' + g.name + '</b><span>' + esc(st ? st.txt : g.sub) + '</span>' +
-      (st ? '' : '<em class="hm-zahl">' + gr.min + '\u2013' + gr.max + '</em>') + '</button>');
-    bindTap(karte, function(){ spielOeffnen(g); });
+  GAMES.filter(function(g){ return PARTYSPIELE.indexOf(g.id) >= 0; }).forEach(function(g, k){
+    var st = partyStatus(g.id), gr = grenzen(g.id), farbe = spielFarbe(g.id);
+    var gross = k === 0;
+    var karte = el('<button class="tilemain hm-karte' + (gross ? " hm-held" : "") + (st ? " live" : "") + '" type="button" style="--c:' + farbe + '">' +
+      '<span class="hm-icon">' + SPIELSYMBOL[g.id] + '</span>' +
+      '<span class="hm-text"><b>' + g.name + '</b><span>' + esc(st ? st.txt : g.sub) + '</span></span>' +
+      (st ? '<em class="hm-live">l\u00e4uft</em>' : '<em class="hm-zahl">' + gr.min + '\u2013' + gr.max + '</em>') +
+      (gross ? '<span class="hm-kunst" aria-hidden="true">' + [0, 1, 2, 3, 4, 5].map(function(i){
+        return '<i style="left:' + (8 + i * 15) + '%;animation-delay:' + (-i * 1.3) + 's;font-size:' + (40 + (i % 3) * 22) + 'px"></i>'; }).join("") + '</span>' : '') +
+      '</button>');
+    bindTap(karte, function(){ kartenAufziehen(karte, farbe, function(){ spielOeffnen(g); }); });
     raster.appendChild(karte);
   });
   app.appendChild(raster);
 
   // --- Spielblock: Karten auf dem Tisch, die App zaehlt ---
-  app.appendChild(el('<div class="hm-kopf"><div><b>Spielblock</b><span>Ihr spielt mit Karten, ' +
-    'die App z\u00e4hlt mit</span></div></div>'));
+  app.appendChild(el('<h2 class="group">Spielblock</h2>'));
+  app.appendChild(el('<p class="hintline hm-unter">Ihr spielt mit Karten, die App z\u00e4hlt mit</p>'));
   var liste = el('<div class="hm-liste"></div>');
   GAMES.filter(function(g){ return PARTYSPIELE.indexOf(g.id) < 0; }).forEach(function(g){
     var st = statusOf(g.id);
     var klasse = st ? (st.fertig ? " fertig" : " live") : "";
-    var zeile = el('<div class="hm-zeile' + klasse + '" style="--acc:' + hue(SPIELFARBE[g.id]) + '"></div>');
-    var haupt = el('<button class="tilemain" type="button" data-z="' + SPIELZEICHEN[g.id] + '">' +
-      '<b>' + g.name + '</b><span>' + esc(st ? (st.fertig ? "Letzte Partie beendet, Ergebnis ansehen" : st.txt) : g.sub) +
-      '</span></button>');
+    var zeile = el('<div class="hm-zeile' + klasse + '" style="--c:' + spielFarbe(g.id) + '"></div>');
+    var haupt = el('<button class="tilemain" type="button"><span class="hm-icon klein">' + SPIELSYMBOL[g.id] + '</span>' +
+      '<span class="hm-text"><b>' + g.name + '</b><span>' + esc(st ? (st.fertig ? "Letzte Partie beendet, Ergebnis ansehen" : st.txt) : g.sub) +
+      '</span></span></button>');
     bindTap(haupt, function(){ spielOeffnen(g); });
     zeile.appendChild(haupt);
     if (st) {
@@ -2309,27 +2924,32 @@ function viewHome(){
         }
       });
       zeile.appendChild(frisch);
+    } else {
+      zeile.appendChild(el('<span class="hm-chevron" aria-hidden="true">\u203A</span>'));
     }
     liste.appendChild(zeile);
   });
   app.appendChild(liste);
 
-  var stats = el('<button class="cta ghost" type="button" style="margin-top:20px">Ewige Tabelle' +
-    (ALL.history.length ? ' \u00b7 ' + ALL.history.length +
-      (ALL.history.length === 1 ? ' Partie' : ' Partien') : '') + '</button>');
+  var stats = el('<button class="cta ghost hm-tabelle" type="button">Ewige Tabelle' +
+    (ALL.history.length ? '<span>' + ALL.history.length + (ALL.history.length === 1 ? ' Partie' : ' Partien') + '</span>' : '') + '</button>');
   stats.onclick = function(){ ALL.view = "stats"; save(); render(); };
   app.appendChild(stats);
 
-  app.appendChild(el('<p class="group">Darstellung</p>'));
-  var swatches = el('<div class="swatches">' + THEMES.map(function(t){
-    return '<button type="button" data-t="' + t.id + '" style="background:' + t.bg + ';color:' + t.fg + '">' +
-      t.name + '</button>'; }).join("") + '</div>');
+  app.appendChild(el('<h2 class="group">Darstellung</h2>'));
+  var swatches = el('<div class="modes swatches">' + THEMES.map(function(t){
+    return '<button type="button" data-t="' + t.id + '"><b>' + t.name + '</b></button>'; }).join("") + '</div>');
   Array.prototype.forEach.call(swatches.children, function(b){
     b.setAttribute("aria-current", b.dataset.t === ALL.theme ? "true" : "false");
     b.onclick = function(){ ALL.theme = b.dataset.t; save(); render(); };
   });
   app.appendChild(swatches);
-  app.appendChild(el('<p class="hintline" style="text-align:center;margin-top:14px">Version ' + VERSION + '</p>'));
+  app.appendChild(el('<p class="hintline" style="text-align:center;margin-top:18px">Version ' + VERSION + '</p>'));
+
+  // schwebende Kapsel zum Beitreten
+  var join = el('<button class="hm-join" type="button">' + CODESYMBOL + 'Mit Code beitreten</button>');
+  join.onclick = beitreten;
+  app.appendChild(join);
 }
 
 
@@ -2959,6 +3579,7 @@ function beitrittsLink(code){
 /* ---------- Gemeinsam spielen ---------- */
 var sock = null, sockCode = null, liveVersion = 0, letzterStand = null, wendetAn = false, liveAnzahl = 1;
 var ANWESEND = [];   // Namen der verbundenen Handys, vom Server gemeldet
+var ANWESEND_SOCK = null;
 var WARTEND = [];    // wer waehrend einer laufenden Partie beigetreten ist
 var EINTRAG_FEHLER = null, EINTRAG_VORHER = null;
 function geraeteText(n){ return n === 1 ? "1 Ger\u00e4t verbunden" : n + " Ger\u00e4te verbunden"; }
@@ -3066,7 +3687,19 @@ function liveVerbinden(){
                      : "\u201e" + n.name + "\u201c ist schon dabei. Nimm einen anderen Namen oder tipp oben auf deinen.";
       ALL.meinName = EINTRAG_VORHER; save(); render();
     } else if (n.type === "anwesend") {
-      if (Array.isArray(n.namen)) ANWESEND = n.namen;
+      if (Array.isArray(n.namen)) {
+        var neuDa = n.namen.filter(function(x){ return ANWESEND.indexOf(x) < 0 && x !== meinName(); });
+        // Die erste Liste nach dem Verbinden ist keine Neuigkeit, und wer selbst noch keinen Namen hat, braucht keine Meldung
+        var ersteListe = ANWESEND_SOCK !== sock;
+        ANWESEND_SOCK = sock;
+        ANWESEND = n.namen;
+        if (!ersteListe && meinName() && neuDa.length && S && PARTYSPIELE.indexOf(S.game) >= 0 && (!QUIZ || !QUIZ.phase || QUIZ.phase === "lobby")) {
+          LOBBY_NEU = LOBBY_NEU.concat(neuDa);
+          var idx = S.names.indexOf(neuDa[0]);
+          toast('<span class="av klein" style="--acc:' + hue(Math.max(0, idx)) + '">' + esc(neuDa[0].charAt(0).toUpperCase()) +
+            '</span>' + esc(neuDa[0]) + (neuDa.length > 1 ? " und " + (neuDa.length - 1) + " weitere sind" : " ist") + " dabei");
+        }
+      }
       if (Array.isArray(n.wartend)) WARTEND = n.wartend;
       // In der Lobby nur die Plaketten auffrischen, damit Eingaben nicht verloren gehen
       var leute = app.querySelector(".lobbyleute");
@@ -3210,17 +3843,30 @@ function beitretenMit(code){
 function beitreten(){
   var kannScannen = typeof window.BarcodeDetector === "function" &&
                     navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
-  var sheet = el('<div class="sheet"><div class="panel"><div class="head">Partie beitreten</div>' +
-    '<p class="hintline" style="padding:0 16px 6px">Code vom Gastgeber eintippen. ' +
+  var sheet = el('<div class="sheet"><div class="panel"><div class="head">Mit Code beitreten</div>' +
+    '<p class="hintline" style="padding:0 8px 4px">Den Code zeigt das Handy des Gastgebers in der Lobby. ' +
     (kannScannen ? 'Oder den QR-Code scannen.'
-                 : 'Den QR-Code scannst du mit der Kamera-App deines iPhones, dann \u00f6ffnet sich die Partie von selbst.') +
-    '</p><div class="codeeingabe"><input type="text" inputmode="text" autocomplete="off" ' +
-    'autocapitalize="characters" spellcheck="false" placeholder="ABC123" maxlength="24"></div></div></div>');
+                 : 'Den QR-Code kannst du auch mit der Kamera-App scannen.') +
+    '</p><label class="otp"><span></span><span></span><span></span><span></span><span></span><span></span>' +
+    '<span class="codeeingabe code"><input type="text" inputmode="text" autocomplete="off" aria-label="Code" ' +
+    'autocapitalize="characters" spellcheck="false" maxlength="24"></span></label></div></div>');
   var panel = sheet.querySelector(".panel");
   var feld = sheet.querySelector("input");
-  feld.oninput = function(){ feld.value = feld.value.toUpperCase(); };
+  var kaesten = sheet.querySelectorAll(".otp > span:not(.codeeingabe)");
+  function zeigeCode(){
+    var v = codeAusText(feld.value) || "";
+    for (var i = 0; i < kaesten.length; i++) {
+      var war = kaesten[i].textContent;
+      kaesten[i].textContent = v.charAt(i) || "";
+      kaesten[i].classList.toggle("akt", i === Math.min(v.length, 5));
+      if (!war && v.charAt(i)) { kaesten[i].classList.remove("voll"); void kaesten[i].offsetWidth; kaesten[i].classList.add("voll"); }
+    }
+    // Sechs Zeichen: kurz zeigen, dann von selbst beitreten
+    if (v.length >= 6) setTimeout(function(){ if (sheet.isConnected && beitretenMit(feld.value)) sheet.remove(); }, 450);
+  }
+  feld.oninput = function(){ feld.value = feld.value.toUpperCase(); zeigeCode(); };
 
-  var los = el('<button type="button">Beitreten</button>');
+  var los = el('<button class="cta" type="button">Beitreten</button>');
   los.onclick = function(){
     if (beitretenMit(feld.value)) sheet.remove();
     else feld.focus();
@@ -3395,19 +4041,54 @@ function bluffHolen(thema, anzahl, arten){
 
 // Kopf jeder Lobby: wer spielt hier, wer ist schon verbunden, und fuer den Gastgeber der Code
 function lobbyLeute(){
-  var box = el('<div class="lobbyleute"></div>');
   var ich = meinName();
-  var zeile = el('<p class="hintline" style="text-align:center">Du spielst als <b>' + esc(ich || "?") + '</b> ' +
-    '<button class="linkknopf" type="button">nicht du?</button></p>');
-  zeile.querySelector("button").onclick = function(){
-    ICH_NEU_WAEHLEN = true; S.ich = null; S.ichFuer = null; save(); render();
-  };
-  box.appendChild(zeile);
-  var reihe = el('<div class="wersteht"></div>');
+  var box = el('<div class="lobbyleute"></div>');
+  var spielname = (GAMES.filter(function(g){ return g.id === S.game; })[0] || {}).name || "";
+  var kopf = app.querySelector(".headline"), unter = app.querySelector(".meta");
+  // Beim Neuzeichnen nur der Liste ist der Untertitel schon ersetzt: dann den gemerkten Text nehmen
+  var einstellungsText = unter ? (unter.getAttribute("data-original") || unter.innerHTML) : "";
+  if (unter && !unter.getAttribute("data-original")) unter.setAttribute("data-original", einstellungsText);
+  if (!quizLaedt) {
+    if (S.hostet) {
+      if (kopf) kopf.textContent = "Lade die anderen ein";
+      if (unter) unter.textContent = "Sie tippen auf \u201eMit Code beitreten\u201c oder scannen den QR-Code.";
+    } else {
+      // Gaeste: grosser Profilkreis statt Ueberschrift
+      if (kopf) kopf.remove(); if (unter) unter.remove();
+      var meinIdx = Math.max(0, S.names.indexOf(ich));
+      box.appendChild(el('<div class="lobbyheld"><span class="av gross" style="--acc:' + hue(meinIdx) + '">' +
+        esc((ich || "?").charAt(0).toUpperCase()) + '</span><h1 class="headline">Du bist dabei</h1>' +
+        '<p class="lead-in">' + esc(S.names[0] || "Der Gastgeber") + ' startet gleich ' + esc(spielname) + '.</p></div>'));
+    }
+  }
+  if (S.hostet) {
+    var link = beitrittsLink(S.live);
+    var karte = el('<div class="codekarte"><small>Code f\u00fcr diese Partie</small>' +
+      '<button class="einladung" type="button" aria-label="QR-Code gro\u00df zeigen">' +
+      String(S.live || "").split("").map(function(c){ return '<span>' + esc(c) + '</span>'; }).join("") + '</button>' +
+      '<div class="qrklein">' + (qrSVG(link, 150) || "") + '</div>' +
+      '<div class="codereihe"><button class="cta ghost" type="button" data-a="teilen">Teilen</button>' +
+      '<button class="cta ghost" type="button" data-a="kopieren">Code kopieren</button></div></div>');
+    karte.querySelector(".einladung").onclick = codeSheet;
+    karte.querySelector('[data-a="teilen"]').onclick = function(){
+      var txt = "Spielblock, tritt der Partie bei: " + link + " (Code " + S.live + ")";
+      if (navigator.share) navigator.share({ text: txt }).catch(function(){});
+      else if (navigator.clipboard) { navigator.clipboard.writeText(txt); toast("Link kopiert"); }
+    };
+    karte.querySelector('[data-a="kopieren"]').onclick = function(){
+      if (navigator.clipboard) navigator.clipboard.writeText(S.live);
+      toast("Code kopiert");
+    };
+    box.appendChild(karte);
+  }
+  box.appendChild(el('<h2 class="group">Dabei</h2>'));
+  var liste = el('<div class="spielerliste"></div>');
   S.names.forEach(function(nm, i){
     var da = nm === ich || ANWESEND.indexOf(nm) >= 0;
-    var p = el('<span class="wp' + (da ? " fertig" : "") + '" style="--acc:' + hue(i) + '">' +
-      '<b>' + esc(nm.charAt(0).toUpperCase()) + '</b><i>' + esc(nm) + '</i></span>');
+    var unterzeile = nm === ich ? (S.hostet ? "Du, Gastgeber" : "Du") : da ? "verbunden" : "noch nicht da";
+    var z = el('<div class="wp spielerzeile' + (da ? " fertig" : "") + (LOBBY_NEU.indexOf(nm) >= 0 ? " neu" : "") + '">' +
+      '<span class="av" style="--acc:' + hue(i) + '">' + esc(nm.charAt(0).toUpperCase()) + (da ? '<i class="punkt"></i>' : '') + '</span>' +
+      '<span class="szname"><b>' + esc(nm) + '</b><small>' + unterzeile + '</small></span></div>');
     if (S.hostet && nm !== ich) {
       var weg = el('<button class="wp-weg" type="button" aria-label="' + esc(nm) + ' herausnehmen">\u00d7</button>');
       weg.onclick = function(){
@@ -3417,22 +4098,45 @@ function lobbyLeute(){
         S.ich = S.names.indexOf(meiner); S.ichFuer = ichSchluessel();
         save(); render();
       };
-      p.appendChild(weg);
+      z.appendChild(weg);
     }
-    reihe.appendChild(p);
+    liste.appendChild(z);
   });
-  box.appendChild(reihe);
+  box.appendChild(liste);
+  LOBBY_NEU = [];
   var fehlen = fehlendeSpieler();
-  box.appendChild(el('<p class="hintline lobbyfehlt" style="text-align:center">' +
-    (!sock || sock.readyState !== 1 ? "Verbinde \u2026" :
-     fehlen.length ? namenListe(fehlen) + (fehlen.length === 1 ? " fehlt" : " fehlen") + " noch" : "Alle sind da") + '</p>'));
-  if (S.hostet) {
-    var code = el('<button class="einladung" type="button"><span>Code zum Beitreten</span><b>' + esc(S.live || "") +
-      '</b><i>QR-Code zeigen</i></button>');
-    code.onclick = codeSheet;
-    box.appendChild(code);
+  var bereit = !fehlen.length && S.names.length >= grenzen(S.game).min;
+  var allein = S.names.length < 2;
+  box.appendChild(el('<p class="lobbyfehlt' + (bereit ? " ok" : "") + '">' +
+    (!sock || sock.readyState !== 1 ? '<span class="punkte3"><i></i><i></i><i></i></span> Verbinde \u2026' :
+     allein ? '<span class="punkte3"><i></i><i></i><i></i></span> Warte auf die anderen' :
+     fehlen.length ? '<span class="punkte3"><i></i><i></i><i></i></span> ' + namenListe(fehlen) + (fehlen.length === 1 ? " fehlt" : " fehlen") + " noch"
+                   : (S.hostet ? "Alle sind da" : '<span class="punkte3"><i></i><i></i><i></i></span> Alle sind da, warte auf den Start')) + '</p>'));
+  var zeile = el('<p class="hintline" style="text-align:center">Du spielst als <b>' + esc(ich || "?") + '</b> ' +
+    '<button class="linkknopf" type="button">nicht du?</button></p>');
+  zeile.querySelector("button").onclick = function(){
+    ICH_NEU_WAEHLEN = true; S.ich = null; S.ichFuer = null; save(); render();
+  };
+  box.appendChild(zeile);
+  if (S.hostet && !quizLaedt) {
+    box.appendChild(el('<h2 class="group">Einstellungen</h2>'));
+    if (einstellungsText) box.appendChild(el('<p class="hintline">' + einstellungsText + '</p>'));
   }
+  app.classList.add("lobby");
+  app.classList.toggle("bereit", !!(S.hostet && bereit));
   return box;
+}
+var LOBBY_NEU = [];
+
+// Kurze Meldung unten, etwa "Lea ist dabei"
+var toastTimer = null;
+function toast(html){
+  var alt = document.querySelector(".toast"); if (alt) alt.remove();
+  var t = el('<div class="toast" role="status">' + html + '</div>');
+  document.body.appendChild(t);
+  requestAnimationFrame(function(){ requestAnimationFrame(function(){ t.classList.add("an"); }); });
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ t.classList.remove("an"); setTimeout(function(){ t.remove(); }, 450); }, 2300);
 }
 function fehlendeSpieler(){
   var ich = meinName();
@@ -3721,13 +4425,24 @@ function rangAnimieren(schluessel){
 }
 
 function spielerPunkte(z){
-  var reihe = el('<div class="wersteht fortschritt"></div>');
+  var reihe = el('<div class="wersteht fortschritt antwortreihe"></div>');
+  var anzahl = 0;
   S.names.forEach(function(nm, i){
     var da = z.geantwortet.indexOf(nm) >= 0;
+    if (da) anzahl++;
     reihe.appendChild(el('<span class="wp' + (da ? " fertig" : "") + '" style="--acc:' + hue(i) +
       '" title="' + esc(nm) + '"><b>' + esc(nm.charAt(0).toUpperCase()) + '</b><i>' + esc(nm) + '</i></span>'));
   });
+  // der Zaehler steckt mit in der Reihe, damit er beim Auffrischen mitwandert
+  reihe.appendChild(el('<em class="antwortstand">' + (anzahl === S.names.length ? "Alle haben geantwortet"
+    : anzahl + " von " + S.names.length + " haben geantwortet") + '</em>'));
   return reihe;
+}
+// Fortschritt als Segmente, wie im Entwurf
+function fragenFortschritt(z){
+  var box = el('<div class="segfortschritt" aria-label="Frage ' + (z.idx + 1) + ' von ' + z.gesamt + '"></div>');
+  for (var i = 0; i < z.gesamt; i++) box.appendChild(el('<i class="' + (i < z.idx ? "da" : i === z.idx ? "jetzt" : "") + '"></i>'));
+  return box;
 }
 
 function fortschrittAuffrischen(){
@@ -3785,6 +4500,7 @@ function istZeitstrahl(){ return S && S.game === "zeitstrahl"; }
 
 function quizKopf(titel, unter){
   app.innerHTML = "";
+  app.classList.remove("lobby", "bereit");
   app.appendChild(el('<div class="top"><div class="brand"><span class="hat">\u25B2</span> ' +
     (istBluff() ? "Bluff" : istDito() ? "Dito" : istSkala() ? "Skala" : istSpion() ? "Spion" : istZeitstrahl() ? "Zeitstrahl" : "Quiz") + '</div></div>'));
   topBtns();
@@ -3815,26 +4531,31 @@ function viewQuiz(){
       app.appendChild(tabs());
       return;
     }
-    quizKopf("Wer bist du?", S.names.length ? "Tipp auf deinen Namen. Fehlt er, trag dich unten ein."
-                                            : "Trag dich ein, dann geht es los.");
+    var spielname = (GAMES.filter(function(g){ return g.id === S.game; })[0] || {}).name || "";
+    var schonDa = S.names.filter(function(nm){ return ANWESEND.indexOf(nm) >= 0; });
+    quizKopf(S.hostet ? "Wer bist du?" : "Wie heißt du?",
+      esc(spielname) + (schonDa.length ? ". " + esc(namenListe(schonDa)) + (schonDa.length === 1 ? " ist" : " sind") + " schon da." : "."));
+    var namenBox = el('<div class="namenwahl"></div>');
     S.names.forEach(function(nm, i){
-      var b = el('<button class="rank tap" type="button" style="--acc:' + hue(i) + '">' +
-        '<span class="pos num">' + (i+1) + '</span><span class="nm">' + esc(nm) + '</span></button>');
+      var da = ANWESEND.indexOf(nm) >= 0;
+      var b = el('<button class="rank tap namechip' + (da ? " da" : "") + '" type="button" style="--acc:' + hue(i) + '">' +
+        '<span class="av klein" style="--acc:' + hue(i) + '">' + esc(nm.charAt(0).toUpperCase()) + '</span>' +
+        '<span class="nm">' + esc(nm) + '</span></button>');
       bindTap(b, function(){
         S.ich = i; S.ichFuer = ichSchluessel(); ALL.meinName = nm; ICH_NEU_WAEHLEN = false;
         EINTRAG_FEHLER = null; save(); render(); skalaAnmelden();
       });
-      app.appendChild(b);
+      namenBox.appendChild(b);
     });
+    if (S.hostet) app.appendChild(namenBox);
     // Selbst eintragen: der Server haengt den Namen an, auch wenn mehrere gleichzeitig kommen
     if (!S.hostet) {
-      app.appendChild(el('<p class="group">Neu dabei?</p>'));
       var eig = el('<div class="codeeingabe"><input type="text" maxlength="24" autocomplete="off" ' +
-        'placeholder="dein Name"></div>');
+        'placeholder="Dein Name" aria-label="Dein Name"></div>');
       if (ALL.meinName && S.names.indexOf(ALL.meinName) < 0) eig.querySelector("input").value = ALL.meinName;
       app.appendChild(eig);
       if (EINTRAG_FEHLER) app.appendChild(el('<p class="note warn">' + esc(EINTRAG_FEHLER) + '</p>'));
-      app.appendChild(absenden("Eintragen", eig, function(){
+      var losKnopf = absenden("Beitreten", eig, function(){
         var nm = eig.querySelector("input").value.replace(/\s+/g, " ").trim();
         if (!nm) return;
         var schon = S.names.filter(function(x){ return x.toLowerCase() === nm.toLowerCase(); })[0];
@@ -3851,7 +4572,12 @@ function viewQuiz(){
         ALL.meinName = nm; ICH_NEU_WAEHLEN = false; save();
         quizSenden({ tat: "eintragen", name: nm, max: grenzen(S.game).max });
         render();
-      }));
+      });
+      app.appendChild(losKnopf);
+      if (S.names.length) {
+        app.appendChild(el('<p class="hintline namenhinweis">Hat dich jemand schon eingetragen? Dann tipp auf deinen Namen.</p>'));
+        app.appendChild(namenBox);
+      }
     }
     app.appendChild(tabs());
     return;
@@ -3884,7 +4610,6 @@ function viewQuizLobby(){
   if (quizLaedt) { app.appendChild(kartenLader("Die Karten werden ausgedacht")); return; }
 
   if (!S.hostet) {
-    app.appendChild(el('<div class="qrbox">' + (qrSVG(beitrittsLink(S.live), 170) || "") + '</div>'));
     app.appendChild(tabs());
     return;
   }
@@ -3941,13 +4666,22 @@ var aufGezeigt = -1;   // fuer welche Frage die Aufloesung schon gelaufen ist
 var letzteFrage = null;
 
 function uhr(endeZeit, spanne){
-  var balken = el('<div class="uhr"><i></i><span></span></div>');
-  app.appendChild(balken);
-  var strich = balken.querySelector("i"), text = balken.querySelector("span");
+  // Kurze Runden: Ring oben rechts in der Kopfleiste. Lange Runden: Kapsel mit Minuten.
+  var lang = spanne > 120000;
+  var balken = el(lang
+    ? '<div class="uhr pille"><i></i><span></span></div>'
+    : '<div class="uhr ring"><svg viewBox="0 0 46 46"><circle class="r1" cx="23" cy="23" r="20"/><circle class="r2" cx="23" cy="23" r="20"/></svg><i></i><span></span></div>');
+  var leiste = app.querySelector(".top");
+  if (leiste) { var erster = leiste.querySelector(".livechip, .menubtn, .rasterknopf"); leiste.insertBefore(balken, erster || null); }
+  else app.appendChild(balken);
+  var strich = balken.querySelector("i"), text = balken.querySelector("span"), kreis = balken.querySelector(".r2");
   function tick(){
     var uebrig = Math.max(0, endeZeit - serverJetzt());
     strich.style.width = Math.min(100, uebrig / spanne * 100) + "%";
-    text.textContent = Math.ceil(uebrig / 1000) + " s";
+    if (kreis) kreis.style.strokeDashoffset = String(125.7 * (1 - Math.min(1, uebrig / spanne)));
+    var sek = Math.ceil(uebrig / 1000);
+    // ab zwei Minuten als Minuten und Sekunden, wie eine Uhr
+    text.textContent = sek >= 120 ? Math.floor(sek / 60) + ":" + String(sek % 60).padStart(2, "0") : (kreis ? String(sek) : sek + " s");
     balken.classList.toggle("knapp", uebrig > 0 && uebrig <= 5000);
     if (uebrig <= 0) {
       clearInterval(quizTakt); quizTakt = null;
@@ -3990,13 +4724,15 @@ function viewCountdown(){
     app.appendChild(el('<div class="themakarte klein"><span class="buchstabe">' + esc(z.buchstabe) + '</span>' +
       '<b>' + esc(z.thema) + '</b></div>'));
   }
-  app.appendChild(el(
+  var voll = el('<div class="vollflaeche"></div>');
+  voll.appendChild(el(
     '<div class="countdown"><svg viewBox="0 0 120 120">' +
       '<circle class="bahn" cx="60" cy="60" r="52"/>' +
       '<circle class="lauf" cx="60" cy="60" r="52"/></svg>' +
       '<div class="zahl" key="' + sek + '">' + sek + '</div></div>'));
-  app.appendChild(el('<p class="note">' + (rundenstart ? "Gleich kommt die erste Frage dazu."
+  voll.appendChild(el('<p class="note">' + (rundenstart ? "Gleich kommt die erste Frage dazu."
     : "Gleich geht es los. Finger bereit.") + '</p>'));
+  app.appendChild(voll);
 
   var zahl = app.querySelector(".countdown .zahl");
   var lauf = app.querySelector(".countdown .lauf");
@@ -4026,11 +4762,10 @@ function viewQuizFrage(){
   if (aufGezeigt !== z.idx) aufGezeigt = -1;
   var ichHabe = z.geantwortet.indexOf(meinName()) >= 0;
   quizKopf(null, null);
+  uhr(z.endeZeit, 30000);
   app.appendChild(el('<p class="meta">Frage ' + (z.idx + 1) + ' von ' + z.gesamt +
     (z.thema ? ' \u00b7 ' + esc(z.thema) : '') + '</p>'));
-  app.appendChild(spielerPunkte(z));
-
-  uhr(z.endeZeit, 30000);
+  app.appendChild(fragenFortschritt(z));
   app.appendChild(el('<h1 class="frage">' + esc(f.frage) + '</h1>'));
   if (f.bildUrl) app.appendChild(fragenBild(f));
 
@@ -4047,14 +4782,12 @@ function viewQuizFrage(){
       });
       app.appendChild(b);
     });
-    app.appendChild(el('<p class="note">' + (ichHabe
-      ? "Eingeloggt. Ge\u00e4ndert wird nichts mehr."
-      : "Einmal tippen und die Antwort ist eingeloggt.") + '</p>'));
+    app.appendChild(spielerPunkte(z));
   } else if (ichHabe) {
     app.appendChild(el('<div class="antwort gewaehlt"><span class="buchstabe">=</span>' +
       esc(meinTipp ? fmtZahl(meinTipp.wert) + (f.einheit ? " " + f.einheit : "") : "abgegeben") +
       '<span class="marke">eingeloggt</span></div>'));
-    app.appendChild(el('<p class="note">Eingeloggt. Ge\u00e4ndert wird nichts mehr.</p>'));
+    app.appendChild(spielerPunkte(z));
   } else {
     var eingabe = tausenderFeld(merkeEingabe(el('<div class="codeeingabe"><input type="text" inputmode="decimal" placeholder="Zahl' +
       (f.einheit ? " in " + esc(f.einheit) : "") + '"></div>'), "schaetz" + z.idx));
@@ -4066,6 +4799,7 @@ function viewQuizFrage(){
       entwurfWeg("schaetz" + z.idx);
       quizSenden({ tat: "antwort", spieler: meinName(), wert: v, anzahl: S.names.length });
     }));
+    app.appendChild(spielerPunkte(z));
   }
 
   if (S.hostet) {
@@ -4084,6 +4818,7 @@ function viewQuizAuf(){
   var z = QUIZ, a = z.aufloesung;
   quizKopf(null, null);
   app.appendChild(el('<p class="meta">Frage ' + (z.idx + 1) + ' von ' + z.gesamt + '</p>'));
+  app.appendChild(fragenFortschritt(z));
   var f = letzteFrage;
   if (f && f.frage) app.appendChild(el('<h1 class="frage">' + esc(f.frage) + '</h1>'));
   if (f && f.bildUrl) app.appendChild(fragenBild(f));
@@ -4145,11 +4880,12 @@ function viewQuizAuf(){
     var text = wert === undefined ? "keine Antwort"
       : (a.typ === "mc" ? "ABCD".charAt(wert) : fmtZahl(wert) + (a.einheit ? " " + a.einheit : ""));
     if (a.tempo && a.tempo[nm]) text += " \u00b7 " + a.tempo[nm] + " Tempo";
-    app.appendChild(el('<div class="rank' + (punkte >= 100 ? ' first' : '') + '" data-nm="' + esc(nm) +
-      '" style="--acc:' + hue(i) + '">' +
+    var hoechster = Math.max.apply(null, S.names.map(function(x){ return z.punkte[x] || 0; }).concat([1]));
+    app.appendChild(el('<div class="rank mitbalken' + (punkte >= 100 ? ' first' : '') + '" data-nm="' + esc(nm) +
+      '" style="--acc:' + hue(i) + '"><span class="balken" style="width:' + Math.round((z.punkte[nm] || 0) / hoechster * 100) + '%"></span>' +
       '<span class="nm">' + esc(nm) + '<span class="sub">' + esc(text) + '</span></span>' +
       '<span class="pt num">' + fmtZahl(z.punkte[nm] || 0) +
-      '<span class="sub">' + (punkte ? "+" + fmtZahl(punkte) : "\u00b10") + '</span></span></div>'));
+      '<span class="sub' + (punkte ? ' plus' : '') + '">' + (punkte ? "+" + fmtZahl(punkte) : "\u00b10") + '</span></span></div>'));
   });
 
   app = vorher;
@@ -4184,12 +4920,56 @@ function viewQuizAuf(){
   app.appendChild(tabs());
 }
 
+/* ---------- Siegerpodest mit Konfetti, gemeinsam fuer alle Partyspiele ---------- */
+var PODEST_GEFEIERT = null;
+function siegerPodest(reihe, key){
+  if (!reihe || reihe.length < 2) return el('<div></div>');
+  var plaetze = [reihe[1], reihe[0], reihe[2]];                // zweiter links, erster mittig, dritter rechts
+  var hoehen = { 0: 150, 1: 106, 2: 76 };
+  var box = el('<div class="podest" aria-label="Siegerpodest"></div>');
+  plaetze.forEach(function(p, k){
+    if (!p) { box.appendChild(el('<div class="saeule leer"></div>')); return; }
+    var rang = reihe.indexOf(p);
+    var farbe = hue(p.idx !== undefined ? p.idx : (p.i !== undefined ? p.i : rang));
+    box.appendChild(el('<div class="saeule" style="--c:' + farbe + ';--v:' + [0.25, 0.5, 0][k] + 's">' +
+      '<span class="podest-av">' + esc(p.nm.charAt(0).toUpperCase()) + '</span>' +
+      '<b>' + esc(p.nm) + '</b><small class="num">' + p.pt + '</small>' +
+      '<div class="block" style="height:' + hoehen[rang] + 'px">' + (rang + 1) + '</div></div>'));
+  });
+  // Konfetti nur einmal je Partie, nicht bei jedem Neuzeichnen
+  if (key && PODEST_GEFEIERT !== key) { PODEST_GEFEIERT = key; setTimeout(konfetti, 900); }
+  return box;
+}
+function konfetti(){
+  if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  var cv = document.createElement("canvas"); cv.className = "konfetti";
+  document.body.appendChild(cv);
+  var w = window.innerWidth, h = window.innerHeight, dpr = window.devicePixelRatio || 1;
+  cv.width = w * dpr; cv.height = h * dpr;
+  var ctx = cv.getContext && cv.getContext("2d"); if (!ctx) { cv.remove(); return; }
+  ctx.scale(dpr, dpr);
+  var farben = ["#0A84FF", "#FF375F", "#30D158", "#FF9F0A", "#BF5AF2", "#FFD60A", "#64D2FF"];
+  var teile = [];
+  for (var i = 0; i < 150; i++) teile.push({ x: w / 2 + (Math.random() - .5) * 60, y: h * .36,
+    vx: (Math.random() - .5) * 13, vy: -Math.random() * 15 - 5, b: 6 + Math.random() * 6, l: 9 + Math.random() * 7,
+    r: Math.random() * 6, vr: (Math.random() - .5) * .35, f: farben[Math.floor(Math.random() * farben.length)] });
+  var t0 = performance.now();
+  (function bild(t){
+    ctx.clearRect(0, 0, w, h);
+    teile.forEach(function(p){ p.vy += .42; p.vx *= .99; p.x += p.vx; p.y += p.vy; p.r += p.vr;
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.fillStyle = p.f;
+      ctx.fillRect(-p.b / 2, -p.l / 2, p.b, p.l * Math.cos(p.r * 2)); ctx.restore(); });
+    if (t - t0 < 3200) requestAnimationFrame(bild); else cv.remove();
+  })(t0);
+}
+
 function viewQuizEnde(){
   var z = QUIZ;
   if (z.brett) return viewBluffEnde(z);
   var order = S.names.map(function(nm, i){ return { nm: nm, idx: i, pt: (z.punkte[nm] || 0) }; })
                      .sort(function(a, b){ return b.pt - a.pt; });
   quizKopf(esc(order[0].nm) + " gewinnt", z.gesamt + " Fragen" + (z.thema ? " zum Thema " + esc(z.thema) : ""));
+  app.appendChild(siegerPodest(order, "quiz" + S.live + (z.thema || "") + z.gesamt));
   order.forEach(function(p, i){
     app.appendChild(el('<div class="rank' + (i === 0 ? ' first' : '') + '" style="--acc:' + hue(p.idx) + '">' +
       '<span class="pos num">' + (i+1) + '</span><span class="nm">' + esc(p.nm) + '</span>' +
@@ -4213,6 +4993,7 @@ function viewBluffEnde(z){
                      .sort(function(a, b){ return b.pt - a.pt; });
   quizKopf(esc(z.sieger || order[0].nm) + " ist im Ziel",
     (z.runde || 1) + " Runden gespielt" + (z.thema ? " \u00b7 " + esc(z.thema) : ""));
+  if (PODEST_GEFEIERT !== "bluff" + S.live + z.runde) { PODEST_GEFEIERT = "bluff" + S.live + z.runde; setTimeout(konfetti, 700); }
   app.appendChild(brettZeichnen(z, z.figuren));
   order.forEach(function(p, i){
     app.appendChild(el('<div class="rank' + (i === 0 ? ' first' : '') + '" data-nm="' + esc(p.nm) +
@@ -4442,12 +5223,19 @@ function zeitKopf(z, unter){
 }
 
 function zeitPlaketten(z){
-  var reihe = el('<div class="wersteht"></div>');
-  S.names.forEach(function(nm, i){
-    var da = (z.abgegeben || []).indexOf(nm) >= 0;
-    reihe.appendChild(el('<span class="wp' + (da ? " fertig" : "") + '" style="--acc:' + hue(i) + '">' +
+  return profilReihe(S.names, z.abgegeben || [], "eingeloggt");
+}
+// Ueberlappende Profilkreise mit Zaehler, gemeinsam fuer Zeitstrahl und Skala
+function profilReihe(namen, fertigListe, wort){
+  var reihe = el('<div class="wersteht antwortreihe"></div>'), anzahl = 0;
+  namen.forEach(function(nm){
+    var i = S.names.indexOf(nm), da = fertigListe.indexOf(nm) >= 0;
+    if (da) anzahl++;
+    reihe.appendChild(el('<span class="wp' + (da ? " fertig" : "") + '" style="--acc:' + hue(Math.max(0, i)) + '">' +
       '<b>' + esc(nm.charAt(0).toUpperCase()) + '</b><i>' + esc(nm) + '</i></span>'));
   });
+  reihe.appendChild(el('<em class="antwortstand">' + (anzahl === namen.length ? "Alle haben " + wort
+    : anzahl + " von " + namen.length + " haben " + wort) + '</em>'));
   return reihe;
 }
 
@@ -4482,11 +5270,12 @@ function viewZeitSortieren(z){
                   : '<span class="zs-leer">' + (p === 0 ? esc(auf.oben || "zuerst") : p === 3 ? esc(auf.unten || "zuletzt") : "") + '</span>') +
       '</div>');
     if (k !== null && !gesperrt[p] && !eingeloggt) {
-      (function(stelle){ bindTap(platz, function(){ folge[stelle] = null; render(); }); })(p);
+      (function(stelle, karte){ bindTap(platz, function(){ folge[stelle] = null; ZEIT_ZURUECK = karte; render(); }); })(p, k);
     }
     plaetze.appendChild(platz);
   }
   app.appendChild(plaetze);
+  plaetze.querySelectorAll(".zs-platz").forEach(function(pl, i){ pl.setAttribute("data-platz", i); });
 
   if (eingeloggt) {
     var zeit = ZEIT_ABGABE[key];
@@ -4500,11 +5289,15 @@ function viewZeitSortieren(z){
         '<b>' + BUCHSTABEN[i] + '</b><span>' + esc(kt.text) + '</span></button>');
       if (!benutzt) bindTap(b, function(){
         var frei = folge.indexOf(null);
-        if (frei >= 0) { folge[frei] = i; render(); }
+        if (frei < 0) return;
+        ZEIT_FLUG = { platz: frei, karte: i, von: b.getBoundingClientRect ? b.getBoundingClientRect() : null };
+        folge[frei] = i; render();
       });
+      b.setAttribute("data-karte", i);
       karten.appendChild(b);
     });
     app.appendChild(karten);
+    zeitFlugAusfuehren(z);
     var los = el('<button class="cta" type="button"' + (voll ? "" : " disabled") + '>Einloggen</button>');
     bindTap(los, function(){
       if (!folge.every(function(x){ return x !== null; })) return;
@@ -4532,6 +5325,35 @@ function viewZeitSortieren(z){
 }
 
 /* --- Aufloesung: die Ereignisse fallen nacheinander auf den Zeitstrahl --- */
+// Karte fliegt vom Raster in ihren Platz, wie im Entwurf
+var ZEIT_FLUG = null, ZEIT_ZURUECK = null;
+function zeitFlugAusfuehren(z){
+  var flug = ZEIT_FLUG; ZEIT_FLUG = null;
+  var zurueck = ZEIT_ZURUECK; ZEIT_ZURUECK = null;
+  if (zurueck !== null && zurueck !== undefined) {
+    var karte = app.querySelector('.zs-karte[data-karte="' + zurueck + '"]');
+    if (karte) { karte.classList.add("zurueckgeholt"); }
+  }
+  if (!flug || !flug.von) return;
+  var ziel = app.querySelector('.zs-platz[data-platz="' + flug.platz + '"]');
+  var ruhig = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!ziel || !ziel.getBoundingClientRect || ruhig) return;
+  var nach = ziel.getBoundingClientRect(), von = flug.von;
+  if (!nach.width || !von.width) return;
+  var kt = (z.karten || [])[flug.karte] || {};
+  var clone = el('<div class="zsflieger"><b>' + BUCHSTABEN[flug.karte] + '</b><span>' + esc(kt.text || "") + '</span></div>');
+  clone.style.left = von.left + "px"; clone.style.top = von.top + "px";
+  clone.style.width = von.width + "px"; clone.style.height = von.height + "px";
+  document.body.appendChild(clone);
+  ziel.classList.add("ankunft");
+  if (!clone.animate) { clone.remove(); ziel.classList.remove("ankunft"); return; }
+  var a = clone.animate([
+    { left: von.left + "px", top: von.top + "px", width: von.width + "px", height: von.height + "px" },
+    { left: nach.left + "px", top: nach.top + "px", width: nach.width + "px", height: nach.height + "px" }
+  ], { duration: 460, easing: "cubic-bezier(.32,.72,0,1)", fill: "forwards" });
+  a.onfinish = function(){ clone.remove(); ziel.classList.remove("ankunft"); ziel.classList.add("gelandet"); };
+}
+
 function viewZeitAuf(z){
   var l = z.letzte || {};
   var schon = ZEIT_GESEHEN === rundenKey(z);
@@ -4539,9 +5361,13 @@ function viewZeitAuf(z){
   zeitKopf(z, "Aufl\u00f6sung");
   var aufg = z.aufgabe || {};
   app.appendChild(el('<p class="zs-frage-klein">' + esc(aufg.frage || "Was kam zuerst?") + '</p>'));
-  var strahl = el('<div class="zs-strahl' + (aufg.art === "zahl" ? " zahl" : "") + '"></div>');
+  var strahl = el('<div class="zs-strahl zs-loesung' + (aufg.art === "zahl" ? " zahl" : "") + '"></div>');
+  var meineFolge = ZEIT_FOLGE[rundenKey(z)] || [];
+  var habeAbgegeben = meineFolge.length === 4 && meineFolge.every(function(x){ return x !== null; });
   (l.loesung || []).forEach(function(k, rang){
-    var e = el('<div class="zs-ereignis' + (schon ? "" : " kommt") + '">' +
+    var treffer = habeAbgegeben ? (meineFolge[rang] === k ? " ok" : " nein") : "";
+    var e = el('<div class="zs-ereignis' + treffer + (schon ? "" : " kommt") + '">' +
+      '<span class="zs-nr">' + (rang + 1) + '</span>' +
       '<span class="zs-jahr' + (aufg.art === "zahl" ? " zahl" : "") + '">' +
         wertText((l.werte || l.jahre || [])[k], aufg) + '</span>' +
       '<span class="zs-punkt"></span>' +
@@ -4601,6 +5427,7 @@ function viewZeitEnde(z){
   var reihe = S.names.map(function(nm, i){ return { nm: nm, i: i, pt: z.punkte[nm] || 0 }; })
                      .sort(function(a, b){ return b.pt - a.pt; });
   quizKopf(esc(reihe[0].nm) + " gewinnt", "Zeitstrahl, " + (z.gesamt || 0) + " Runden");
+  app.appendChild(siegerPodest(reihe, "zeit" + rundenKey(z)));
   reihe.forEach(function(p, i){
     app.appendChild(el('<div class="rank' + (i === 0 ? ' first' : '') + '" style="--acc:' + hue(p.i) + '">' +
       '<span class="pos num">' + (i + 1) + '</span><span class="nm">' + esc(p.nm) + '</span>' +
@@ -4647,7 +5474,6 @@ function viewZeitLobby(){
   if (quizFehler) app.appendChild(el('<p class="note warn">' + esc(quizFehler) + '</p>'));
   if (quizLaedt) { app.appendChild(kartenLader("Ereignisse werden gesucht")); return; }
   if (!S.hostet) {
-    app.appendChild(el('<div class="qrbox">' + (qrSVG(beitrittsLink(S.live), 170) || "") + '</div>'));
     app.appendChild(tabs());
     return;
   }
@@ -4789,34 +5615,56 @@ function viewSpionSpiel(z){
 /* --- Abstimmung --- */
 function viewSpionAbstimmung(z){
   var ich = meinName();
-  var meine = SPION_STIMME && SPION_STIMME.runde === rundenKey(z) ? SPION_STIMME.wahl : null;
+  var key = rundenKey(z);
+  var meine = SPION_STIMME && SPION_STIMME.runde === key ? SPION_STIMME.wahl : null;
   var fertig = (z.abgestimmt || []).indexOf(ich) >= 0;
   spionKopf(z, "Abstimmung");
-  app.appendChild(el('<h1 class="headline">Wer ist der Spion?</h1>'));
-  var reihe = el('<div class="wersteht"></div>');
+  // Wer hat schon abgestimmt: kleine Profilkreise mit Zaehler
+  var reihe = el('<div class="wersteht antwortreihe"></div>'), anzahl = 0;
   S.names.forEach(function(nm, i){
-    var da = (z.abgestimmt || []).indexOf(nm) >= 0;
-    reihe.appendChild(el('<span class="wp' + (da ? " fertig" : "") + '" style="--acc:' + hue(i) + '">' +
-      '<b>' + esc(nm.charAt(0).toUpperCase()) + '</b><i>' + esc(nm) + '</i></span>'));
+    var da = (z.abgestimmt || []).indexOf(nm) >= 0; if (da) anzahl++;
+    reihe.appendChild(el('<span class="wp' + (da ? " fertig" : "") + '" style="--acc:' + hue(i) + '"><b>' +
+      esc(nm.charAt(0).toUpperCase()) + '</b><i>' + esc(nm) + '</i></span>'));
   });
-  app.appendChild(reihe);
+  reihe.appendChild(el('<em class="antwortstand">' + (anzahl === S.names.length ? "Alle haben abgestimmt"
+    : anzahl + " von " + S.names.length + " haben abgestimmt") + '</em>'));
   if (fertig) {
-    app.appendChild(el('<p class="note">Du hast f\u00fcr <b>' + esc(meine || "jemanden") + '</b> gestimmt. ' +
-      'Warten auf die anderen.</p>'));
+    var mi = Math.max(0, S.names.indexOf(meine));
+    app.appendChild(el('<div class="stimmfertig"><span class="av gross" style="--acc:' + hue(mi) + '">' +
+      esc((meine || "?").charAt(0).toUpperCase()) + '</span><h1 class="headline">Deine Stimme: ' + esc(meine || "abgegeben") + '</h1>' +
+      '<p class="lead-in">Warte auf die anderen.</p></div>'));
+    app.appendChild(reihe);
     var zurueck = el('<button class="cta ghost" type="button">Doch noch \u00e4ndern</button>');
     bindTap(zurueck, function(){ quizSenden({ tat: "zuruecknehmen", spieler: ich }); });
     app.appendChild(zurueck);
   } else {
+    app.appendChild(el('<h1 class="headline">Wer ist der Spion?</h1>'));
+    app.appendChild(el('<p class="lead-in">Tippe auf die Person, die du verd\u00e4chtigst.</p>'));
+    var wahl = SPION_WAHL && SPION_WAHL.runde === key ? SPION_WAHL.wahl : null;
+    var raster = el('<div class="stimmraster"></div>');
+    var abgeben = el('<button class="cta" type="button"' + (wahl ? "" : " disabled") + '>Stimme abgeben</button>');
     S.names.forEach(function(nm, i){
       if (nm === ich) return;
-      var b = el('<button class="rank tap" type="button" style="--acc:' + hue(i) + '">' +
-        '<span class="nm">' + esc(nm) + '</span><span class="pt">\u203A</span></button>');
+      var b = el('<button class="stimme' + (wahl === nm ? " an" : "") + '" type="button">' +
+        '<span class="av gross" style="--acc:' + hue(i) + '">' + esc(nm.charAt(0).toUpperCase()) + '</span>' +
+        '<span class="stimmname">' + esc(nm) + '</span></button>');
       bindTap(b, function(){
-        SPION_STIMME = { runde: rundenKey(z), wahl: nm };
-        quizSenden({ tat: "stimme", spieler: ich, wahl: nm });
+        SPION_WAHL = { runde: key, wahl: nm };
+        [].forEach.call(raster.children, function(x){ x.classList.toggle("an", x === b); });
+        abgeben.disabled = false;
+        if (navigator.vibrate) { try { navigator.vibrate(4); } catch (e) {} }
       });
-      app.appendChild(b);
+      raster.appendChild(b);
     });
+    app.appendChild(raster);
+    bindTap(abgeben, function(){
+      var w = SPION_WAHL && SPION_WAHL.runde === key ? SPION_WAHL.wahl : null;
+      if (!w) return;
+      SPION_STIMME = { runde: key, wahl: w };
+      quizSenden({ tat: "stimme", spieler: ich, wahl: w });
+    });
+    app.appendChild(abgeben);
+    app.appendChild(reihe);
   }
   app.appendChild(spionKarte(z));
   if (z.ich && z.ich.spion) {
@@ -4831,6 +5679,7 @@ function viewSpionAbstimmung(z){
   }
   app.appendChild(tabs());
 }
+var SPION_WAHL = null;
 var SPION_STIMME = null;
 
 /* --- Aufloesung: erst Trommelwirbel, dann der Name --- */
@@ -4848,12 +5697,14 @@ function viewSpionAuf(z){
                erraten: "Der Spion hat den Ort herausgefunden.",
                verraten: "Der Spion tippte auf " + esc(l.geraten || "") + "." }[l.ergebnis] || "";
   var gut = l.ergebnis === "enttarnt" || l.ergebnis === "verraten";
-  var karte = el('<div class="sp-enthuellung' + (schon ? " fertig" : "") + (gut ? " gut" : " schlecht") + '">' +
+  var karte = el('<div class="sp-enthuellung' + (schon ? " fertig" : " trommel") + (gut ? " gut" : " schlecht") + '">' +
     '<span class="sp-klein">Der Spion war</span>' +
+    '<span class="av gross sp-av" style="--acc:' + hue(spIdx < 0 ? 0 : spIdx) + '">' + esc((l.spion || "?").charAt(0).toUpperCase()) + '</span>' +
     '<b class="sp-name" style="--acc:' + hue(spIdx < 0 ? 0 : spIdx) + '">' + esc(l.spion || "") + '</b>' +
     '<span class="sp-klein">Ihr wart hier</span><b class="sp-wo">' + esc(l.ort || "") + '</b>' +
     '<p class="sp-urteil"><b>' + titel + '</b> ' + text + '</p></div>');
   app.appendChild(karte);
+  if (!schon && gut) setTimeout(konfetti, 2000);
 
   var rest = el('<div class="nachher' + (schon ? "" : " wartet") + '"></div>');
   app.appendChild(rest);
@@ -4892,6 +5743,7 @@ function viewSpionEnde(z){
   var reihe = S.names.map(function(nm, i){ return { nm: nm, i: i, pt: z.punkte[nm] || 0 }; })
                      .sort(function(a, b){ return b.pt - a.pt; });
   quizKopf(esc(reihe[0].nm) + " gewinnt", "Spion, " + (z.gesamt || 0) + " Runden");
+  app.appendChild(siegerPodest(reihe, "spion" + rundenKey(z)));
   reihe.forEach(function(p, i){
     app.appendChild(el('<div class="rank' + (i === 0 ? ' first' : '') + '" style="--acc:' + hue(p.i) + '">' +
       '<span class="pos num">' + (i + 1) + '</span><span class="nm">' + esc(p.nm) + '</span>' +
@@ -4926,7 +5778,6 @@ function viewSpionLobby(){
   if (quizFehler) app.appendChild(el('<p class="note warn">' + esc(quizFehler) + '</p>'));
   if (quizLaedt) { app.appendChild(kartenLader("Orte werden ausgedacht")); return; }
   if (!S.hostet) {
-    app.appendChild(el('<div class="qrbox">' + (qrSVG(beitrittsLink(S.live), 170) || "") + '</div>'));
     app.appendChild(tabs());
     return;
   }
@@ -5010,35 +5861,84 @@ function skalaKopf(z, unter){
 }
 
 // Die Leiste mit den beiden Gegensaetzen. Optional mit Zielbereich und Regler.
+// Skala als Halbkreis mit Zeiger, wie auf der Watch. 0 ist links, 100 rechts.
+var SKM = { cx: 170, cy: 170, r: 140 }, skalaNr = 0;
+function skPunkt(v, rad){ var a = Math.PI * (1 - v / 100); return [SKM.cx + rad * Math.cos(a), SKM.cy - rad * Math.sin(a)]; }
+function skBogen(v1, v2, rad){
+  v1 = Math.max(0, v1); v2 = Math.min(100, v2);
+  var p1 = skPunkt(v1, rad), p2 = skPunkt(v2, rad);
+  return "M" + p1[0].toFixed(1) + " " + p1[1].toFixed(1) + "A" + rad + " " + rad + " 0 0 1 " + p2[0].toFixed(1) + " " + p2[1].toFixed(1);
+}
 function skalaLeiste(z, o){
   o = o || {};
-  var box = el('<div class="skala"><div class="pole"><span>' + esc((z.skala || {}).links || "") +
-    '</span><span>' + esc((z.skala || {}).rechts || "") + '</span></div>' +
-    '<div class="skbalken"></div></div>');
-  var balken = box.querySelector(".skbalken");
+  var id = "skv" + (++skalaNr);
+  var striche = "";
+  for (var i = 0; i <= 20; i++) {
+    var p1 = skPunkt(i * 5, SKM.r - 22), p2 = skPunkt(i * 5, SKM.r - (i % 5 ? 30 : 36));
+    striche += '<line class="strich" data-v="' + (i * 5) + '" x1="' + p1[0].toFixed(1) + '" y1="' + p1[1].toFixed(1) +
+      '" x2="' + p2[0].toFixed(1) + '" y2="' + p2[1].toFixed(1) + '" stroke-width="' + (i % 5 ? 2 : 3) + '" stroke-linecap="round"/>';
+  }
+  var box = el('<div class="skala skdial"><div class="skflaeche"><svg class="skbogen" viewBox="0 0 340 190" aria-hidden="true">' +
+    '<defs><linearGradient id="' + id + '"><stop offset="0" stop-color="#0A84FF"/><stop offset=".5" stop-color="#BF5AF2"/>' +
+    '<stop offset="1" stop-color="#FF453A"/></linearGradient></defs>' +
+    '<path d="' + skBogen(0, 100, SKM.r) + '" fill="none" stroke="url(#' + id + ')" stroke-width="16" stroke-linecap="round"/>' +
+    '<g class="skzonegrp"></g>' + striche + '<g class="skandere"></g>' +
+    (o.regler ? '<g class="sknadel"><line x1="170" y1="170" x2="170" y2="56" stroke-width="5" stroke-linecap="round"/>' +
+                '<circle cx="170" cy="170" r="11"/></g>' : '') +
+    '</svg><div class="skwert num"></div></div>' +
+    '<div class="pole"><span>' + esc((z.skala || {}).links || "") + '</span><span>' + esc((z.skala || {}).rechts || "") + '</span></div></div>');
+  var svg = box.querySelector("svg");
   if (typeof o.ziel === "number") {
-    balken.appendChild(el('<div class="skzone' + (o.aufklappen ? " klappt" : "") + '" style="left:' + o.ziel + '%">' +
-      '<i class="b2"></i><i class="b3"></i><i class="b4"></i></div>'));
+    // Zielbereich auf dem Bogen: aussen zwei, Mitte drei, innen vier Punkte
+    var zg = box.querySelector(".skzonegrp");
+    zg.setAttribute("class", "skzonegrp skzone" + (o.aufklappen ? " klappt" : ""));
+    zg.innerHTML = '<path d="' + skBogen(o.ziel - 16, o.ziel + 16, SKM.r) + '" class="b2"/>' +
+      '<path d="' + skBogen(o.ziel - 10, o.ziel + 10, SKM.r) + '" class="b3"/>' +
+      '<path d="' + skBogen(o.ziel - 4, o.ziel + 4, SKM.r) + '" class="b4"/>';
   }
   if (o.regler) {
     var start = typeof SKALA_TIPP[rundenKey(z)] === "number" ? SKALA_TIPP[rundenKey(z)] : 50;
-    var r = el('<input class="skregler" type="range" min="0" max="100" step="1" value="' + start + '"' +
+    // Unsichtbarer Regler: haelt den Wert, laesst sich per Tastatur bedienen und vorlesen
+    var r = el('<input class="skregler" type="range" min="0" max="100" step="1" value="' + start + '" aria-label="Tipp auf der Skala"' +
       (o.gesperrt ? " disabled" : "") + '>');
-    r.addEventListener("input", function(){ SKALA_TIPP[rundenKey(z)] = Number(r.value); });
-    balken.appendChild(r);
+    box.appendChild(r);
+    var nadel = box.querySelector(".sknadel"), anzeige = box.querySelector(".skwert"), letzter = start;
+    var setze = function(v, weich){
+      v = Math.max(0, Math.min(100, Math.round(v)));
+      r.value = v; SKALA_TIPP[rundenKey(z)] = v;
+      nadel.style.transition = weich ? "transform .6s var(--hupf)" : "none";
+      nadel.style.transformOrigin = "170px 170px";
+      nadel.style.transform = "rotate(" + ((v - 50) * 1.8) + "deg)";
+      anzeige.textContent = v;
+      [].forEach.call(box.querySelectorAll(".strich"), function(st){
+        st.classList.toggle("nah", Math.abs(Number(st.getAttribute("data-v")) - v) <= 3); });
+      if (Math.floor(v / 5) !== Math.floor(letzter / 5) && navigator.vibrate) { try { navigator.vibrate(4); } catch (e) {} }
+      letzter = v;
+    };
+    setze(start);
+    r.addEventListener("input", function(){ setze(Number(r.value)); });
+    if (!o.gesperrt) {
+      var zieht = false;
+      var ausZeiger = function(e){
+        var b = svg.getBoundingClientRect(); if (!b.width) return;
+        var f = 340 / b.width, x = (e.clientX - b.left) * f - SKM.cx, y = SKM.cy - (e.clientY - b.top) * f;
+        var grad = Math.atan2(Math.max(y, -40), x) * 180 / Math.PI;
+        if (grad < 0) grad = x < 0 ? 180 : 0;
+        setze(100 - grad / 1.8);
+      };
+      box.addEventListener("pointerdown", function(e){ zieht = true; if (box.setPointerCapture) box.setPointerCapture(e.pointerId); ausZeiger(e); });
+      box.addEventListener("pointermove", function(e){ if (zieht) ausZeiger(e); });
+      box.addEventListener("pointerup", function(){ zieht = false; });
+      box.addEventListener("pointercancel", function(){ zieht = false; });
+    } else {
+      box.classList.add("gesperrt");
+    }
   }
   return box;
 }
 
 function skalaPlaketten(z, geber){
-  var reihe = el('<div class="wersteht"></div>');
-  S.names.forEach(function(nm, i){
-    if (nm === geber) return;
-    var da = (z.abgegeben || []).indexOf(nm) >= 0;
-    reihe.appendChild(el('<span class="wp' + (da ? " fertig" : "") + '" style="--acc:' + hue(i) + '">' +
-      '<b>' + esc(nm.charAt(0).toUpperCase()) + '</b><i>' + esc(nm) + '</i></span>'));
-  });
-  return reihe;
+  return profilReihe(S.names.filter(function(nm){ return nm !== geber; }), z.abgegeben || [], "getippt");
 }
 
 /* --- Hinweis geben --- */
@@ -5089,7 +5989,7 @@ function viewSkalaRaten(z, geber, ichGebe){
     app.appendChild(zurueck);
   } else {
     app.appendChild(skalaLeiste(z, { regler: true }));
-    app.appendChild(el('<p class="hintline" style="text-align:center">Schieb den Regler dorthin, ' +
+    app.appendChild(el('<p class="hintline" style="text-align:center">Dreh den Zeiger dorthin, ' +
       'wo der Hinweis deiner Meinung nach liegt.</p>'));
     var ab = el('<button class="cta" type="button">Tipp abgeben</button>');
     bindTap(ab, function(){
@@ -5118,9 +6018,7 @@ function viewSkalaAuf(z, geber){
   var schon = SKALA_GESEHEN === rundenKey(z);
   SKALA_GESEHEN = rundenKey(z);
   var box = skalaLeiste({ skala: l.skala }, { ziel: l.ziel, aufklappen: !schon });
-  var balken = box.querySelector(".skbalken");
-  var ruf = el('<div class="ruf"><b></b><span></span></div>');
-  balken.appendChild(ruf);
+  var anzeige = box.querySelector(".skwert");
   app.appendChild(box);
 
   var tipps = [];
@@ -5129,52 +6027,31 @@ function viewSkalaAuf(z, geber){
     if (e && typeof e.wert === "number") tipps.push({ nm: nm, i: i, w: e.wert, p: e.punkte });
   });
   tipps.sort(function(a, b){ return a.w - b.w; });
-
-  // Marken in einer Reihe unter der Leiste, bei Gedraenge seitlich aufgefaechert
-  var abstand = 6.5, rand = 3, lx = [];
-  tipps.forEach(function(t, k){ lx[k] = Math.max(t.w, rand, k ? lx[k - 1] + abstand : rand); });
-  for (var k = lx.length - 1; k >= 0; k--) {
-    var grenze = k === lx.length - 1 ? 100 - rand : lx[k + 1] - abstand;
-    if (lx[k] > grenze) lx[k] = grenze;
-  }
-  var ns = "http://www.w3.org/2000/svg";
-  var svg = document.createElementNS(ns, "svg");
-  svg.setAttribute("class", "faeden");
-  balken.appendChild(svg);
-
-  var takt = tipps.length > 5 ? 1250 : 1000, vorlauf = schon ? 0 : 1300;
+  // Liegen Tipps dicht beieinander, ruecken die spaeteren nach innen statt sich zu ueberdecken
+  var gesetzt = [];
+  tipps.forEach(function(t){
+    var stufe = 0;
+    while (gesetzt.some(function(g){ return g.stufe === stufe && Math.abs(g.w - t.w) < 6; })) stufe++;
+    t.stufe = Math.min(stufe, 4); gesetzt.push(t);
+  });
+  var ns = "http://www.w3.org/2000/svg", gruppe = box.querySelector(".skandere");
+  var takt = tipps.length > 5 ? 1000 : 900, vorlauf = schon ? 0 : 1100;
   tipps.forEach(function(t, k){
-    var punkt = el('<div class="skpunkt' + (schon ? "" : " kommt") + '" style="--acc:' + hue(t.i) +
-      ';left:' + (schon ? t.w : 0) + '%"></div>');
-    balken.appendChild(punkt);
-    var linie = document.createElementNS(ns, "line");
-    linie.setAttribute("x1", t.w + "%"); linie.setAttribute("y1", "30");
-    linie.setAttribute("x2", lx[k].toFixed(2) + "%"); linie.setAttribute("y2", "46");
-    linie.setAttribute("class", schon ? "" : "kommt");
-    linie.style.stroke = hue(t.i);
-    svg.appendChild(linie);
-    var marke = el('<b class="marke' + (schon ? "" : " kommt") + '" style="--acc:' + hue(t.i) +
-      ';left:' + lx[k].toFixed(2) + '%">' + esc(t.nm.charAt(0).toUpperCase()) + '</b>');
-    balken.appendChild(marke);
+    var pos = skPunkt(t.w, SKM.r - t.stufe * 24);
+    var g = document.createElementNS(ns, "g");
+    g.setAttribute("class", "skpunkt" + (schon ? "" : " kommt"));
+    g.style.setProperty("--dx", (SKM.cx - pos[0]).toFixed(1) + "px");
+    g.style.setProperty("--dy", (SKM.cy - pos[1]).toFixed(1) + "px");
+    g.innerHTML = '<circle cx="' + pos[0].toFixed(1) + '" cy="' + pos[1].toFixed(1) + '" r="12" fill="' + hue(t.i) + '"/>' +
+      '<text x="' + pos[0].toFixed(1) + '" y="' + (pos[1] + 4.5).toFixed(1) + '" text-anchor="middle">' + esc(t.nm.charAt(0).toUpperCase()) + '</text>';
+    gruppe.appendChild(g);
     if (schon) return;
     setTimeout(function(){
-      punkt.classList.remove("kommt");
-      punkt.style.left = t.w + "%";
+      g.setAttribute("class", "skpunkt");
+      anzeige.innerHTML = '<span style="color:' + hue(t.i) + '">' + esc(t.nm) + '</span> <em>+' + t.p + '</em>';
     }, vorlauf + k * takt);
-    setTimeout(function(){
-      ruf.querySelector("b").textContent = t.nm;
-      ruf.querySelector("span").textContent = "+" + t.p;
-      ruf.style.setProperty("--acc", hue(t.i));
-      var breite = balken.offsetWidth || 1, halb = (ruf.offsetWidth || 0) / 2;
-      var raender = Math.min(50, (halb / breite) * 100 + 1);
-      var mitte = Math.max(raender, Math.min(100 - raender, t.w));
-      ruf.style.left = mitte + "%";
-      ruf.style.setProperty("--zeiger", Math.max(-halb + 10, Math.min(halb - 10, ((t.w - mitte) / 100) * breite)) + "px");
-      ruf.classList.remove("an"); void ruf.offsetWidth; ruf.classList.add("an");
-      marke.classList.remove("kommt");
-      linie.setAttribute("class", "");
-    }, vorlauf + k * takt + 650);
   });
+  if (schon) anzeige.textContent = "";
 
   // Ergebnis der Runde, erscheint nach dem letzten Tipp
   var rest = el('<div class="nachher' + (schon ? "" : " wartet") + '"></div>');
@@ -5220,6 +6097,7 @@ function viewSkalaEnde(z){
     var reihe = S.names.map(function(nm, i){ return { nm: nm, i: i, pt: z.punkte[nm] || 0 }; })
                        .sort(function(a, b){ return b.pt - a.pt; });
     quizKopf(esc(reihe[0].nm) + " gewinnt", "Skala, " + (z.gesamt || 0) + " Runden");
+    app.appendChild(siegerPodest(reihe, "skala" + rundenKey(z)));
     reihe.forEach(function(p, i){
       app.appendChild(el('<div class="rank' + (i === 0 ? ' first' : '') + '" style="--acc:' + hue(p.i) + '">' +
         '<span class="pos num">' + (i + 1) + '</span><span class="nm">' + esc(p.nm) + '</span>' +
@@ -5258,7 +6136,6 @@ function viewSkalaLobby(){
   if (quizFehler) app.appendChild(el('<p class="note warn">' + esc(quizFehler) + '</p>'));
   if (quizLaedt) { app.appendChild(kartenLader("Skalen werden ausgedacht")); return; }
   if (!S.hostet) {
-    app.appendChild(el('<div class="qrbox">' + (qrSVG(beitrittsLink(S.live), 170) || "") + '</div>'));
     app.appendChild(tabs());
     return;
   }
@@ -5474,13 +6351,7 @@ function ditoTableau(felder, optionen){
 }
 
 function ditoPlaketten(fertig){
-  var reihe = el('<div class="wersteht"></div>');
-  S.names.forEach(function(nm, i){
-    var da = (fertig || []).indexOf(nm) >= 0;
-    reihe.appendChild(el('<span class="wp' + (da ? " fertig" : "") + '" style="--acc:' + hue(i) + '">' +
-      '<b>' + esc(nm.charAt(0).toUpperCase()) + '</b><i>' + esc(nm) + '</i></span>'));
-  });
-  return reihe;
+  return profilReihe(S.names, fertig || [], "abgegeben");
 }
 
 /* --- Kategorie waehlen --- */
@@ -5861,6 +6732,7 @@ function viewDitoEnde(z){
   var reihe = S.names.map(function(nm, i){ return { nm: nm, i: i, pt: z.punkte[nm] || 0 }; })
                      .sort(function(a, b){ return b.pt - a.pt; });
   quizKopf(esc(reihe[0].nm) + " gewinnt", "Drei Runden Dito");
+  app.appendChild(siegerPodest(reihe, "dito" + S.live + JSON.stringify(reihe.map(function(p){ return p.pt; }))));
   reihe.forEach(function(p, i){
     var beste = 0;
     (z.verlauf || []).forEach(function(r){ if ((r[p.nm] || 0) > beste) beste = r[p.nm] || 0; });
@@ -5907,7 +6779,6 @@ function viewDitoLobby(){
   if (quizFehler) app.appendChild(el('<p class="note warn">' + esc(quizFehler) + '</p>'));
   if (quizLaedt) { app.appendChild(kartenLader("Kategorien werden ausgedacht")); return; }
   if (!S.hostet) {
-    app.appendChild(el('<div class="qrbox">' + (qrSVG(beitrittsLink(S.live), 170) || "") + '</div>'));
     app.appendChild(tabs());
     return;
   }
@@ -5962,7 +6833,6 @@ function viewBluffLobby(){
   if (quizLaedt) { app.appendChild(kartenLader("Die Karten werden ausgedacht")); return; }
 
   if (!S.hostet) {
-    app.appendChild(el('<div class="qrbox">' + (qrSVG(beitrittsLink(S.live), 170) || "") + '</div>'));
     app.appendChild(tabs());
     return;
   }
@@ -6024,12 +6894,12 @@ function bluffSchreiben(z){
       esc(ENTWURF["luege" + bluffSchluessel(z)] || "abgegeben") + '<span class="marke">abgegeben</span></div>'));
     app.appendChild(el('<p class="note">Warten auf die anderen. Sobald alle fertig sind, wird geraten.</p>'));
   } else {
-    var feld = merkeEingabe(el('<div class="codeeingabe"><input type="text" maxlength="120" ' +
-      'autocomplete="off" placeholder="deine erfundene Antwort"></div>'), "luege" + bluffSchluessel(z));
+    app.appendChild(el('<p class="bluffanweisung">Erfinde eine Antwort, die echt klingt.</p>'));
+    var feld = merkeEingabe(el('<div class="codeeingabe bluffeingabe"><input type="text" maxlength="120" ' +
+      'autocomplete="off" placeholder="Deine erfundene Antwort"></div>'), "luege" + bluffSchluessel(z));
     app.appendChild(feld);
-    app.appendChild(el('<p class="hintline" style="text-align:center">Kurz halten, h\u00f6chstens ein paar ' +
-      'W\u00f6rter. Gro\u00dfschreibung und Punkt am Ende gleicht die App f\u00fcr alle an, damit man die echte ' +
-      'Antwort nicht an der Form erkennt.</p>'));
+    app.appendChild(el('<p class="hintline" style="text-align:center">Jeder, der darauf hereinf\u00e4llt, bringt dir ' +
+      'drei Felder. Kurz halten, Gro\u00dfschreibung und Punkt gleicht die App f\u00fcr alle an.</p>'));
     app.appendChild(absenden("Antwort abgeben", feld, function(){
       var t = feld.querySelector("input").value.trim();
       if (t.length < 2) return;
@@ -6116,6 +6986,16 @@ function bluffAuf(z){
 
   var rest = el('<div class="nachher' + (sofort ? "" : " wartet") + '"></div>');
   app.appendChild(rest);
+  if (!sofort) {
+    var ichB = meinName(), opferListe = [];
+    (a.optionen || []).forEach(function(o, k){
+      if (o.von === ichB || (o.mit || []).indexOf(ichB) >= 0)
+        S.names.forEach(function(x){ if (a.stimmen[x] === k && x !== ichB) opferListe.push(x); });
+    });
+    if (opferListe.length) setTimeout(function(){
+      toast(esc(namenListe(opferListe)) + (opferListe.length === 1 ? " ist" : " sind") + " auf dich reingefallen");
+    }, 300 + flieger * 900 + 400);
+  }
   var vorher = app;
   app = rest;
   if (a.info) app.appendChild(el('<p class="hintline" style="text-align:center">' + esc(a.info) + '</p>'));
@@ -6383,14 +7263,8 @@ function brettLegende(z){
 
 function bluffSchluessel(z){ return (z.runde || 1) + "-" + (z.idx || 0); }
 
-function bluffPlaketten(fertigListe){
-  var reihe = el('<div class="wersteht"></div>');
-  S.names.forEach(function(nm, i){
-    var da = fertigListe.indexOf(nm) >= 0;
-    reihe.appendChild(el('<span class="wp' + (da ? " fertig" : "") + '" style="--acc:' + hue(i) + '">' +
-      '<b>' + esc(nm.charAt(0).toUpperCase()) + '</b><i>' + esc(nm) + '</i></span>'));
-  });
-  return reihe;
+function bluffPlaketten(fertigListe, wort){
+  return profilReihe(S.names, fertigListe || [], wort || (QUIZ && QUIZ.phase === "schreiben" ? "geschrieben" : "getippt"));
 }
 
 /* ---------- Buchstabenrad ---------- */
@@ -6856,17 +7730,52 @@ function tabs(){
 
 /* ---------- Start ---------- */
 var THEMES = [
-  { id:"light", name:"Hell",   bg:"linear-gradient(150deg,#FFD9DE,#D5F3D8)", fg:"#8A4055" },
-  { id:"dark",  name:"Dunkel", bg:"linear-gradient(150deg,#2E2E2E,#121212)", fg:"#4DFFBC" }
+  { id:"auto",  name:"Automatisch" },
+  { id:"light", name:"Hell" },
+  { id:"dark",  name:"Dunkel" }
 ];
+// Jedes Spiel hat seine Farbe, hell und dunkel leicht verschieden wie bei iOS
+var AKZENTE = {
+  quiz:["#007AFF","#0A84FF"], bluff:["#FF2D55","#FF375F"], dito:["#28A745","#30D158"], skala:["#AF52DE","#BF5AF2"],
+  spion:["#FF9500","#FF9F0A"], zeitstrahl:["#1C9CB7","#40C8E0"], wizard:["#5856D6","#5E5CE6"],
+  kniffel:["#FF3B30","#FF453A"], phase10:["#00A39B","#63E6E2"], skyjo:["#A2845E","#AC8E68"]
+};
+var dunkelMedia = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+if (dunkelMedia && dunkelMedia.addEventListener) dunkelMedia.addEventListener("change", function(){ if (ALL.theme === "auto") applyTheme(); });
+function istDunkel(){
+  if (ALL.theme === "dark") return true;
+  if (ALL.theme === "light") return false;
+  return !!(dunkelMedia && dunkelMedia.matches);
+}
 function applyTheme(){
   var ok = THEMES.some(function(t){ return t.id === ALL.theme; });
-  if (!ok) ALL.theme = "light";
-  document.documentElement.setAttribute("data-theme", ALL.theme);
+  if (!ok) ALL.theme = "auto";
+  var dunkel = istDunkel();
+  document.documentElement.setAttribute("data-theme", dunkel ? "dark" : "light");
+  var paar = (S && AKZENTE[S.game]) || ["#007AFF", "#0A84FF"];
+  document.documentElement.style.setProperty("--akzent", paar[dunkel ? 1 : 0]);
 }
 
+var ANSICHT = null, ansichtTimer = null;
+function ansichtWechsel(){
+  // Ein Schluessel je Ansicht: Wechsel ins Spiel gleitet von rechts, zurueck ins Menue von links
+  var key = !S ? (ALL.view === "stats" ? "stats" : "home") : S.game + (S.setup ? ":einrichtung" : "");
+  if (key === ANSICHT) return;
+  var tiefer = ANSICHT === null ? null : (key === "home" ? false : true);
+  ANSICHT = key;
+  // Neue Ansicht beginnt oben, nicht an der Scrollposition der vorigen
+  try { window.scrollTo(0, 0); } catch (e) {}
+  if (tiefer === null || !app) return;
+  app.classList.remove("rein", "zurueck");
+  void app.offsetWidth;
+  app.classList.add(tiefer ? "rein" : "zurueck");
+  clearTimeout(ansichtTimer);
+  ansichtTimer = setTimeout(function(){ app.classList.remove("rein", "zurueck"); }, 460);
+}
 function render(){
+  if (app) app.classList.remove("lobby", "bereit");
   applyTheme();
+  ansichtWechsel();
   document.body.classList.toggle("imspiel", !!S);
   if (aktiverCode()) liveVerbinden(); else if (sock) liveTrennen();
   keepAwake(!!S && !!S.names.length && !S.setup);
