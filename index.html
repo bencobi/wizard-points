@@ -1495,6 +1495,11 @@
   .hm-zeile .tilemain{min-width:0}
   .hm-zeile .hm-text{min-width:0; flex:1}
   .hm-zeile .hm-text span{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+
+  /* Skala: Wert und Name in eigener Zeile unter dem Bogen, Pole duerfen umbrechen */
+  .skdial .skwert{position:static; min-height:34px; margin-top:2px; line-height:34px}
+  .skdial .pole{align-items:flex-start; gap:12px}
+  .skdial .pole span{max-width:48%; line-height:1.25}
 </style>
 </head>
 <body>
@@ -1505,7 +1510,7 @@
 "use strict";
 
 /* ---------- Speicher: Artefakt-Storage, sonst Browser, sonst nur Sitzung ---------- */
-var VERSION = "2026-10-11.8";
+var VERSION = "2026-10-11.9";
 var KEY = "wizard:state";
 // Adresse des Vermittlers vor der Datenbank.
 // Zum Wechseln des Anbieters nur diese Zeile anfassen.
@@ -3703,7 +3708,11 @@ function liveVerbinden(){
       if (Array.isArray(n.wartend)) WARTEND = n.wartend;
       // In der Lobby nur die Plaketten auffrischen, damit Eingaben nicht verloren gehen
       var leute = app.querySelector(".lobbyleute");
-      if (leute) leute.parentNode.replaceChild(lobbyLeute(), leute);
+      if (leute) {
+        leute.parentNode.replaceChild(lobbyLeute(), leute);
+        var altChip = app.querySelector(".top .livechip"), neuChip = liveChip();
+        if (altChip && neuChip) altChip.parentNode.replaceChild(neuChip, altChip);
+      }
       else render();
     } else if (n.type === "ende") {
       if (S && !S.hostet) {
@@ -3796,11 +3805,21 @@ function liveCode(){
   return out;
 }
 
+// Wie viele sind verbunden? Bei Partyspielen zaehlen die gemeldeten Namen, nicht die offenen Leitungen:
+// ein gesperrtes iPhone haelt seine alte Leitung oft noch minutenlang offen und baut beim Entsperren eine neue auf.
+function verbundenZahl(){
+  if (S && PARTYSPIELE.indexOf(S.game) >= 0 && ANWESEND.length) {
+    var namen = ANWESEND.filter(function(x, i){ return ANWESEND.indexOf(x) === i; });
+    var ich = meinName();
+    return namen.length + (ich && namen.indexOf(ich) < 0 ? 1 : 0);
+  }
+  return liveAnzahl;
+}
 function liveChip(){
   if (!S || !S.live) return null;
   var an = sock && sock.readyState === 1;
   var chip = el('<button class="livechip' + (an ? " an" : "") + '" type="button">' +
-    (an ? '\u25cf ' + liveAnzahl : '\u25cb') + '</button>');
+    (an ? '\u25cf ' + verbundenZahl() : '\u25cb') + '</button>');
   chip.onclick = liveSheet;
   return chip;
 }
@@ -3955,7 +3974,7 @@ function liveSheet(){
     panel.appendChild(el('<div class="qrbox">' + (qrSVG(beitrittsLink(S.live), 190) || "") + '</div>'));
     panel.appendChild(el('<div class="bigcode">' + esc(S.live) + '</div>'));
     panel.appendChild(el('<p class="hintline" style="padding:0 16px 4px">Code <b>' + esc(S.live) + '</b>, ' +
-      (sock && sock.readyState === 1 ? geraeteText(liveAnzahl) : 'nicht verbunden') +
+      (sock && sock.readyState === 1 ? geraeteText(verbundenZahl()) : 'nicht verbunden') +
       '. Jedes Ger\u00e4t darf f\u00fcr jeden eintragen. ' +
       (S.hostet ? 'Du bist Gastgeber: Zur\u00fccksetzen und L\u00f6schen liegt bei dir.'
                 : 'Der Gastgeber kann Runden l\u00f6schen und neu starten.') + '</p>'));
